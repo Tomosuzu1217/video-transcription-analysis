@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+.env
+backend/uploads/
+node_modules/
+dist/
+.vite/
+.firebase/
+.claude/
+nul
+*.log

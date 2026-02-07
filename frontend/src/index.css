@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+/* Dark mode base overrides */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body,
+.dark .bg-gray-50 {
+  background-color: #111827 !important;
+  color: #e5e7eb !important;
+}
+
+.dark .bg-white {
+  background-color: #1f2937 !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: #374151 !important;
+}
+
+.dark .border-gray-200,
+.dark .border-gray-100 {
+  border-color: #374151 !important;
+}
+
+.dark .border-gray-300 {
+  border-color: #4b5563 !important;
+}
+
+.dark .text-gray-900 {
+  color: #f3f4f6 !important;
+}
+
+.dark .text-gray-700 {
+  color: #d1d5db !important;
+}
+
+.dark .text-gray-600 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-500 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+.dark .text-gray-300 {
+  color: #6b7280 !important;
+}
+
+.dark .bg-gray-50 .border-gray-200 {
+  border-color: #374151 !important;
+}
+
+/* Dark mode for inputs */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #374151 !important;
+  border-color: #4b5563 !important;
+  color: #f3f4f6 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Dark mode for tables */
+.dark .bg-gray-50 tr,
+.dark tr.bg-gray-50 {
+  background-color: #1f2937 !important;
+}
+
+.dark tr:hover {
+  background-color: #374151 !important;
+}
+
+.dark .divide-gray-100 > :not(:last-child),
+.dark .divide-gray-50 > :not(:last-child) {
+  border-color: #374151 !important;
+}
+
+/* Dark mode shadows */
+.dark .shadow-sm,
+.dark .shadow-md {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Nav specific */
+.dark nav.bg-white {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+/* Ensure colored badges remain readable */
+.dark .bg-blue-50 { background-color: #1e3a5f !important; }
+.dark .bg-blue-100 { background-color: #1e3a5f !important; }
+.dark .bg-green-100 { background-color: #14532d !important; }
+.dark .bg-yellow-100 { background-color: #713f12 !important; }
+.dark .bg-red-50 { background-color: #450a0a !important; }
+.dark .bg-red-100 { background-color: #450a0a !important; }
+.dark .bg-amber-50 { background-color: #451a03 !important; }
+.dark .bg-purple-50 { background-color: #3b0764 !important; }
+
+/* Scrollbar */
+.dark ::-webkit-scrollbar-track { background: #1f2937; }
+.dark ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
