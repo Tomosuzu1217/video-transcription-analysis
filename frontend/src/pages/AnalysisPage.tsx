@@ -20,6 +20,7 @@ import {
   getAnalysisResults,
 } from "../api/analysis";
 import { searchTranscriptions, getAllTranscriptions, type SearchResult, type FullTranscription } from "../api/transcriptions";
+import { exportKeywordAnalysisCSV, exportCorrelationAnalysisCSV } from "../utils/csv";
 import type { KeywordItem, CorrelationItem, AiAnalysisResult, RankingComparisonResult, PsychologicalContentResult } from "../types";
 
 type TabKey = "keyword" | "correlation" | "ai" | "ranking" | "psych" | "search" | "transcripts" | "history";
@@ -460,45 +461,8 @@ export default function AnalysisPage() {
     video_count: c.video_count,
   }));
 
-  // ─── CSV export helper ────────────────────────────────────────
-  const downloadCsv = (filename: string, headers: string[], rows: string[][]) => {
-    const bom = "\uFEFF";
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleExportKeywordsCsv = () => {
-    downloadCsv(
-      "keywords.csv",
-      ["#", "キーワード", "出現回数", "出現動画数"],
-      top50Keywords.map((kw, i) => [
-        String(i + 1),
-        `"${kw.keyword}"`,
-        String(kw.count),
-        String(Object.keys(kw.video_counts).length),
-      ]),
-    );
-  };
-
-  const handleExportCorrelationCsv = () => {
-    downloadCsv(
-      "correlation.csv",
-      ["キーワード", "キーワードあり平均CV", "キーワードなし平均CV", "効果スコア", "出現動画数"],
-      correlations.map((c) => [
-        `"${c.keyword}"`,
-        c.avg_conversion_with.toFixed(2),
-        c.avg_conversion_without.toFixed(2),
-        c.effectiveness_score.toFixed(2),
-        String(c.video_count),
-      ]),
-    );
-  };
+  const handleExportKeywordsCsv = () => exportKeywordAnalysisCSV(top50Keywords);
+  const handleExportCorrelationCsv = () => exportCorrelationAnalysisCSV(correlations);
 
   const formatTimestamp = (iso: string | null): string => {
     if (!iso) return "";

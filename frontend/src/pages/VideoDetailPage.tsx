@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getVideo, getVideoStreamUrl, renameVideo } from "../api/videos";
-import { getTranscriptionStatus, retryTranscription, getTranscriptionExportUrl, getQueueStatus, type QueueStatus } from "../api/transcriptions";
+import { getTranscriptionStatus, retryTranscription, getTranscriptionExportUrl, getQueueStatus, updateTranscriptionSegment, type QueueStatus } from "../api/transcriptions";
 import Toast, { useToast } from "../components/Toast";
 import type { Video, TranscriptionStatus, TranscriptionSegment } from "../types";
 
@@ -43,6 +43,11 @@ export default function VideoDetailPage() {
 
   // Playback speed
   const [playbackRate, setPlaybackRate] = useState(1.0);
+
+  // Segment editing state
+  const [editingSegmentIndex, setEditingSegmentIndex] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const [savingSegment, setSavingSegment] = useState(false);
 
   // Toast state
   const { toast, showToast, clearToast } = useToast();
@@ -145,6 +150,31 @@ export default function VideoDetailPage() {
       videoRef.current.currentTime = segment.start_time;
       videoRef.current.play();
     }
+  };
+
+  const handleEditSegment = (index: number, text: string) => {
+    setEditingSegmentIndex(index);
+    setEditText(text);
+  };
+
+  const handleSaveSegment = async () => {
+    if (editingSegmentIndex === null) return;
+    try {
+      setSavingSegment(true);
+      await updateTranscriptionSegment(videoId, editingSegmentIndex, editText);
+      await fetchTranscription();
+      setEditingSegmentIndex(null);
+      showToast("セグメントを更新しました", "success");
+    } catch (e: any) {
+      showToast(e.message ?? "セグメントの更新に失敗しました", "error");
+    } finally {
+      setSavingSegment(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSegmentIndex(null);
+    setEditText("");
   };
 
   const handleTimeUpdate = () => {
@@ -415,17 +445,20 @@ export default function VideoDetailPage() {
               )}
 
               <div className="p-3 space-y-1">
-                {segments.map((segment) => {
+                {segments.map((segment, index) => {
                   const isActive = segment.id === activeSegmentId;
+                  const isEditing = editingSegmentIndex === index;
                   return (
                     <div
                       key={segment.id}
                       ref={isActive ? activeSegmentRef : undefined}
-                      onClick={() => handleSegmentClick(segment)}
-                      className={`group p-2.5 rounded-lg cursor-pointer transition-all ${
-                        isActive
-                          ? "bg-blue-50 ring-1 ring-blue-200"
-                          : "hover:bg-gray-50"
+                      onClick={() => !isEditing && handleSegmentClick(segment)}
+                      className={`group p-2.5 rounded-lg transition-all ${
+                        isEditing
+                          ? "bg-yellow-50 ring-1 ring-yellow-300"
+                          : isActive
+                          ? "bg-blue-50 ring-1 ring-blue-200 cursor-pointer"
+                          : "hover:bg-gray-50 cursor-pointer"
                       }`}
                     >
                       <div className="flex items-start gap-2">
@@ -436,11 +469,58 @@ export default function VideoDetailPage() {
                         }`}>
                           {formatTimestamp(segment.start_time)}
                         </span>
-                        <p className={`text-sm leading-relaxed ${
-                          isActive ? "text-gray-900" : "text-gray-600"
-                        }`}>
-                          {segment.text}
-                        </p>
+                        {isEditing ? (
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <textarea
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              autoFocus
+                              rows={3}
+                              className="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-y"
+                              onKeyDown={(e) => {
+                                if (e.key === "Escape") handleCancelEdit();
+                                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSaveSegment();
+                              }}
+                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={handleSaveSegment}
+                                disabled={savingSegment}
+                                className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                              >
+                                {savingSegment ? "保存中..." : "保存"}
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                disabled={savingSegment}
+                                className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                              >
+                                取消
+                              </button>
+                              <span className="text-xs text-gray-400">Ctrl+Enter で保存</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className={`flex-1 text-sm leading-relaxed ${
+                              isActive ? "text-gray-900" : "text-gray-600"
+                            }`}>
+                              {segment.text}
+                            </p>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditSegment(index, segment.text);
+                              }}
+                              className="shrink-0 rounded p-1 text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-gray-200 hover:text-gray-500 transition-all"
+                              title="編集"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );

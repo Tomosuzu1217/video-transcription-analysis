@@ -237,12 +237,6 @@ export interface TranscriptionRecord {
   created_at: string;
 }
 
-export interface VideoTag {
-  video_id: number;
-  tag: string;
-  created_at: string;
-}
-
 export interface ConversionRecord {
   id: number;
   video_id: number;
