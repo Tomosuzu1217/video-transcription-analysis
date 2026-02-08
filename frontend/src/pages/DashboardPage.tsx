@@ -9,6 +9,9 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { getDashboard, runKeywordAnalysis, runCorrelationAnalysis, runAiRecommendations } from "../api/analysis";
+import { getStorageUsage, type StorageUsage } from "../api/storage";
+import StorageUsageBar from "../components/StorageUsageBar";
+import { formatDuration } from "../utils/format";
 import type { DashboardData } from "../types";
 
 type AnalysisStepStatus = "pending" | "running" | "done" | "error";
@@ -27,6 +30,7 @@ const INITIAL_STEPS: AnalysisStep[] = [
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [analysisSteps, setAnalysisSteps] = useState<AnalysisStep[]>(INITIAL_STEPS);
@@ -50,6 +54,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboard();
+    getStorageUsage().then(setStorageUsage).catch(() => {});
   }, []);
 
   // Cleanup timer on unmount
@@ -114,13 +119,6 @@ export default function DashboardPage() {
     }
   };
 
-  const formatDuration = (seconds: number | null): string => {
-    if (seconds == null) return "—";
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  };
-
   const getPriorityBadge = (priority: string) => {
     switch (priority.toLowerCase()) {
       case "high":
@@ -182,7 +180,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-r-transparent" />
-          <p className="mt-3 text-gray-500">読み込み中...</p>
+          <p className="mt-3 text-gray-500 dark:text-gray-400">読み込み中...</p>
         </div>
       </div>
     );
@@ -215,7 +213,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">ダッシュボード</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">ダッシュボード</h2>
         <button
           onClick={handleRunAnalysis}
           disabled={analysisRunning}
@@ -234,7 +232,7 @@ export default function DashboardPage() {
 
       {/* Analysis step indicators */}
       {analysisRunning && (
-        <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-5">
+        <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm p-5">
           <div className="flex items-center gap-3 mb-3">
             {analysisSteps.map((step, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -315,12 +313,12 @@ export default function DashboardPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-          <p className="text-xs font-medium text-gray-500">動画総数</p>
-          <p className="mt-1.5 text-2xl font-bold text-gray-900">{dashboard.total_videos}</p>
+        <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">動画総数</p>
+          <p className="mt-1.5 text-2xl font-bold text-gray-900 dark:text-white">{dashboard.total_videos}</p>
         </div>
-        <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-          <p className="text-xs font-medium text-gray-500">書き起こし完了</p>
+        <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">書き起こし完了</p>
           <p className="mt-1.5 text-2xl font-bold text-green-600">
             {dashboard.transcribed_videos}
             <span className="ml-1 text-sm font-normal text-gray-400">
@@ -328,8 +326,8 @@ export default function DashboardPage() {
             </span>
           </p>
         </div>
-        <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-          <p className="text-xs font-medium text-gray-500">処理中 / エラー</p>
+        <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">処理中 / エラー</p>
           <p className="mt-1.5 text-2xl font-bold text-gray-900">
             {dashboard.processing_videos > 0 && (
               <span className="text-yellow-600">{dashboard.processing_videos}</span>
@@ -345,24 +343,31 @@ export default function DashboardPage() {
             )}
           </p>
         </div>
-        <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-          <p className="text-xs font-medium text-gray-500">平均再生時間</p>
-          <p className="mt-1.5 text-2xl font-bold text-gray-900">
+        <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">平均再生時間</p>
+          <p className="mt-1.5 text-2xl font-bold text-gray-900 dark:text-white">
             {dashboard.avg_duration_seconds != null
               ? formatDuration(dashboard.avg_duration_seconds)
               : "---"}
           </p>
         </div>
-        <div className="rounded-xl bg-white p-5 shadow-sm border border-gray-100">
-          <p className="text-xs font-medium text-gray-500">CV指標登録数</p>
+        <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">CV指標登録数</p>
           <p className="mt-1.5 text-2xl font-bold text-blue-600">{dashboard.total_conversions}</p>
         </div>
       </div>
 
+      {/* Storage usage */}
+      {storageUsage && (
+        <div className="rounded-xl bg-white dark:bg-gray-800 px-6 py-4 shadow-sm border border-gray-100 dark:border-gray-700">
+          <StorageUsageBar usedBytes={storageUsage.usedBytes} limitBytes={storageUsage.limitBytes} />
+        </div>
+      )}
+
       {/* Top keywords chart */}
       {chartData.length > 0 && (
-        <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">トップキーワード</h3>
+        <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">トップキーワード</h3>
           <div style={{ width: "100%", height: Math.max(chartData.length * 32, 200) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -395,24 +400,24 @@ export default function DashboardPage() {
 
       {/* Video comparison table */}
       {dashboard.video_summaries.length > 0 && (
-        <div className="rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
+        <div className="rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900">動画比較</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">動画比較</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 text-left">
-                  <th className="px-6 py-3 font-medium text-gray-500">ファイル名</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">ステータス</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">再生時間</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">コンバージョン指標</th>
+                <tr className="bg-gray-50 dark:bg-gray-700 text-left">
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">ファイル名</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">ステータス</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">再生時間</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">コンバージョン指標</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {dashboard.video_summaries.map((vs) => (
-                  <tr key={vs.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-3 font-medium text-gray-900 max-w-[240px] truncate">
+                  <tr key={vs.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-white max-w-[240px] truncate">
                       {vs.filename}
                     </td>
                     <td className="px-6 py-3">
@@ -422,7 +427,7 @@ export default function DashboardPage() {
                         {getStatusLabel(vs.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-gray-600">
+                    <td className="px-6 py-3 text-gray-600 dark:text-gray-300">
                       {formatDuration(vs.duration_seconds)}
                     </td>
                     <td className="px-6 py-3">
@@ -452,7 +457,7 @@ export default function DashboardPage() {
       {/* AI Recommendations */}
       {ai && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">AIレコメンデーション</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">AIレコメンデーション</h3>
 
           {/* Summary */}
           <div className="rounded-xl bg-blue-50 border border-blue-200 p-5">
@@ -462,8 +467,8 @@ export default function DashboardPage() {
 
           {/* Effective Keywords */}
           {ai.effective_keywords.length > 0 && (
-            <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
-              <h4 className="mb-3 text-base font-semibold text-gray-900">効果的なキーワード</h4>
+            <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+              <h4 className="mb-3 text-base font-semibold text-gray-900 dark:text-white">効果的なキーワード</h4>
               <ul className="space-y-2">
                 {ai.effective_keywords.map((ek, i) => (
                   <li
@@ -489,8 +494,8 @@ export default function DashboardPage() {
 
           {/* Recommendations */}
           {ai.recommendations.length > 0 && (
-            <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
-              <h4 className="mb-3 text-base font-semibold text-gray-900">改善提案</h4>
+            <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+              <h4 className="mb-3 text-base font-semibold text-gray-900 dark:text-white">改善提案</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {ai.recommendations.map((rec, i) => (
                   <div
@@ -514,8 +519,8 @@ export default function DashboardPage() {
 
           {/* Funnel Suggestions */}
           {ai.funnel_suggestions.length > 0 && (
-            <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
-              <h4 className="mb-3 text-base font-semibold text-gray-900">ファネル改善提案</h4>
+            <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+              <h4 className="mb-3 text-base font-semibold text-gray-900 dark:text-white">ファネル改善提案</h4>
               <ol className="space-y-3">
                 {ai.funnel_suggestions.map((fs, i) => (
                   <li key={i} className="flex items-start gap-3">

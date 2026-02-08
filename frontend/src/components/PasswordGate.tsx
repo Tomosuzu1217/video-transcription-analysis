@@ -1,7 +1,9 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 
 const PASSWORD_HASH = import.meta.env.VITE_APP_PASSWORD_HASH as string;
 const SESSION_KEY = "authenticated";
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 60_000; // 1 minute
 
 export function logout() {
   sessionStorage.removeItem(SESSION_KEY);
@@ -21,6 +23,9 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const attemptCount = useRef(0);
 
   useEffect(() => {
     // Skip gate if no password hash is configured
@@ -38,14 +43,41 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
+    // Check lockout
+    const now = Date.now();
+    if (now < lockedUntil) {
+      const remaining = Math.ceil((lockedUntil - now) / 1000);
+      setError(`試行回数が上限に達しました。${remaining}秒後に再試行してください`);
+      return;
+    }
+
+    setSubmitting(true);
     setError("");
+
+    // Progressive delay: 1s per failed attempt
+    const delay = Math.min(attemptCount.current * 1000, 5000);
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
     const hash = await sha256(password);
     if (hash === PASSWORD_HASH) {
       sessionStorage.setItem(SESSION_KEY, PASSWORD_HASH);
+      attemptCount.current = 0;
       setAuthenticated(true);
     } else {
-      setError("パスワードが正しくありません");
+      attemptCount.current++;
+      if (attemptCount.current >= MAX_ATTEMPTS) {
+        setLockedUntil(Date.now() + LOCKOUT_DURATION_MS);
+        attemptCount.current = 0;
+        setError(`試行回数が上限に達しました。${LOCKOUT_DURATION_MS / 1000}秒後に再試行してください`);
+      } else {
+        setError(`パスワードが正しくありません（残り${MAX_ATTEMPTS - attemptCount.current}回）`);
+      }
     }
+    setSubmitting(false);
   };
 
   if (checking) return null;
@@ -74,9 +106,10 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
           )}
           <button
             type="submit"
-            className="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            disabled={submitting}
+            className="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
           >
-            ログイン
+            {submitting ? "確認中..." : "ログイン"}
           </button>
         </form>
       </div>

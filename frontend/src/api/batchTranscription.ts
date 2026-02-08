@@ -5,6 +5,18 @@ import { transcribeMediaWithKey, isRateLimitError } from "../services/gemini";
 import { KeyPool } from "../services/keyPool";
 import type { BatchProgress, VideoProgress, VideoTranscriptionStage, VideoRecord, TranscriptionRecord } from "../types";
 
+/** Strip API keys and sensitive data from error messages */
+function sanitizeError(e: unknown): string {
+  let msg = String(e);
+  // Remove API key patterns (AIza..., sk-..., key=...)
+  msg = msg.replace(/AIza[A-Za-z0-9_-]{30,}/g, "API_KEY_REDACTED");
+  msg = msg.replace(/sk-[A-Za-z0-9]{20,}/g, "API_KEY_REDACTED");
+  msg = msg.replace(/key=[A-Za-z0-9_-]{20,}/gi, "key=REDACTED");
+  // Remove Bearer tokens
+  msg = msg.replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer REDACTED");
+  return msg.slice(0, 500);
+}
+
 async function logOperation(
   videoId: number,
   operation: string,
@@ -197,16 +209,17 @@ async function processVideo(
     }
 
     keyPool.release(keyInfo.index);
-    setVideoStage(state, videoId, "error", { error: String(e).slice(0, 500) });
+    const safeMsg = sanitizeError(e);
+    setVideoStage(state, videoId, "error", { error: safeMsg });
     state.progress.errorVideos++;
 
     await update(STORES.VIDEOS, videoId, {
       status: "error",
-      error_message: String(e).slice(0, 500),
+      error_message: safeMsg,
       updated_at: new Date().toISOString(),
     });
 
-    await logOperation(videoId, "transcribe", "error", { keyIndex: keyInfo.index, error: String(e).slice(0, 500) });
+    await logOperation(videoId, "transcribe", "error", { keyIndex: keyInfo.index, error: safeMsg });
     return "error";
   }
 }

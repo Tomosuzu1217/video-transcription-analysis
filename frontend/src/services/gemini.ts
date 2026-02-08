@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { get, STORES } from "./db";
+import { decryptApiKeys } from "./crypto";
 import type { SettingsRecord } from "../types";
 
 let _cachedKeys: string[] = [];
@@ -9,7 +10,7 @@ let _keyIndex = 0;
 async function loadSettings(): Promise<{ keys: string[]; model: string }> {
   const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
   if (record) {
-    _cachedKeys = record.api_keys ?? [];
+    _cachedKeys = await decryptApiKeys(record.api_keys ?? []);
     _cachedModel = record.selected_model ?? "gemini-2.5-flash";
   }
   return { keys: _cachedKeys, model: _cachedModel };

@@ -64,6 +64,8 @@ export async function getTranscriptionStatus(videoId: number): Promise<Transcrip
       language: tData.language ?? "ja",
       model_used: tData.model_used ?? null,
       processing_time_seconds: tData.processing_time_seconds ?? null,
+      edited: tData.edited ?? false,
+      edited_at: tData.edited_at ?? null,
       created_at: tData.created_at ?? "",
       segments,
     };
@@ -132,9 +134,16 @@ export async function retryTranscription(videoId: number): Promise<void> {
 
     await update(STORES.VIDEOS, videoId, { status: "transcribed", updated_at: new Date().toISOString() });
   } catch (e) {
+    // Sanitize error message to avoid leaking API keys
+    let safeMsg = String(e);
+    safeMsg = safeMsg.replace(/AIza[A-Za-z0-9_-]{30,}/g, "API_KEY_REDACTED");
+    safeMsg = safeMsg.replace(/sk-[A-Za-z0-9]{20,}/g, "API_KEY_REDACTED");
+    safeMsg = safeMsg.replace(/key=[A-Za-z0-9_-]{20,}/gi, "key=REDACTED");
+    safeMsg = safeMsg.slice(0, 500);
+
     await update(STORES.VIDEOS, videoId, {
       status: "error",
-      error_message: String(e).slice(0, 500),
+      error_message: safeMsg,
       updated_at: new Date().toISOString(),
     });
     throw e;
@@ -295,4 +304,44 @@ export async function getAllTranscriptions(): Promise<{
   }
 
   return { total: transcriptions.length, transcriptions };
+}
+
+const MAX_SEGMENT_TEXT_LENGTH = 10000;
+
+export async function updateTranscriptionSegment(
+  videoId: number,
+  segmentIndex: number,
+  newText: string,
+): Promise<void> {
+  if (newText.length > MAX_SEGMENT_TEXT_LENGTH) {
+    throw new Error(`テキストが長すぎます（上限: ${MAX_SEGMENT_TEXT_LENGTH}文字）`);
+  }
+
+  const tRecords = await getAllByIndex<TranscriptionRecord>(STORES.TRANSCRIPTIONS, "video_id", videoId);
+  if (tRecords.length === 0) throw new Error("書き起こしが見つかりません");
+
+  const tData = tRecords[0];
+  const segments = [...(tData.segments ?? [])];
+  if (segmentIndex < 0 || segmentIndex >= segments.length) throw new Error("セグメントが見つかりません");
+
+  segments[segmentIndex] = { ...segments[segmentIndex], text: newText };
+  const fullText = segments.map((s) => s.text).join("\n");
+
+  await supabase
+    .from("transcriptions")
+    .update({
+      segments,
+      full_text: fullText,
+      edited: true,
+      edited_at: new Date().toISOString(),
+    })
+    .eq("id", tData.id);
+
+  // Update cache
+  const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
+  _transcriptionDataCache.set(videoId, {
+    full_text: fullText,
+    segments: segments.map((s, i) => ({ id: i + 1, start_time: s.start_time, end_time: s.end_time, text: s.text })),
+    filename: videoData?.filename ?? "video",
+  });
 }

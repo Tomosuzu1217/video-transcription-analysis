@@ -1,4 +1,5 @@
 import { get, STORES } from "./db";
+import { decryptApiKeys } from "./crypto";
 import type { ApiKeyStatus, SettingsRecord } from "../types";
 
 const DEFAULT_COOLDOWN_MS = 60_000;
@@ -19,7 +20,7 @@ export class KeyPool {
   async initialize(): Promise<void> {
     const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
     if (record) {
-      const apiKeys: string[] = record.api_keys ?? [];
+      const apiKeys: string[] = await decryptApiKeys(record.api_keys ?? []);
       this.model = record.selected_model ?? "gemini-2.5-flash";
       this.keys = apiKeys.map((key, index) => ({
         key,

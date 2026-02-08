@@ -26,6 +26,8 @@ export interface Transcription {
   language: string;
   model_used: string | null;
   processing_time_seconds: number | null;
+  edited: boolean;
+  edited_at: string | null;
   created_at: string;
   segments: TranscriptionSegment[];
 }
@@ -229,7 +231,15 @@ export interface TranscriptionRecord {
   language: string;
   model_used: string | null;
   processing_time_seconds: number | null;
+  edited: boolean;
+  edited_at: string | null;
   segments: { start_time: number; end_time: number; text: string }[];
+  created_at: string;
+}
+
+export interface VideoTag {
+  video_id: number;
+  tag: string;
   created_at: string;
 }
 

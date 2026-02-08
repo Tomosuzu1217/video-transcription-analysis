@@ -8,6 +8,20 @@ export async function createConversion(data: {
   date_recorded?: string;
   notes?: string;
 }): Promise<Conversion> {
+  // Input validation
+  if (!data.metric_name || data.metric_name.trim().length === 0) {
+    throw new Error("指標名は必須です");
+  }
+  if (data.metric_name.length > 200) {
+    throw new Error("指標名が長すぎます（上限: 200文字）");
+  }
+  if (!isFinite(data.metric_value)) {
+    throw new Error("指標値が無効です");
+  }
+  if (data.notes && data.notes.length > 2000) {
+    throw new Error("メモが長すぎます（上限: 2000文字）");
+  }
+
   const id = generateId();
   const now = new Date().toISOString();
   const convData: Conversion = {

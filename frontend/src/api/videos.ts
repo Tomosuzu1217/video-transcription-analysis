@@ -10,6 +10,13 @@ export interface UploadResult {
 /** Supabase Storage free tier: 50MB per file */
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
+/** Allowed MIME type prefixes for upload */
+const ALLOWED_MIME_PREFIXES = ["video/", "audio/"];
+const ALLOWED_EXTENSIONS = new Set([
+  ".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v",
+  ".mp3", ".wav", ".aac", ".ogg", ".flac", ".wma", ".m4a", ".opus",
+]);
+
 function getMediaDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
     const el = file.type.startsWith("audio/")
@@ -41,6 +48,19 @@ export async function uploadVideos(
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
+
+    // File type validation
+    const ext = "." + file.name.split(".").pop()?.toLowerCase();
+    const mimeOk = ALLOWED_MIME_PREFIXES.some((p) => file.type.startsWith(p));
+    const extOk = ALLOWED_EXTENSIONS.has(ext);
+    if (!mimeOk && !extOk) {
+      errors.push({
+        filename: file.name,
+        error: `対応していないファイル形式です: ${file.type || ext}`,
+      });
+      if (onProgress) onProgress(Math.round(((i + 1) / files.length) * 100));
+      continue;
+    }
 
     // File size validation
     if (file.size > MAX_FILE_SIZE) {

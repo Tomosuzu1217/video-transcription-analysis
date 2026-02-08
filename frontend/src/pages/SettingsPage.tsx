@@ -7,7 +7,9 @@ import {
   setModelSetting,
   testSingleApiKey,
 } from "../api/settings";
+import { getStorageUsage, type StorageUsage } from "../api/storage";
 import Toast, { useToast } from "../components/Toast";
+import StorageUsageBar from "../components/StorageUsageBar";
 import type { ApiKeysResponse, ModelResponse, TestResult } from "../api/settings";
 
 export default function SettingsPage() {
@@ -18,8 +20,18 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [testProgress, setTestProgress] = useState<{ current: number; total: number } | null>(null);
   const [testResults, setTestResults] = useState<TestResult[] | null>(null);
+  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
   const { toast, showToast, clearToast } = useToast();
   const customModelRef = useRef<HTMLInputElement>(null);
+
+  const fetchStorage = useCallback(async () => {
+    try {
+      const data = await getStorageUsage();
+      setStorageUsage(data);
+    } catch {
+      /* silent */
+    }
+  }, []);
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -42,7 +54,8 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchKeys();
     fetchModel();
-  }, [fetchKeys, fetchModel]);
+    fetchStorage();
+  }, [fetchKeys, fetchModel, fetchStorage]);
 
   const handleAddKey = async () => {
     if (!newKey.trim()) return;
@@ -302,6 +315,13 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Storage Usage Section */}
+      {storageUsage && (
+        <section className="rounded-xl bg-white border border-gray-100 shadow-sm px-6 py-4">
+          <StorageUsageBar usedBytes={storageUsage.usedBytes} limitBytes={storageUsage.limitBytes} />
+        </section>
+      )}
 
       {/* Info Section */}
       <section className="rounded-xl bg-gray-50 border border-gray-200 px-6 py-4">

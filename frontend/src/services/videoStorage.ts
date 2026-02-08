@@ -2,8 +2,20 @@ import { supabase } from "./supabase";
 
 const BUCKET = "videos";
 
+/** Remove path traversal sequences and dangerous characters from filename */
+function sanitizeFileName(name: string): string {
+  return name
+    .replace(/\.\.[/\\]/g, "")    // remove ../ or ..\
+    .replace(/[/\\]/g, "_")       // replace path separators
+    .replace(/[\x00-\x1f]/g, "")  // remove control characters
+    .replace(/^\.+/, "")          // remove leading dots
+    .slice(0, 255)                // limit length
+    || "unnamed";
+}
+
 export async function saveVideo(id: number, file: File): Promise<string> {
-  const path = `${id}/${file.name}`;
+  const safeName = sanitizeFileName(file.name);
+  const path = `${id}/${safeName}`;
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, file, {

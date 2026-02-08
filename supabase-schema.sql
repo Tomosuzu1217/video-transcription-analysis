@@ -31,6 +31,8 @@ CREATE TABLE transcriptions (
   language                TEXT NOT NULL DEFAULT 'ja',
   model_used              TEXT,
   processing_time_seconds DOUBLE PRECISION,
+  edited                  BOOLEAN NOT NULL DEFAULT false,
+  edited_at               TIMESTAMPTZ,
   segments                JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -103,6 +105,11 @@ CREATE POLICY "Allow all for anon" ON settings FOR ALL USING (true) WITH CHECK (
 CREATE POLICY "Allow all for anon" ON analyses FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON conversions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON transcription_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- Realtime（videosテーブルのリアルタイム更新を有効化）
+-- ============================================================
+ALTER PUBLICATION supabase_realtime ADD TABLE videos;
 
 -- ============================================================
 -- Storage バケット用RLS（Supabase Dashboard > Storage > Policies で設定）

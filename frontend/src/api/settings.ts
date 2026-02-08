@@ -1,6 +1,7 @@
 import { get, STORES } from "../services/db";
 import { supabase } from "../services/supabase";
 import { testApiKey as testGeminiKey } from "../services/gemini";
+import { encryptApiKeys, decryptApiKeys } from "../services/crypto";
 import type { SettingsRecord } from "../types";
 
 export interface ApiKeysResponse {
@@ -27,17 +28,21 @@ export interface TestResponse {
 
 async function getSettingsData(): Promise<{ apiKeys: string[]; selectedModel: string }> {
   const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
+  const rawKeys = record?.api_keys ?? [];
+  // Decrypt API keys (handles both encrypted and legacy plain-text keys)
+  const apiKeys = await decryptApiKeys(rawKeys);
   return {
-    apiKeys: record?.api_keys ?? [],
+    apiKeys,
     selectedModel: record?.selected_model ?? "gemini-2.5-flash",
   };
 }
 
-/** Atomically update only the api_keys column */
+/** Atomically update only the api_keys column (encrypted at rest) */
 async function saveApiKeys(apiKeys: string[]): Promise<void> {
+  const encrypted = await encryptApiKeys(apiKeys);
   const { error } = await supabase
     .from("settings")
-    .update({ api_keys: apiKeys })
+    .update({ api_keys: encrypted })
     .eq("key", "app");
   if (error) throw error;
 }

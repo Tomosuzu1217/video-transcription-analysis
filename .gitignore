@@ -3,6 +3,8 @@ __pycache__/
 *.pyo
 *.db
 .env
+.env.*
+!.env.example
 backend/uploads/
 node_modules/
 dist/
@@ -11,3 +13,9 @@ dist/
 .claude/
 nul
 *.log
+
+# Secrets
+*.pem
+*.key
+credentials.json
+service-account*.json
