@@ -1,8 +1,9 @@
-import { get, getAll, getAllByIndex, put, del, update, STORES } from "../services/db";
+import { get, getAll, getAllByIndex, put, del, update, generateId, STORES } from "../services/db";
+import { supabase } from "../services/supabase";
 import { downloadVideoAsBlob } from "../services/videoStorage";
 import { transcribeMedia } from "../services/gemini";
 import { getCurrentBatchProgress, startBatchTranscription, isBatchRunning } from "./batchTranscription";
-import type { TranscriptionStatus, Transcription, TranscriptionSegment, BatchProgress } from "../types";
+import type { TranscriptionStatus, Transcription, TranscriptionSegment, BatchProgress, VideoRecord, TranscriptionRecord } from "../types";
 
 export interface QueueStatus {
   model_loaded: boolean;
@@ -40,27 +41,6 @@ export interface FullTranscription {
 }
 
 const _transcriptionDataCache = new Map<number, { full_text: string; segments: TranscriptionSegmentData[]; filename: string }>();
-
-interface VideoRecord {
-  id: number;
-  filename: string;
-  status: string;
-  error_message: string | null;
-  duration_seconds: number | null;
-  storage_path: string;
-  [key: string]: unknown;
-}
-
-interface TranscriptionRecord {
-  id: number;
-  video_id: number;
-  full_text: string;
-  language: string;
-  model_used: string | null;
-  processing_time_seconds: number | null;
-  segments: { start_time: number; end_time: number; text: string }[];
-  created_at: string;
-}
 
 export async function getTranscriptionStatus(videoId: number): Promise<TranscriptionStatus> {
   const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
@@ -112,7 +92,17 @@ export async function retryTranscription(videoId: number): Promise<void> {
   const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
   if (!videoData) throw new Error("動画が見つかりません");
 
-  await update(STORES.VIDEOS, videoId, { status: "transcribing", error_message: null, updated_at: new Date().toISOString() });
+  // Optimistic lock: only update if not already transcribing
+  const { data: lockedVideo, error: lockError } = await supabase
+    .from("videos")
+    .update({ status: "transcribing", error_message: null, updated_at: new Date().toISOString() })
+    .eq("id", videoId)
+    .neq("status", "transcribing")
+    .select()
+    .maybeSingle();
+
+  if (lockError) throw lockError;
+  if (!lockedVideo) throw new Error("別のユーザーが書き起こし中です");
 
   try {
     // Download from Supabase Storage
@@ -128,7 +118,7 @@ export async function retryTranscription(videoId: number): Promise<void> {
     for (const t of old) await del(STORES.TRANSCRIPTIONS, t.id);
 
     // Save new transcription
-    const tId = Date.now();
+    const tId = generateId();
     await put(STORES.TRANSCRIPTIONS, {
       id: tId,
       video_id: videoId,

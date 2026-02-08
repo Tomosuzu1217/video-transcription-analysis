@@ -1,5 +1,7 @@
-import { get, put, STORES } from "../services/db";
+import { get, STORES } from "../services/db";
+import { supabase } from "../services/supabase";
 import { testApiKey as testGeminiKey } from "../services/gemini";
+import type { SettingsRecord } from "../types";
 
 export interface ApiKeysResponse {
   keys: string[];
@@ -23,12 +25,6 @@ export interface TestResponse {
   message?: string;
 }
 
-interface SettingsRecord {
-  key: string;
-  api_keys: string[];
-  selected_model: string;
-}
-
 async function getSettingsData(): Promise<{ apiKeys: string[]; selectedModel: string }> {
   const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
   return {
@@ -37,13 +33,22 @@ async function getSettingsData(): Promise<{ apiKeys: string[]; selectedModel: st
   };
 }
 
-async function saveSettings(data: Partial<{ apiKeys: string[]; selectedModel: string }>) {
-  const current = await getSettingsData();
-  await put(STORES.SETTINGS, {
-    key: "app",
-    api_keys: data.apiKeys ?? current.apiKeys,
-    selected_model: data.selectedModel ?? current.selectedModel,
-  });
+/** Atomically update only the api_keys column */
+async function saveApiKeys(apiKeys: string[]): Promise<void> {
+  const { error } = await supabase
+    .from("settings")
+    .update({ api_keys: apiKeys })
+    .eq("key", "app");
+  if (error) throw error;
+}
+
+/** Atomically update only the selected_model column */
+async function saveModel(model: string): Promise<void> {
+  const { error } = await supabase
+    .from("settings")
+    .update({ selected_model: model })
+    .eq("key", "app");
+  if (error) throw error;
 }
 
 export async function getApiKeys(): Promise<ApiKeysResponse> {
@@ -55,23 +60,25 @@ export async function getApiKeys(): Promise<ApiKeysResponse> {
 }
 
 export async function addApiKey(key: string): Promise<{ message?: string; error?: string; count: number }> {
+  // Re-read right before write to minimize race window
   const { apiKeys } = await getSettingsData();
   if (apiKeys.includes(key)) {
     return { error: "このAPIキーは既に追加されています", count: apiKeys.length };
   }
-  apiKeys.push(key);
-  await saveSettings({ apiKeys });
-  return { message: "APIキーを追加しました", count: apiKeys.length };
+  const updated = [...apiKeys, key];
+  await saveApiKeys(updated);
+  return { message: "APIキーを追加しました", count: updated.length };
 }
 
 export async function removeApiKey(index: number): Promise<{ message?: string; error?: string; count: number }> {
+  // Re-read right before write to minimize race window
   const { apiKeys } = await getSettingsData();
   if (index < 0 || index >= apiKeys.length) {
     return { error: "無効なインデックスです", count: apiKeys.length };
   }
-  apiKeys.splice(index, 1);
-  await saveSettings({ apiKeys });
-  return { message: "APIキーを削除しました", count: apiKeys.length };
+  const updated = apiKeys.filter((_, i) => i !== index);
+  await saveApiKeys(updated);
+  return { message: "APIキーを削除しました", count: updated.length };
 }
 
 export async function getModelSetting(): Promise<ModelResponse> {
@@ -90,7 +97,7 @@ export async function getModelSetting(): Promise<ModelResponse> {
 }
 
 export async function setModelSetting(model: string): Promise<{ message: string; current: string }> {
-  await saveSettings({ selectedModel: model });
+  await saveModel(model);
   return { message: "モデルを更新しました", current: model };
 }
 

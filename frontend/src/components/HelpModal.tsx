@@ -42,7 +42,7 @@ const sections = [
     tips: [
       "動画形式: mp4, mov, avi, mkv, webm, wmv, flv, mpeg, mpg, m4v, 3gp, ts, mts, m2ts, ogv, vob",
       "音声形式: mp3, wav, aac, ogg, flac, wma, m4a, opus",
-      "最大ファイルサイズ: 500MB",
+      "最大ファイルサイズ: 50MB（Supabase Storage無料枠の制限）",
       "一度に最大20ファイルまでアップロード可能",
     ],
   },

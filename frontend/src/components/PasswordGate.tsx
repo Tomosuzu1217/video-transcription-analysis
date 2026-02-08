@@ -3,6 +3,11 @@ import { useState, useEffect, type ReactNode } from "react";
 const PASSWORD_HASH = import.meta.env.VITE_APP_PASSWORD_HASH as string;
 const SESSION_KEY = "authenticated";
 
+export function logout() {
+  sessionStorage.removeItem(SESSION_KEY);
+  window.location.reload();
+}
+
 async function sha256(text: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);

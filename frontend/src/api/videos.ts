@@ -1,4 +1,4 @@
-import { get, getAll, put, del, update, STORES } from "../services/db";
+import { get, getAll, put, del, update, generateId, STORES } from "../services/db";
 import { saveVideo as uploadToStorage, getVideoSignedUrl, deleteVideo as deleteFromStorage } from "../services/videoStorage";
 import type { Video } from "../types";
 
@@ -7,9 +7,8 @@ export interface UploadResult {
   errors: { filename: string; error: string }[];
 }
 
-function generateId(): number {
-  return Date.now() + Math.floor(Math.random() * 1000);
-}
+/** Supabase Storage free tier: 50MB per file */
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 function getMediaDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
@@ -42,6 +41,17 @@ export async function uploadVideos(
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
+
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      errors.push({
+        filename: file.name,
+        error: `ファイルサイズが上限(50MB)を超えています: ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+      });
+      if (onProgress) onProgress(Math.round(((i + 1) / files.length) * 100));
+      continue;
+    }
+
     try {
       const id = generateId();
       const duration = await getMediaDuration(file);

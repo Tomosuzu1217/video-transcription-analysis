@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, NavLink, Link } from "react-router-dom";
+import { logout } from "./components/PasswordGate";
 import DashboardPage from "./pages/DashboardPage";
 import VideosPage from "./pages/VideosPage";
 import VideoDetailPage from "./pages/VideoDetailPage";
@@ -10,8 +11,8 @@ import HelpModal from "./components/HelpModal";
 function NotFoundPage() {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-6xl font-bold text-gray-200">404</p>
-      <p className="mt-4 text-lg font-medium text-gray-600">ページが見つかりません</p>
+      <p className="text-6xl font-bold text-gray-200 dark:text-gray-700">404</p>
+      <p className="mt-4 text-lg font-medium text-gray-600 dark:text-gray-400">ページが見つかりません</p>
       <Link
         to="/"
         className="mt-6 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
@@ -32,12 +33,12 @@ function App() {
   }, [dark]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-8">
-              <h1 className="text-xl font-bold text-gray-900">動画CM分析</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">動画CM分析</h1>
               <div className="flex gap-1">
                 {[
                   { to: "/", label: "ダッシュボード" },
@@ -52,8 +53,8 @@ function App() {
                     className={({ isActive }) =>
                       `px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         isActive
-                          ? "bg-blue-100 text-blue-700"
-                          : "text-gray-600 hover:bg-gray-100"
+                          ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+                          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       }`
                     }
                   >
@@ -65,7 +66,7 @@ function App() {
             <div className="flex items-center gap-2">
             <button
               onClick={() => setDark(!dark)}
-              className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-1.5 text-gray-600 shadow-sm hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-1.5 text-gray-600 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               title={dark ? "ライトモードに切替" : "ダークモードに切替"}
             >
               {dark ? (
@@ -80,12 +81,22 @@ function App() {
             </button>
             <button
               onClick={() => setHelpOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               操作マニュアル
+            </button>
+            <button
+              onClick={() => { if (window.confirm("ログアウトしますか？")) logout(); }}
+              className="flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+              title="ログアウト"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              ログアウト
             </button>
             </div>
           </div>

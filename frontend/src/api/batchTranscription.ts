@@ -1,23 +1,9 @@
-import { get, getAllByIndex, put, del, update, STORES } from "../services/db";
+import { get, getAllByIndex, put, del, update, generateId, STORES } from "../services/db";
 import { downloadVideoAsBlob } from "../services/videoStorage";
 import { supabase } from "../services/supabase";
 import { transcribeMediaWithKey, isRateLimitError } from "../services/gemini";
 import { KeyPool } from "../services/keyPool";
-import type { BatchProgress, VideoProgress, VideoTranscriptionStage } from "../types";
-
-interface VideoRecord {
-  id: number;
-  filename: string;
-  status: string;
-  storage_path: string;
-  [key: string]: unknown;
-}
-
-interface TranscriptionRecord {
-  id: number;
-  video_id: number;
-  [key: string]: unknown;
-}
+import type { BatchProgress, VideoProgress, VideoTranscriptionStage, VideoRecord, TranscriptionRecord } from "../types";
 
 async function logOperation(
   videoId: number,
@@ -173,7 +159,7 @@ async function processVideo(
     }
 
     // Save new transcription
-    const tId = Date.now() + Math.floor(Math.random() * 1000);
+    const tId = generateId();
     await put(STORES.TRANSCRIPTIONS, {
       id: tId,
       video_id: videoId,

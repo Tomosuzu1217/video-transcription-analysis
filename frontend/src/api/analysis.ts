@@ -1,47 +1,7 @@
-import { getAll, put, STORES } from "../services/db";
+import { getAll, put, generateId, STORES } from "../services/db";
 import { callGeminiJson } from "../services/gemini";
 import { analyzeSegmentEmotions, calculateEmotionVolatility, detectPersuasionTechniques } from "../services/nlp";
-import type { DashboardData } from "../types";
-
-function generateId(): number {
-  return Date.now() + Math.floor(Math.random() * 1000);
-}
-
-interface VideoRecord {
-  id: number;
-  filename: string;
-  status: string;
-  duration_seconds: number | null;
-  ranking: number | null;
-  ranking_notes: string | null;
-  [key: string]: unknown;
-}
-
-interface TranscriptionRecord {
-  id: number;
-  video_id: number;
-  full_text: string;
-  segments: { start_time: number; end_time: number; text: string }[];
-  [key: string]: unknown;
-}
-
-interface ConversionRecord {
-  id: number;
-  video_id: number;
-  metric_name: string;
-  metric_value: number;
-  [key: string]: unknown;
-}
-
-interface AnalysisRecord {
-  id: number;
-  analysis_type: string;
-  scope: string;
-  video_id: number | null;
-  result_json: any;
-  gemini_model_used: string | null;
-  created_at: string;
-}
+import type { DashboardData, VideoRecord, TranscriptionRecord, ConversionRecord, AnalysisRecord } from "../types";
 
 async function loadVideosData(): Promise<Array<{
   name: string;

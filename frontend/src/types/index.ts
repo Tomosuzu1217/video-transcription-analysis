@@ -206,6 +206,60 @@ export interface PsychologicalContentResult {
   }>;
 }
 
+// ---- Shared DB Record Types (used across API files) ----
+
+export interface VideoRecord {
+  id: number;
+  filename: string;
+  file_size: number | null;
+  duration_seconds: number | null;
+  status: string;
+  error_message: string | null;
+  ranking: number | null;
+  ranking_notes: string | null;
+  storage_path: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TranscriptionRecord {
+  id: number;
+  video_id: number;
+  full_text: string;
+  language: string;
+  model_used: string | null;
+  processing_time_seconds: number | null;
+  segments: { start_time: number; end_time: number; text: string }[];
+  created_at: string;
+}
+
+export interface ConversionRecord {
+  id: number;
+  video_id: number;
+  metric_name: string;
+  metric_value: number;
+  date_recorded: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnalysisRecord {
+  id: number;
+  analysis_type: string;
+  scope: string;
+  video_id: number | null;
+  result_json: any;
+  gemini_model_used: string | null;
+  created_at: string;
+}
+
+export interface SettingsRecord {
+  key: string;
+  api_keys: string[];
+  selected_model: string;
+}
+
 // ---- Batch Transcription Types ----
 
 export type VideoTranscriptionStage =

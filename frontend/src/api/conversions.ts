@@ -1,15 +1,5 @@
-import { get, getAll, getAllByIndex, put, del, update, STORES } from "../services/db";
-import type { Conversion, ConversionSummary } from "../types";
-
-function generateId(): number {
-  return Date.now() + Math.floor(Math.random() * 1000);
-}
-
-interface VideoRecord {
-  id: number;
-  filename: string;
-  [key: string]: unknown;
-}
+import { get, getAll, getAllByIndex, put, del, update, generateId, STORES } from "../services/db";
+import type { Conversion, ConversionSummary, VideoRecord } from "../types";
 
 export async function createConversion(data: {
   video_id: number;

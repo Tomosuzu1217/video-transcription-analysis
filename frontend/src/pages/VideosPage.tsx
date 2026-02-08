@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { uploadVideos, getVideos, deleteVideo, getVideoThumbnailUrl } from "../api/videos";
 import { batchTranscribeVideos } from "../api/transcriptions";
 import BatchProgressPanel from "../components/BatchProgressPanel";
+import Toast, { useToast } from "../components/Toast";
+import { useRealtimeVideos } from "../hooks/useRealtimeVideos";
+import { formatFileSize, formatDuration, formatDate } from "../utils/format";
 import type { Video, BatchProgress } from "../types";
 
 export default function VideosPage() {
@@ -17,7 +20,7 @@ export default function VideosPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadFileNames, setUploadFileNames] = useState<string[]>([]);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const { toast, showToast, clearToast } = useToast();
   const [page, setPage] = useState(1);
   const [totalVideos, setTotalVideos] = useState(0);
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
@@ -45,12 +48,8 @@ export default function VideosPage() {
     fetchVideos();
   }, [fetchVideos]);
 
-  // Auto-dismiss toast
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(timer);
-  }, [toast]);
+  // Realtime sync: refresh when other users change videos
+  useRealtimeVideos(useCallback(() => { fetchVideos(); }, [fetchVideos]));
 
   // Poll video list when batch is running (to refresh statuses)
   useEffect(() => {
@@ -97,16 +96,16 @@ export default function VideosPage() {
       const ok = result.successes.length;
       const ng = result.errors.length;
       if (ng > 0 && ok > 0) {
-        setToast({ message: `${ok}件成功、${ng}件失敗: ${result.errors[0].error}`, type: "error" });
+        showToast( `${ok}件成功、${ng}件失敗: ${result.errors[0].error}`, "error");
       } else if (ng > 0) {
-        setToast({ message: `アップロード失敗: ${result.errors[0].error}`, type: "error" });
+        showToast( `アップロード失敗: ${result.errors[0].error}`, "error");
       } else {
-        setToast({ message: `${ok}件のアップロードが完了しました`, type: "success" });
+        showToast( `${ok}件のアップロードが完了しました`, "success");
       }
       await fetchVideos();
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
-      setToast({ message: detail ?? "アップロードに失敗しました", type: "error" });
+      showToast( detail ?? "アップロードに失敗しました", "error");
       setUploadStatus(null);
       setUploadProgress(null);
       setUploadFileNames([]);
@@ -148,9 +147,9 @@ export default function VideosPage() {
     try {
       await deleteVideo(video.id);
       setVideos((prev) => prev.filter((v) => v.id !== video.id));
-      setToast({ message: `「${video.filename}」を削除しました`, type: "success" });
+      showToast( `「${video.filename}」を削除しました`, "success");
     } catch (err) {
-      setToast({ message: "動画の削除に失敗しました", type: "error" });
+      showToast( "動画の削除に失敗しました", "error");
       console.error(err);
     }
   };
@@ -161,7 +160,7 @@ export default function VideosPage() {
       .map((v) => v.id);
 
     if (pendingIds.length === 0) {
-      setToast({ message: "書き起こし対象の動画がありません", type: "error" });
+      showToast( "書き起こし対象の動画がありません", "error");
       return;
     }
 
@@ -175,41 +174,15 @@ export default function VideosPage() {
       });
       cancelBatchRef.current = handle.cancel;
     } catch (err: any) {
-      setToast({ message: err.message ?? "バッチ処理の開始に失敗しました", type: "error" });
+      showToast( err.message ?? "バッチ処理の開始に失敗しました", "error");
     }
   };
 
   const handleCancelBatch = () => {
     if (cancelBatchRef.current) {
       cancelBatchRef.current();
-      setToast({ message: "バッチ処理をキャンセルしています...", type: "success" });
+      showToast( "バッチ処理をキャンセルしています...", "success");
     }
-  };
-
-  const formatFileSize = (bytes: number | null): string => {
-    if (bytes == null) return "—";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  };
-
-  const formatDuration = (seconds: number | null): string => {
-    if (seconds == null) return "—";
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  };
-
-  const formatDate = (iso: string): string => {
-    const d = new Date(iso);
-    return d.toLocaleDateString("ja-JP", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const getStatusBadge = (status: Video["status"]) => {
@@ -231,7 +204,7 @@ export default function VideosPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <h2 className="text-2xl font-bold text-gray-900">動画管理</h2>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">動画管理</h2>
 
       {/* Error banner */}
       {error && (
@@ -544,33 +517,7 @@ export default function VideosPage() {
         </div>
       )}
 
-      {/* Toast notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg transition-all ${
-            toast.type === "success" ? "bg-green-600" : "bg-red-600"
-          }`}
-        >
-          {toast.type === "success" ? (
-            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          )}
-          <span>{toast.message}</span>
-          <button
-            onClick={() => setToast(null)}
-            className="ml-2 rounded p-0.5 hover:bg-white/20 transition-colors"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }

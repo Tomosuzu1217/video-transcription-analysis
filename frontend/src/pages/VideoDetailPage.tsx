@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getVideo, getVideoStreamUrl, renameVideo } from "../api/videos";
 import { getTranscriptionStatus, retryTranscription, getTranscriptionExportUrl, getQueueStatus, type QueueStatus } from "../api/transcriptions";
+import Toast, { useToast } from "../components/Toast";
 import type { Video, TranscriptionStatus, TranscriptionSegment } from "../types";
 
 function formatTimestamp(seconds: number): string {
@@ -44,13 +45,7 @@ export default function VideoDetailPage() {
   const [playbackRate, setPlaybackRate] = useState(1.0);
 
   // Toast state
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = (message: string, type: "success" | "error") => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToast({ message, type });
-    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
-  };
+  const { toast, showToast, clearToast } = useToast();
 
   // Polling ref
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -460,21 +455,7 @@ export default function VideoDetailPage() {
         </div>
       </div>
 
-      {/* Toast notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg ${
-            toast.type === "success" ? "bg-green-600" : "bg-red-600"
-          }`}
-        >
-          <span>{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 rounded p-0.5 hover:bg-white/20">
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={clearToast} />
     </div>
   );
 }

@@ -1,13 +1,7 @@
 import { get, STORES } from "./db";
-import type { ApiKeyStatus } from "../types";
+import type { ApiKeyStatus, SettingsRecord } from "../types";
 
 const DEFAULT_COOLDOWN_MS = 60_000;
-
-interface SettingsRecord {
-  key: string;
-  api_keys: string[];
-  selected_model: string;
-}
 
 interface KeyEntry {
   key: string;
