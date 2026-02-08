@@ -1,25 +1,14 @@
-import { db } from "../firebase";
-import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
-  query, where,
-} from "firebase/firestore";
+import { get, getAll, getAllByIndex, put, del, update, STORES } from "../services/db";
 import type { Conversion, ConversionSummary } from "../types";
 
 function generateId(): number {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
-function convFromDoc(d: any): Conversion {
-  return {
-    id: d.id,
-    video_id: d.video_id,
-    metric_name: d.metric_name,
-    metric_value: d.metric_value,
-    date_recorded: d.date_recorded ?? null,
-    notes: d.notes ?? null,
-    created_at: d.created_at ?? "",
-    updated_at: d.updated_at ?? "",
-  };
+interface VideoRecord {
+  id: number;
+  filename: string;
+  [key: string]: unknown;
 }
 
 export async function createConversion(data: {
@@ -31,7 +20,7 @@ export async function createConversion(data: {
 }): Promise<Conversion> {
   const id = generateId();
   const now = new Date().toISOString();
-  const convData = {
+  const convData: Conversion = {
     id,
     video_id: data.video_id,
     metric_name: data.metric_name,
@@ -41,52 +30,47 @@ export async function createConversion(data: {
     created_at: now,
     updated_at: now,
   };
-  await setDoc(doc(db, "conversions", String(id)), convData);
-  return convFromDoc(convData);
+  await put(STORES.CONVERSIONS, convData);
+  return convData;
 }
 
 export async function getConversions(videoId?: number): Promise<Conversion[]> {
-  let q;
   if (videoId) {
-    q = query(collection(db, "conversions"), where("video_id", "==", videoId));
-  } else {
-    q = query(collection(db, "conversions"));
+    return getAllByIndex<Conversion>(STORES.CONVERSIONS, "video_id", videoId);
   }
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => convFromDoc(d.data()));
+  return getAll<Conversion>(STORES.CONVERSIONS);
 }
 
 export async function updateConversion(
   id: number,
   data: Partial<{ metric_name: string; metric_value: number; date_recorded: string; notes: string }>,
 ): Promise<Conversion> {
-  const docRef = doc(db, "conversions", String(id));
-  await updateDoc(docRef, { ...data, updated_at: new Date().toISOString() });
-  const snap = await getDoc(docRef);
-  if (!snap.exists()) throw new Error("コンバージョンが見つかりません");
-  return convFromDoc(snap.data());
+  const updated = await update<Conversion>(STORES.CONVERSIONS, id, {
+    ...data,
+    updated_at: new Date().toISOString(),
+  } as Partial<Conversion>);
+  return updated;
 }
 
 export async function deleteConversion(id: number): Promise<void> {
-  await deleteDoc(doc(db, "conversions", String(id)));
+  await del(STORES.CONVERSIONS, id);
 }
 
 export async function getConversionSummary(): Promise<ConversionSummary[]> {
-  const convSnap = await getDocs(collection(db, "conversions"));
+  const allConversions = await getAll<Conversion>(STORES.CONVERSIONS);
   const byVideo = new Map<number, { metrics: Record<string, number>; filename: string }>();
 
-  for (const d of convSnap.docs) {
-    const data = d.data();
-    const vid = data.video_id;
+  for (const conv of allConversions) {
+    const vid = conv.video_id;
     if (!byVideo.has(vid)) byVideo.set(vid, { metrics: {}, filename: "" });
     const entry = byVideo.get(vid)!;
-    entry.metrics[data.metric_name] = data.metric_value;
+    entry.metrics[conv.metric_name] = conv.metric_value;
   }
 
   // Get filenames
   for (const [vid, entry] of byVideo) {
-    const vSnap = await getDoc(doc(db, "videos", String(vid)));
-    entry.filename = vSnap.exists() ? vSnap.data().filename : "unknown";
+    const videoData = await get<VideoRecord>(STORES.VIDEOS, vid);
+    entry.filename = videoData?.filename ?? "unknown";
   }
 
   return Array.from(byVideo.entries()).map(([vid, entry]) => ({

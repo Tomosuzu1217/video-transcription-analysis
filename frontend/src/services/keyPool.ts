@@ -1,8 +1,13 @@
-import { db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { get, STORES } from "./db";
 import type { ApiKeyStatus } from "../types";
 
 const DEFAULT_COOLDOWN_MS = 60_000;
+
+interface SettingsRecord {
+  key: string;
+  api_keys: string[];
+  selected_model: string;
+}
 
 interface KeyEntry {
   key: string;
@@ -18,11 +23,10 @@ export class KeyPool {
   private model = "gemini-2.5-flash";
 
   async initialize(): Promise<void> {
-    const snap = await getDoc(doc(db, "settings", "app"));
-    if (snap.exists()) {
-      const data = snap.data();
-      const apiKeys: string[] = data.apiKeys ?? [];
-      this.model = data.selectedModel ?? "gemini-2.5-flash";
+    const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
+    if (record) {
+      const apiKeys: string[] = record.api_keys ?? [];
+      this.model = record.selected_model ?? "gemini-2.5-flash";
       this.keys = apiKeys.map((key, index) => ({
         key,
         index,

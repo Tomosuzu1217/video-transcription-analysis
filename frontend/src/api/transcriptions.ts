@@ -1,7 +1,5 @@
-import { db } from "../firebase";
-import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where,
-} from "firebase/firestore";
+import { get, getAll, getAllByIndex, put, del, update, STORES } from "../services/db";
+import { downloadVideoAsBlob } from "../services/videoStorage";
 import { transcribeMedia } from "../services/gemini";
 import { getCurrentBatchProgress, startBatchTranscription, isBatchRunning } from "./batchTranscription";
 import type { TranscriptionStatus, Transcription, TranscriptionSegment, BatchProgress } from "../types";
@@ -41,23 +39,38 @@ export interface FullTranscription {
   segments: TranscriptionSegmentData[];
 }
 
-// Store transcription data cache for export
 const _transcriptionDataCache = new Map<number, { full_text: string; segments: TranscriptionSegmentData[]; filename: string }>();
 
-export async function getTranscriptionStatus(videoId: number): Promise<TranscriptionStatus> {
-  // Check video status
-  const videoSnap = await getDoc(doc(db, "videos", String(videoId)));
-  if (!videoSnap.exists()) throw new Error("動画が見つかりません");
-  const videoData = videoSnap.data();
+interface VideoRecord {
+  id: number;
+  filename: string;
+  status: string;
+  error_message: string | null;
+  duration_seconds: number | null;
+  storage_path: string;
+  [key: string]: unknown;
+}
 
-  // Check for transcription
-  const q = query(collection(db, "transcriptions"), where("videoId", "==", videoId));
-  const tSnap = await getDocs(q);
+interface TranscriptionRecord {
+  id: number;
+  video_id: number;
+  full_text: string;
+  language: string;
+  model_used: string | null;
+  processing_time_seconds: number | null;
+  segments: { start_time: number; end_time: number; text: string }[];
+  created_at: string;
+}
+
+export async function getTranscriptionStatus(videoId: number): Promise<TranscriptionStatus> {
+  const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
+  if (!videoData) throw new Error("動画が見つかりません");
+
+  const tRecords = await getAllByIndex<TranscriptionRecord>(STORES.TRANSCRIPTIONS, "video_id", videoId);
 
   let transcription: Transcription | null = null;
-  if (!tSnap.empty) {
-    const tDoc = tSnap.docs[0];
-    const tData = tDoc.data();
+  if (tRecords.length > 0) {
+    const tData = tRecords[0];
     const segments: TranscriptionSegment[] = (tData.segments ?? []).map((s: any, i: number) => ({
       id: i + 1,
       start_time: s.start_time,
@@ -65,7 +78,7 @@ export async function getTranscriptionStatus(videoId: number): Promise<Transcrip
       text: s.text,
     }));
     transcription = {
-      id: tData.id ?? parseInt(tDoc.id),
+      id: tData.id,
       video_id: videoId,
       full_text: tData.full_text ?? "",
       language: tData.language ?? "ja",
@@ -74,7 +87,6 @@ export async function getTranscriptionStatus(videoId: number): Promise<Transcrip
       created_at: tData.created_at ?? "",
       segments,
     };
-    // Cache for export
     _transcriptionDataCache.set(videoId, {
       full_text: transcription.full_text,
       segments: segments.map((s) => ({ id: s.id, start_time: s.start_time, end_time: s.end_time, text: s.text })),
@@ -97,38 +109,29 @@ export async function getTranscriptionStatus(videoId: number): Promise<Transcrip
 }
 
 export async function retryTranscription(videoId: number): Promise<void> {
-  // Get video data
-  const videoSnap = await getDoc(doc(db, "videos", String(videoId)));
-  if (!videoSnap.exists()) throw new Error("動画が見つかりません");
-  const videoData = videoSnap.data();
+  const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
+  if (!videoData) throw new Error("動画が見つかりません");
 
-  // Set status to transcribing
-  await updateDoc(doc(db, "videos", String(videoId)), { status: "transcribing", error_message: null, updated_at: new Date().toISOString() });
+  await update(STORES.VIDEOS, videoId, { status: "transcribing", error_message: null, updated_at: new Date().toISOString() });
 
   try {
-    // Fetch the file from storage
-    const url = videoData.storage_url;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`動画のダウンロードに失敗しました (HTTP ${response.status})`);
-    const blob = await response.blob();
+    // Download from Supabase Storage
+    const blob = await downloadVideoAsBlob(videoData.storage_path);
     const file = new File([blob], videoData.filename, { type: blob.type || "video/mp4" });
 
     const startTime = Date.now();
     const result = await transcribeMedia(file);
     const processingTime = (Date.now() - startTime) / 1000;
 
-    // Delete old transcription
-    const oldQ = query(collection(db, "transcriptions"), where("videoId", "==", videoId));
-    const oldSnap = await getDocs(oldQ);
-    for (const d of oldSnap.docs) {
-      await deleteDoc(d.ref);
-    }
+    // Delete old transcriptions
+    const old = await getAllByIndex<TranscriptionRecord>(STORES.TRANSCRIPTIONS, "video_id", videoId);
+    for (const t of old) await del(STORES.TRANSCRIPTIONS, t.id);
 
     // Save new transcription
     const tId = Date.now();
-    await setDoc(doc(db, "transcriptions", String(tId)), {
+    await put(STORES.TRANSCRIPTIONS, {
       id: tId,
-      videoId,
+      video_id: videoId,
       full_text: result.full_text,
       language: result.language,
       model_used: "gemini",
@@ -137,9 +140,9 @@ export async function retryTranscription(videoId: number): Promise<void> {
       created_at: new Date().toISOString(),
     });
 
-    await updateDoc(doc(db, "videos", String(videoId)), { status: "transcribed", updated_at: new Date().toISOString() });
+    await update(STORES.VIDEOS, videoId, { status: "transcribed", updated_at: new Date().toISOString() });
   } catch (e) {
-    await updateDoc(doc(db, "videos", String(videoId)), {
+    await update(STORES.VIDEOS, videoId, {
       status: "error",
       error_message: String(e).slice(0, 500),
       updated_at: new Date().toISOString(),
@@ -237,17 +240,14 @@ export function getTranscriptionExportUrl(videoId: number, format: "txt" | "srt"
 export async function searchTranscriptions(
   queryStr: string,
 ): Promise<{ query: string; total: number; results: SearchResult[] }> {
-  // Client-side search across all transcriptions
-  const tSnap = await getDocs(collection(db, "transcriptions"));
+  const allTranscriptions = await getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS);
   const results: SearchResult[] = [];
   const lowerQuery = queryStr.toLowerCase();
 
-  for (const tDoc of tSnap.docs) {
-    const tData = tDoc.data();
-    const videoId = tData.videoId;
-    // Get video filename
-    const vSnap = await getDoc(doc(db, "videos", String(videoId)));
-    const videoFilename = vSnap.exists() ? vSnap.data().filename : "unknown";
+  for (const tData of allTranscriptions) {
+    const videoId = tData.video_id;
+    const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
+    const videoFilename = videoData?.filename ?? "unknown";
 
     const segments = tData.segments ?? [];
     for (let i = 0; i < segments.length; i++) {
@@ -272,14 +272,14 @@ export async function getAllTranscriptions(): Promise<{
   total: number;
   transcriptions: FullTranscription[];
 }> {
-  const tSnap = await getDocs(collection(db, "transcriptions"));
+  const allTranscriptions = await getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS);
   const transcriptions: FullTranscription[] = [];
 
-  for (const tDoc of tSnap.docs) {
-    const tData = tDoc.data();
-    const videoId = tData.videoId;
-    const vSnap = await getDoc(doc(db, "videos", String(videoId)));
-    const vData = vSnap.exists() ? vSnap.data() : { filename: "unknown", duration_seconds: null };
+  for (const tData of allTranscriptions) {
+    const videoId = tData.video_id;
+    const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
+    const filename = videoData?.filename ?? "unknown";
+    const duration = videoData?.duration_seconds ?? null;
 
     const segments = (tData.segments ?? []).map((s: any, i: number) => ({
       id: i + 1,
@@ -288,17 +288,16 @@ export async function getAllTranscriptions(): Promise<{
       text: s.text,
     }));
 
-    // Cache for export
     _transcriptionDataCache.set(videoId, {
       full_text: tData.full_text ?? "",
       segments,
-      filename: vData.filename ?? "video",
+      filename,
     });
 
     transcriptions.push({
       video_id: videoId,
-      video_filename: vData.filename ?? "unknown",
-      duration_seconds: vData.duration_seconds ?? null,
+      video_filename: filename,
+      duration_seconds: duration,
       full_text: tData.full_text ?? "",
       language: tData.language ?? "ja",
       segments,

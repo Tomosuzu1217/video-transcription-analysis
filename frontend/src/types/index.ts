@@ -7,7 +7,7 @@ export interface Video {
   error_message: string | null;
   ranking: number | null;
   ranking_notes: string | null;
-  storage_url: string;
+  storage_path: string;
   created_at: string;
   updated_at: string;
 }

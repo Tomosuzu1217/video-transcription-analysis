@@ -31,6 +31,7 @@ export default function VideoDetailPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const activeSegmentRef = useRef<HTMLDivElement>(null);
+  const [videoSrc, setVideoSrc] = useState<string>("");
 
   // Copy state
   const [copied, setCopied] = useState(false);
@@ -100,7 +101,8 @@ export default function VideoDetailPage() {
   useEffect(() => {
     fetchVideo();
     fetchTranscription();
-  }, [fetchVideo, fetchTranscription]);
+    getVideoStreamUrl(videoId).then((url) => setVideoSrc(url));
+  }, [fetchVideo, fetchTranscription, videoId]);
 
   // Poll transcription status every 5 seconds while pending or transcribing
   useEffect(() => {
@@ -281,7 +283,7 @@ export default function VideoDetailPage() {
           <div className="rounded-xl bg-black shadow-sm">
             <video
               ref={videoRef}
-              src={getVideoStreamUrl(videoId)}
+              src={videoSrc}
               controls
               onTimeUpdate={handleTimeUpdate}
               className="w-full aspect-video rounded-xl"

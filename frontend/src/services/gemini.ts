@@ -1,17 +1,21 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { get, STORES } from "./db";
 
 let _cachedKeys: string[] = [];
 let _cachedModel: string = "gemini-2.5-flash";
 let _keyIndex = 0;
 
+interface SettingsRecord {
+  key: string;
+  api_keys: string[];
+  selected_model: string;
+}
+
 async function loadSettings(): Promise<{ keys: string[]; model: string }> {
-  const snap = await getDoc(doc(db, "settings", "app"));
-  if (snap.exists()) {
-    const data = snap.data();
-    _cachedKeys = data.apiKeys ?? [];
-    _cachedModel = data.selectedModel ?? "gemini-2.5-flash";
+  const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
+  if (record) {
+    _cachedKeys = record.api_keys ?? [];
+    _cachedModel = record.selected_model ?? "gemini-2.5-flash";
   }
   return { keys: _cachedKeys, model: _cachedModel };
 }
@@ -43,13 +47,11 @@ function parseJsonResponse(text: string): Record<string, unknown> {
   }
 }
 
-// Convert File to base64 string
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove data URL prefix (e.g. "data:video/mp4;base64,")
       const base64 = result.split(",")[1] ?? "";
       if (!base64) { reject(new Error("ファイルのBase64変換に失敗しました")); return; }
       resolve(base64);
@@ -59,9 +61,6 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
-/**
- * Call Gemini with text or multimodal prompt, rotating API keys on rate limit.
- */
 export async function callGemini(
   prompt: string | Array<string | { inlineData: { mimeType: string; data: string } }>,
 ): Promise<string> {
@@ -87,9 +86,6 @@ export async function callGemini(
   throw new Error(`全てのAPIキーがレート制限に達しました: ${lastError}`);
 }
 
-/**
- * Call Gemini and parse the response as JSON.
- */
 export async function callGeminiJson(
   prompt: string | Array<string | { inlineData: { mimeType: string; data: string } }>,
 ): Promise<Record<string, unknown>> {
@@ -97,9 +93,6 @@ export async function callGeminiJson(
   return parseJsonResponse(text);
 }
 
-/**
- * Transcribe a media file using Gemini multimodal.
- */
 export async function transcribeMedia(
   file: File,
 ): Promise<{ full_text: string; language: string; segments: { start_time: number; end_time: number; text: string }[] }> {
@@ -135,9 +128,6 @@ export async function transcribeMedia(
   };
 }
 
-/**
- * Transcribe a media file using a specific API key (for parallel batch processing).
- */
 export async function transcribeMediaWithKey(
   file: File,
   apiKey: string,
@@ -180,9 +170,6 @@ export async function transcribeMediaWithKey(
   };
 }
 
-/**
- * Test a single Gemini API key.
- */
 export async function testApiKey(key: string, model: string): Promise<{ valid: boolean; error?: string }> {
   try {
     const genAI = new GoogleGenerativeAI(key);

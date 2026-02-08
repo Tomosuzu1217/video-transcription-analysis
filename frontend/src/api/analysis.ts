@@ -1,7 +1,4 @@
-import { db } from "../firebase";
-import {
-  collection, doc, getDocs, setDoc, query, where, orderBy, limit as firestoreLimit,
-} from "firebase/firestore";
+import { getAll, put, STORES } from "../services/db";
 import { callGeminiJson } from "../services/gemini";
 import { analyzeSegmentEmotions, calculateEmotionVolatility, detectPersuasionTechniques } from "../services/nlp";
 import type { DashboardData } from "../types";
@@ -10,7 +7,42 @@ function generateId(): number {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
-// ─── Helper: load all transcribed videos with conversions ───
+interface VideoRecord {
+  id: number;
+  filename: string;
+  status: string;
+  duration_seconds: number | null;
+  ranking: number | null;
+  ranking_notes: string | null;
+  [key: string]: unknown;
+}
+
+interface TranscriptionRecord {
+  id: number;
+  video_id: number;
+  full_text: string;
+  segments: { start_time: number; end_time: number; text: string }[];
+  [key: string]: unknown;
+}
+
+interface ConversionRecord {
+  id: number;
+  video_id: number;
+  metric_name: string;
+  metric_value: number;
+  [key: string]: unknown;
+}
+
+interface AnalysisRecord {
+  id: number;
+  analysis_type: string;
+  scope: string;
+  video_id: number | null;
+  result_json: any;
+  gemini_model_used: string | null;
+  created_at: string;
+}
+
 async function loadVideosData(): Promise<Array<{
   name: string;
   videoId: number;
@@ -20,26 +52,23 @@ async function loadVideosData(): Promise<Array<{
   ranking: number | null;
   ranking_notes: string | null;
 }>> {
-  const vSnap = await getDocs(collection(db, "videos"));
-  const tSnap = await getDocs(collection(db, "transcriptions"));
-  const cSnap = await getDocs(collection(db, "conversions"));
+  const videos = await getAll<VideoRecord>(STORES.VIDEOS);
+  const transcriptions = await getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS);
+  const conversions = await getAll<ConversionRecord>(STORES.CONVERSIONS);
 
   const transcriptionsByVideo = new Map<number, { full_text: string; segments: any[] }>();
-  for (const d of tSnap.docs) {
-    const data = d.data();
-    transcriptionsByVideo.set(data.videoId, { full_text: data.full_text, segments: data.segments ?? [] });
+  for (const t of transcriptions) {
+    transcriptionsByVideo.set(t.video_id, { full_text: t.full_text, segments: t.segments ?? [] });
   }
 
   const conversionsByVideo = new Map<number, Record<string, number>>();
-  for (const d of cSnap.docs) {
-    const data = d.data();
-    if (!conversionsByVideo.has(data.video_id)) conversionsByVideo.set(data.video_id, {});
-    conversionsByVideo.get(data.video_id)![data.metric_name] = data.metric_value;
+  for (const c of conversions) {
+    if (!conversionsByVideo.has(c.video_id)) conversionsByVideo.set(c.video_id, {});
+    conversionsByVideo.get(c.video_id)![c.metric_name] = c.metric_value;
   }
 
   const result = [];
-  for (const vDoc of vSnap.docs) {
-    const v = vDoc.data();
+  for (const v of videos) {
     if (v.status !== "transcribed") continue;
     const t = transcriptionsByVideo.get(v.id);
     if (!t) continue;
@@ -58,7 +87,7 @@ async function loadVideosData(): Promise<Array<{
 
 async function saveAnalysis(analysisType: string, scope: string, result: any, modelUsed?: string) {
   const id = generateId();
-  await setDoc(doc(db, "analyses", String(id)), {
+  await put(STORES.ANALYSES, {
     id,
     analysis_type: analysisType,
     scope,
@@ -69,7 +98,6 @@ async function saveAnalysis(analysisType: string, scope: string, result: any, mo
   });
 }
 
-// ─── Keyword Analysis (via Gemini) ───
 export async function runKeywordAnalysis(): Promise<any> {
   const videos = await loadVideosData();
   if (videos.length === 0) return { keywords: [], video_count: 0 };
@@ -119,7 +147,6 @@ ${video.transcript}
   return result;
 }
 
-// ─── Correlation Analysis (via Gemini) ───
 export async function runCorrelationAnalysis(): Promise<any> {
   const videos = await loadVideosData();
   const withData = videos.filter((v) => Object.keys(v.conversions).length > 0);
@@ -152,7 +179,6 @@ ${videoTexts}
   return result;
 }
 
-// ─── AI Recommendations ───
 export async function runAiRecommendations(customPrompt?: string): Promise<any> {
   const videos = await loadVideosData();
   if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。");
@@ -190,7 +216,6 @@ ${customInstruction}
   return result;
 }
 
-// ─── Ranking Comparison ───
 export async function runRankingComparisonAnalysis(customPrompt?: string): Promise<any> {
   const videos = await loadVideosData();
   const ranked = videos.filter((v) => v.ranking !== null).sort((a, b) => (a.ranking ?? 99) - (b.ranking ?? 99));
@@ -247,12 +272,10 @@ ${customInstruction}
   return result;
 }
 
-// ─── Psychological Content Analysis ───
 export async function runPsychologicalContentAnalysis(customPrompt?: string): Promise<any> {
   const videos = await loadVideosData();
   if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。");
 
-  // NLP pre-analysis
   const nlpPreanalysis = [];
   const videoSections = [];
 
@@ -335,53 +358,43 @@ ${customInstruction}
 重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。スコアは1.0〜10.0の範囲で。`;
 
   const result = await callGeminiJson(prompt) as any;
-  // Attach NLP pre-analysis data
   result.nlp_preanalysis = nlpPreanalysis;
   await saveAnalysis("psychological_content", "cross_video", result, "gemini");
   return result;
 }
 
-// ─── Analysis Results History ───
 export async function getAnalysisResults(type?: string): Promise<any[]> {
-  let q;
+  let results = await getAll<AnalysisRecord>(STORES.ANALYSES);
   if (type) {
-    q = query(collection(db, "analyses"), where("analysis_type", "==", type), orderBy("created_at", "desc"));
-  } else {
-    q = query(collection(db, "analyses"), orderBy("created_at", "desc"));
+    results = results.filter((r) => r.analysis_type === type);
   }
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => {
-    const data = d.data();
-    return {
-      id: data.id,
-      analysis_type: data.analysis_type,
-      scope: data.scope,
-      video_id: data.video_id,
-      result: data.result_json ?? {},
-      gemini_model_used: data.gemini_model_used,
-      created_at: data.created_at,
-    };
-  });
+  results.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+  return results.map((data) => ({
+    id: data.id,
+    analysis_type: data.analysis_type,
+    scope: data.scope,
+    video_id: data.video_id,
+    result: data.result_json ?? {},
+    gemini_model_used: data.gemini_model_used,
+    created_at: data.created_at,
+  }));
 }
 
-// ─── Dashboard ───
 export async function getDashboard(): Promise<DashboardData> {
-  const vSnap = await getDocs(collection(db, "videos"));
-  const cSnap = await getDocs(collection(db, "conversions"));
+  const allVideos = await getAll<VideoRecord>(STORES.VIDEOS);
+  const allConversions = await getAll<ConversionRecord>(STORES.CONVERSIONS);
 
   let totalVideos = 0, transcribed = 0, processing = 0, errorCount = 0;
   const durations: number[] = [];
   const videoSummaries: any[] = [];
 
   const convByVideo = new Map<number, Record<string, number>>();
-  for (const d of cSnap.docs) {
-    const data = d.data();
-    if (!convByVideo.has(data.video_id)) convByVideo.set(data.video_id, {});
-    convByVideo.get(data.video_id)![data.metric_name] = data.metric_value;
+  for (const c of allConversions) {
+    if (!convByVideo.has(c.video_id)) convByVideo.set(c.video_id, {});
+    convByVideo.get(c.video_id)![c.metric_name] = c.metric_value;
   }
 
-  for (const vDoc of vSnap.docs) {
-    const v = vDoc.data();
+  for (const v of allVideos) {
     totalVideos++;
     if (v.status === "transcribed") transcribed++;
     else if (v.status === "uploaded" || v.status === "transcribing") processing++;
@@ -399,21 +412,21 @@ export async function getDashboard(): Promise<DashboardData> {
   const avgDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length * 10) / 10 : null;
   const totalDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) * 10) / 10 : null;
 
-  // Get latest keyword analysis
   let topKeywords: any[] = [];
-  const kwQ = query(collection(db, "analyses"), where("analysis_type", "==", "keyword_frequency"), orderBy("created_at", "desc"), firestoreLimit(1));
-  const kwSnap = await getDocs(kwQ);
-  if (!kwSnap.empty) {
-    const kwData = kwSnap.docs[0].data().result_json;
-    topKeywords = (kwData?.keywords ?? []).slice(0, 20);
+  const allAnalyses = await getAll<AnalysisRecord>(STORES.ANALYSES);
+  const kwAnalyses = allAnalyses
+    .filter((a) => a.analysis_type === "keyword_frequency")
+    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+  if (kwAnalyses.length > 0) {
+    topKeywords = (kwAnalyses[0].result_json?.keywords ?? []).slice(0, 20);
   }
 
-  // Get latest AI recommendations
   let latestAi = null;
-  const aiQ = query(collection(db, "analyses"), where("analysis_type", "==", "ai_recommendation"), orderBy("created_at", "desc"), firestoreLimit(1));
-  const aiSnap = await getDocs(aiQ);
-  if (!aiSnap.empty) {
-    latestAi = aiSnap.docs[0].data().result_json;
+  const aiAnalyses = allAnalyses
+    .filter((a) => a.analysis_type === "ai_recommendation")
+    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+  if (aiAnalyses.length > 0) {
+    latestAi = aiAnalyses[0].result_json;
   }
 
   return {
@@ -423,7 +436,7 @@ export async function getDashboard(): Promise<DashboardData> {
     error_videos: errorCount,
     avg_duration_seconds: avgDuration,
     total_duration_seconds: totalDuration,
-    total_conversions: cSnap.size,
+    total_conversions: allConversions.length,
     top_keywords: topKeywords,
     video_summaries: videoSummaries,
     latest_ai_recommendations: latestAi,

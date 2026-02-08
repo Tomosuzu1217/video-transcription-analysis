@@ -1,8 +1,5 @@
-import { db } from "../firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { get, put, STORES } from "../services/db";
 import { testApiKey as testGeminiKey } from "../services/gemini";
-
-const SETTINGS_DOC = doc(db, "settings", "app");
 
 export interface ApiKeysResponse {
   keys: string[];
@@ -26,26 +23,31 @@ export interface TestResponse {
   message?: string;
 }
 
+interface SettingsRecord {
+  key: string;
+  api_keys: string[];
+  selected_model: string;
+}
+
 async function getSettingsData(): Promise<{ apiKeys: string[]; selectedModel: string }> {
-  const snap = await getDoc(SETTINGS_DOC);
-  if (snap.exists()) {
-    const data = snap.data();
-    return {
-      apiKeys: data.apiKeys ?? [],
-      selectedModel: data.selectedModel ?? "gemini-2.5-flash",
-    };
-  }
-  return { apiKeys: [], selectedModel: "gemini-2.5-flash" };
+  const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
+  return {
+    apiKeys: record?.api_keys ?? [],
+    selectedModel: record?.selected_model ?? "gemini-2.5-flash",
+  };
 }
 
 async function saveSettings(data: Partial<{ apiKeys: string[]; selectedModel: string }>) {
   const current = await getSettingsData();
-  await setDoc(SETTINGS_DOC, { ...current, ...data });
+  await put(STORES.SETTINGS, {
+    key: "app",
+    api_keys: data.apiKeys ?? current.apiKeys,
+    selected_model: data.selectedModel ?? current.selectedModel,
+  });
 }
 
 export async function getApiKeys(): Promise<ApiKeysResponse> {
   const { apiKeys } = await getSettingsData();
-  // Mask keys for display (show first 8 + last 4 chars)
   const masked = apiKeys.map((k) =>
     k.length > 12 ? k.slice(0, 8) + "..." + k.slice(-4) : k,
   );
@@ -77,6 +79,7 @@ export async function getModelSetting(): Promise<ModelResponse> {
   return {
     current: selectedModel,
     available: [
+      { id: "gemini-3-flash-preview", label: "Gemini 3.0 Flash (Preview)" },
       { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
       { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
       { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },

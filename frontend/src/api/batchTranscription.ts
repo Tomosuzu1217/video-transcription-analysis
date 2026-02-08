@@ -1,13 +1,24 @@
-import { db } from "../firebase";
-import {
-  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
-  collection, query, where,
-} from "firebase/firestore";
+import { get, getAllByIndex, put, del, update, STORES } from "../services/db";
+import { downloadVideoAsBlob } from "../services/videoStorage";
+import { supabase } from "../services/supabase";
 import { transcribeMediaWithKey, isRateLimitError } from "../services/gemini";
 import { KeyPool } from "../services/keyPool";
 import type { BatchProgress, VideoProgress, VideoTranscriptionStage } from "../types";
 
-// --- Logging helper ---
+interface VideoRecord {
+  id: number;
+  filename: string;
+  status: string;
+  storage_path: string;
+  [key: string]: unknown;
+}
+
+interface TranscriptionRecord {
+  id: number;
+  video_id: number;
+  [key: string]: unknown;
+}
+
 async function logOperation(
   videoId: number,
   operation: string,
@@ -16,8 +27,9 @@ async function logOperation(
 ): Promise<void> {
   try {
     const logId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    await setDoc(doc(db, "transcription_logs", logId), {
-      videoId,
+    await put(STORES.TRANSCRIPTION_LOGS, {
+      id: logId,
+      video_id: videoId,
       operation,
       status,
       details: details ?? null,
@@ -28,7 +40,6 @@ async function logOperation(
   }
 }
 
-// --- Batch state singleton ---
 let _currentBatch: BatchState | null = null;
 
 interface BatchState {
@@ -43,11 +54,7 @@ interface BatchState {
 function createInitialProgress(videoIds: number[], keyCount: number): BatchProgress {
   const videoProgress = new Map<number, VideoProgress>();
   for (const id of videoIds) {
-    videoProgress.set(id, {
-      videoId: id,
-      filename: "",
-      stage: "queued",
-    });
+    videoProgress.set(id, { videoId: id, filename: "", stage: "queued" });
   }
   return {
     totalVideos: videoIds.length,
@@ -114,7 +121,7 @@ async function processVideo(
   state: BatchState,
   videoId: number,
   keyInfo: { key: string; index: number },
-): Promise<"success" | "rate_limited" | "error"> {
+): Promise<"success" | "rate_limited" | "error" | "skipped"> {
   const { keyPool } = state;
 
   try {
@@ -125,26 +132,32 @@ async function processVideo(
 
     await logOperation(videoId, "transcribe", "start", { keyIndex: keyInfo.index });
 
-    await updateDoc(doc(db, "videos", String(videoId)), {
-      status: "transcribing",
-      error_message: null,
-      updated_at: new Date().toISOString(),
-    });
+    // Optimistic lock: only update if not already transcribing
+    const { data: lockedVideo } = await supabase
+      .from("videos")
+      .update({ status: "transcribing", error_message: null, updated_at: new Date().toISOString() })
+      .eq("id", videoId)
+      .neq("status", "transcribing")
+      .select()
+      .maybeSingle();
 
-    const videoSnap = await getDoc(doc(db, "videos", String(videoId)));
-    if (!videoSnap.exists()) throw new Error("動画が見つかりません");
-    const videoData = videoSnap.data();
+    if (!lockedVideo) {
+      // Another user is already transcribing this video
+      keyPool.release(keyInfo.index);
+      setVideoStage(state, videoId, "completed", { completedAt: Date.now() });
+      state.progress.completedVideos++;
+      return "skipped";
+    }
 
+    const videoData = lockedVideo as VideoRecord;
     const vp = state.progress.videoProgress.get(videoId);
     if (vp) vp.filename = videoData.filename ?? "unknown";
 
-    const response = await fetch(videoData.storage_url);
-    if (!response.ok) throw new Error(`動画のダウンロードに失敗しました (HTTP ${response.status})`);
-    const blob = await response.blob();
+    // Download from Supabase Storage
+    const blob = await downloadVideoAsBlob(videoData.storage_path);
     const file = new File([blob], videoData.filename, { type: blob.type || "video/mp4" });
 
     setVideoStage(state, videoId, "preparing");
-
     setVideoStage(state, videoId, "transcribing");
 
     const startTime = Date.now();
@@ -153,18 +166,17 @@ async function processVideo(
 
     setVideoStage(state, videoId, "saving");
 
-    // Delete old transcription if exists
-    const oldQ = query(collection(db, "transcriptions"), where("videoId", "==", videoId));
-    const oldSnap = await getDocs(oldQ);
-    for (const d of oldSnap.docs) {
-      await deleteDoc(d.ref);
+    // Delete old transcriptions
+    const oldTranscriptions = await getAllByIndex<TranscriptionRecord>(STORES.TRANSCRIPTIONS, "video_id", videoId);
+    for (const t of oldTranscriptions) {
+      await del(STORES.TRANSCRIPTIONS, t.id);
     }
 
     // Save new transcription
     const tId = Date.now() + Math.floor(Math.random() * 1000);
-    await setDoc(doc(db, "transcriptions", String(tId)), {
+    await put(STORES.TRANSCRIPTIONS, {
       id: tId,
-      videoId,
+      video_id: videoId,
       full_text: result.full_text,
       language: result.language,
       model_used: keyPool.getModel(),
@@ -173,7 +185,7 @@ async function processVideo(
       created_at: new Date().toISOString(),
     });
 
-    await updateDoc(doc(db, "videos", String(videoId)), {
+    await update(STORES.VIDEOS, videoId, {
       status: "transcribed",
       updated_at: new Date().toISOString(),
     });
@@ -194,10 +206,7 @@ async function processVideo(
     if (isRateLimitError(e)) {
       keyPool.markRateLimited(keyInfo.index);
       setVideoStage(state, videoId, "queued", { apiKeyIndex: undefined });
-      await logOperation(videoId, "transcribe", "error", {
-        keyIndex: keyInfo.index,
-        error: "rate_limited",
-      });
+      await logOperation(videoId, "transcribe", "error", { keyIndex: keyInfo.index, error: "rate_limited" });
       return "rate_limited";
     }
 
@@ -205,17 +214,13 @@ async function processVideo(
     setVideoStage(state, videoId, "error", { error: String(e).slice(0, 500) });
     state.progress.errorVideos++;
 
-    await updateDoc(doc(db, "videos", String(videoId)), {
+    await update(STORES.VIDEOS, videoId, {
       status: "error",
       error_message: String(e).slice(0, 500),
       updated_at: new Date().toISOString(),
     });
 
-    await logOperation(videoId, "transcribe", "error", {
-      keyIndex: keyInfo.index,
-      error: String(e).slice(0, 500),
-    });
-
+    await logOperation(videoId, "transcribe", "error", { keyIndex: keyInfo.index, error: String(e).slice(0, 500) });
     return "error";
   }
 }
@@ -258,7 +263,6 @@ async function workerLoop(state: BatchState): Promise<void> {
     }
 
     const result = await processVideo(state, videoId, keyInfo);
-
     if (result === "rate_limited") {
       state.queue.unshift(videoId);
     }
@@ -297,17 +301,16 @@ export async function startBatchTranscription(
   // Pre-load filenames
   for (const id of videoIds) {
     try {
-      const snap = await getDoc(doc(db, "videos", String(id)));
-      if (snap.exists()) {
+      const videoData = await get<VideoRecord>(STORES.VIDEOS, id);
+      if (videoData) {
         const vp = state.progress.videoProgress.get(id);
-        if (vp) vp.filename = snap.data().filename ?? "unknown";
+        if (vp) vp.filename = videoData.filename ?? "unknown";
       }
     } catch { /* ignore */ }
   }
 
   notifyProgress(state);
 
-  // Spawn workers (one per key)
   const workerCount = keyPool.getKeyCount();
   const workers: Promise<void>[] = [];
   for (let i = 0; i < workerCount; i++) {
