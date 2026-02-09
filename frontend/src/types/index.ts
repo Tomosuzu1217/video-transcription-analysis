@@ -312,6 +312,47 @@ export interface ContentSuggestion {
   reference_videos: string[];
 }
 
+// ---- Ad Platform Analysis Types ----
+
+export const AD_PLATFORMS = [
+  "YouTube", "TikTok", "Instagram", "Facebook", "LINE", "X(Twitter)",
+] as const;
+export type AdPlatform = (typeof AD_PLATFORMS)[number];
+
+export interface PlatformAnalysisResult {
+  platform: string;
+  video_count: number;
+  avg_metrics: Record<string, number>;
+  best_video: { name: string; reason: string } | null;
+  content_characteristics: {
+    optimal_duration: string;
+    effective_hooks: string[];
+    storytelling_pattern: string;
+    tone_and_style: string;
+    cta_strategy: string;
+  };
+  platform_specific_insights: string[];
+  recommendations: Array<{
+    area: string;
+    suggestion: string;
+    priority: string;
+  }>;
+}
+
+export interface CrossPlatformAnalysisResult {
+  summary: string;
+  platform_analyses: PlatformAnalysisResult[];
+  cross_platform_insights: Array<{
+    insight: string;
+    actionable: string;
+  }>;
+  content_repurposing_suggestions: Array<{
+    from_platform: string;
+    to_platform: string;
+    adaptation_needed: string;
+  }>;
+}
+
 // ---- Shared DB Record Types (used across API files) ----
 
 export interface VideoRecord {

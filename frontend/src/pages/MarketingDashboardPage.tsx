@@ -15,11 +15,12 @@ import ROITab from "../components/marketing/ROITab";
 import FunnelTab from "../components/marketing/FunnelTab";
 import CompetitorTab from "../components/marketing/CompetitorTab";
 import AlertsTab from "../components/marketing/AlertsTab";
+import PlatformTab from "../components/marketing/PlatformTab";
 import type { Video, ConversionSummary, MarketingReportResult, TriggeredAlert, ContentSuggestion } from "../types";
 
 const COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
 
-type Tab = "overview" | "compare" | "trend" | "report" | "roi" | "funnel" | "competitor" | "alerts";
+type Tab = "overview" | "compare" | "trend" | "report" | "roi" | "funnel" | "competitor" | "alerts" | "platform";
 
 export default function MarketingDashboardPage() {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -248,6 +249,7 @@ export default function MarketingDashboardPage() {
     { key: "funnel", label: "ファネル" },
     { key: "competitor", label: "競合比較" },
     { key: "alerts", label: "アラート" },
+    { key: "platform", label: "媒体分析" },
   ];
 
   if (loading) {
@@ -850,6 +852,17 @@ export default function MarketingDashboardPage() {
       {/* ===== Alerts Tab ===== */}
       {activeTab === "alerts" && (
         <AlertsTab allMetrics={allMetrics} videos={videos} showToast={showToast} />
+      )}
+
+      {/* ===== Platform Tab ===== */}
+      {activeTab === "platform" && (
+        <PlatformTab
+          videos={filteredVideos}
+          convSummaries={filteredConvSummaries}
+          allMetrics={allMetrics}
+          showToast={showToast}
+          onVideoUpdate={fetchData}
+        />
       )}
 
       <Toast toast={toast} onClose={clearToast} />

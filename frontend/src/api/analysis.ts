@@ -1,7 +1,8 @@
 import { getAll, put, generateId, STORES } from "../services/db";
 import { callGeminiJson } from "../services/gemini";
 import { analyzeSegmentEmotions, calculateEmotionVolatility, detectPersuasionTechniques } from "../services/nlp";
-import type { DashboardData, VideoRecord, TranscriptionRecord, ConversionRecord, AnalysisRecord } from "../types";
+import { AD_PLATFORMS } from "../types";
+import type { DashboardData, VideoRecord, TranscriptionRecord, ConversionRecord, AnalysisRecord, CrossPlatformAnalysisResult } from "../types";
 
 async function loadVideosData(): Promise<Array<{
   name: string;
@@ -395,6 +396,104 @@ ${customInstruction}
   const result = await callGeminiJson(prompt);
   await saveAnalysis("content_suggestion", "cross_video", result, "gemini");
   return result;
+}
+
+export async function runPlatformAnalysis(): Promise<CrossPlatformAnalysisResult> {
+  const videos = await getAll<VideoRecord>(STORES.VIDEOS);
+  const transcriptions = await getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS);
+  const conversions = await getAll<ConversionRecord>(STORES.CONVERSIONS);
+
+  const transcriptionsByVideo = new Map<number, { full_text: string; segments: any[] }>();
+  for (const t of transcriptions) {
+    transcriptionsByVideo.set(t.video_id, { full_text: t.full_text, segments: t.segments ?? [] });
+  }
+  const conversionsByVideo = new Map<number, Record<string, number>>();
+  for (const c of conversions) {
+    if (!conversionsByVideo.has(c.video_id)) conversionsByVideo.set(c.video_id, {});
+    conversionsByVideo.get(c.video_id)![c.metric_name] = c.metric_value;
+  }
+
+  const platformSet = new Set(AD_PLATFORMS as readonly string[]);
+  const platformGroups = new Map<string, Array<{ name: string; transcript: string; conversions: Record<string, number>; duration: number | null }>>();
+
+  for (const v of videos) {
+    if (v.status !== "transcribed" && v.status !== "archived") continue;
+    const t = transcriptionsByVideo.get(v.id);
+    if (!t) continue;
+    const tags = (v.tags ?? []) as string[];
+    const platforms = tags.filter((tag) => platformSet.has(tag));
+    if (platforms.length === 0) continue;
+    for (const p of platforms) {
+      if (!platformGroups.has(p)) platformGroups.set(p, []);
+      platformGroups.get(p)!.push({
+        name: v.filename,
+        transcript: t.full_text.slice(0, 500),
+        conversions: conversionsByVideo.get(v.id) ?? {},
+        duration: v.duration_seconds ?? null,
+      });
+    }
+  }
+
+  if (platformGroups.size === 0) {
+    throw new Error("媒体タグ（YouTube, TikTok等）が付いた書き起こし済み動画がありません。動画にタグを追加してください。");
+  }
+
+  const platformSections = Array.from(platformGroups.entries()).map(([platform, vids]) => {
+    const vidDetails = vids.map((v) => {
+      const convStr = Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ");
+      return `  - ${v.name}（${v.duration ? Math.round(v.duration) + "秒" : "不明"}）\n    書き起こし抜粋: ${v.transcript.slice(0, 200)}...\n    指標: ${convStr || "なし"}`;
+    }).join("\n");
+    return `### ${platform}（${vids.length}本）\n${vidDetails}`;
+  }).join("\n\n");
+
+  const prompt = `あなたは広告媒体の専門アナリストです。以下の動画データを媒体別に分析し、各プラットフォームでどのような動画コンテンツ・文章・ストーリーが効果的かを分析してください。
+
+## 媒体別の特性（分析の参考にしてください）
+- YouTube: 長尺OK（2-10分）、SEO重要、サムネイル/冒頭5秒のフック重視、教育・エンタメ・レビュー系が強い
+- TikTok: 15-60秒が最適、最初1秒が勝負、トレンド活用、縦型、カジュアルな語り口、テンポ重視
+- Instagram: ビジュアル重視、リール15-30秒、ストーリーズ連動、ハッシュタグ戦略、ブランド世界観
+- Facebook: 30代以上がメイン、シェア誘導、コミュニティ感、テキスト補足重要、感情に訴える
+- LINE: 短尺（15秒以下）、直接的CTA、クーポン/プロモ連動、親近感、日常的トーン
+- X(Twitter): 15-45秒、強いメッセージ、RT誘導、時事性、テキスト連動、議論を生む内容
+
+## 動画データ
+${platformSections}
+
+以下のJSON形式で返してください:
+{
+  "summary": "全体分析サマリー（200-300文字）",
+  "platform_analyses": [
+    {
+      "platform": "媒体名",
+      "video_count": 数値,
+      "avg_metrics": {"指標名": 平均値, ...},
+      "best_video": {"name": "動画名", "reason": "選定理由"} または null,
+      "content_characteristics": {
+        "optimal_duration": "この媒体での最適な尺",
+        "effective_hooks": ["効果的な冒頭のつかみ方1", "つかみ方2"],
+        "storytelling_pattern": "効果的なストーリー構成パターン",
+        "tone_and_style": "推奨トーン・スタイル",
+        "cta_strategy": "効果的なCTA戦略"
+      },
+      "platform_specific_insights": ["この媒体固有の気づき1", "気づき2"],
+      "recommendations": [
+        {"area": "改善領域", "suggestion": "具体的提案", "priority": "high/medium/low"}
+      ]
+    }
+  ],
+  "cross_platform_insights": [
+    {"insight": "媒体横断の気づき", "actionable": "具体的アクション"}
+  ],
+  "content_repurposing_suggestions": [
+    {"from_platform": "転用元", "to_platform": "転用先", "adaptation_needed": "必要な調整"}
+  ]
+}
+
+重要: 必ず有効なJSONのみを返してください。日本語で記述してください。`;
+
+  const result = await callGeminiJson(prompt);
+  await saveAnalysis("platform_analysis", "cross_platform", result, "gemini");
+  return result as CrossPlatformAnalysisResult;
 }
 
 export async function getAnalysisResults(type?: string): Promise<any[]> {
