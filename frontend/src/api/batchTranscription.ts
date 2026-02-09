@@ -130,17 +130,35 @@ async function processVideo(
 
     await logOperation(videoId, "transcribe", "start", { keyIndex: keyInfo.index });
 
-    // Optimistic lock: only update if not already transcribing
-    const { data: lockedVideo } = await supabase
+    // Optimistic lock: allow if not transcribing, OR if stuck transcribing (>5 min)
+    const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    let lockedVideo: any = null;
+
+    // First try: non-transcribing videos
+    const { data: d1 } = await supabase
       .from("videos")
       .update({ status: "transcribing", error_message: null, updated_at: new Date().toISOString() })
       .eq("id", videoId)
       .neq("status", "transcribing")
       .select()
       .maybeSingle();
+    lockedVideo = d1;
+
+    // Second try: stale transcribing videos (stuck for >5 min)
+    if (!lockedVideo) {
+      const { data: d2 } = await supabase
+        .from("videos")
+        .update({ status: "transcribing", error_message: null, updated_at: new Date().toISOString() })
+        .eq("id", videoId)
+        .eq("status", "transcribing")
+        .lt("updated_at", staleThreshold)
+        .select()
+        .maybeSingle();
+      lockedVideo = d2;
+    }
 
     if (!lockedVideo) {
-      // Another user is already transcribing this video
+      // Another user is actively transcribing this video
       keyPool.release(keyInfo.index);
       setVideoStage(state, videoId, "completed", { completedAt: Date.now() });
       state.progress.completedVideos++;
@@ -149,25 +167,60 @@ async function processVideo(
 
     const videoData = lockedVideo as VideoRecord;
     const vp = state.progress.videoProgress.get(videoId);
-    if (vp) vp.filename = videoData.filename ?? "unknown";
+    if (vp) {
+      vp.filename = videoData.filename ?? "unknown";
+      vp.fileSizeBytes = videoData.file_size ?? undefined;
+      vp.durationSeconds = videoData.duration_seconds ?? undefined;
+    }
 
     // Download from Supabase Storage
+    const fileSizeMB = videoData.file_size ? (videoData.file_size / 1024 / 1024).toFixed(1) : "?";
+    setVideoStage(state, videoId, "downloading", {
+      detail: `Storageからダウンロード中 (${fileSizeMB} MB)`,
+    });
     const blob = await downloadVideoAsBlob(videoData.storage_path);
     const file = new File([blob], videoData.filename, { type: blob.type || "video/mp4" });
 
-    setVideoStage(state, videoId, "preparing");
-    setVideoStage(state, videoId, "transcribing");
+    setVideoStage(state, videoId, "preparing", {
+      detail: `Base64エンコード中 (${fileSizeMB} MB)`,
+    });
+
+    setVideoStage(state, videoId, "transcribing", {
+      detail: `Gemini APIにリクエスト送信中...`,
+    });
 
     const startTime = Date.now();
-    const result = await transcribeMediaWithKey(file, keyInfo.key, keyPool.getModel());
+
+    // Update detail periodically while waiting for AI
+    const aiTimer = setInterval(() => {
+      const sec = Math.round((Date.now() - startTime) / 1000);
+      setVideoStage(state, videoId, "transcribing", {
+        detail: `AI処理中... (${sec}秒経過)`,
+      });
+    }, 2000);
+
+    let result: { full_text: string; language: string; segments: { start_time: number; end_time: number; text: string }[] };
+    try {
+      result = await transcribeMediaWithKey(file, keyInfo.key, keyPool.getModel());
+    } finally {
+      clearInterval(aiTimer);
+    }
     const processingTime = (Date.now() - startTime) / 1000;
 
-    setVideoStage(state, videoId, "saving");
+    const segCount = result.segments?.length ?? 0;
+    setVideoStage(state, videoId, "saving", {
+      detail: `書き起こし結果を保存中 (${segCount}セグメント)`,
+    });
 
     // Delete old transcriptions
     const oldTranscriptions = await getAllByIndex<TranscriptionRecord>(STORES.TRANSCRIPTIONS, "video_id", videoId);
-    for (const t of oldTranscriptions) {
-      await del(STORES.TRANSCRIPTIONS, t.id);
+    if (oldTranscriptions.length > 0) {
+      setVideoStage(state, videoId, "saving", {
+        detail: `旧データ削除中 → 新規保存 (${segCount}セグメント)`,
+      });
+      for (const t of oldTranscriptions) {
+        await del(STORES.TRANSCRIPTIONS, t.id);
+      }
     }
 
     // Save new transcription
@@ -183,12 +236,18 @@ async function processVideo(
       created_at: new Date().toISOString(),
     });
 
+    setVideoStage(state, videoId, "saving", {
+      detail: `動画ステータス更新中...`,
+    });
     await update(STORES.VIDEOS, videoId, {
       status: "transcribed",
       updated_at: new Date().toISOString(),
     });
 
-    setVideoStage(state, videoId, "completed", { completedAt: Date.now() });
+    setVideoStage(state, videoId, "completed", {
+      completedAt: Date.now(),
+      detail: `完了 (${Math.round(processingTime)}秒, ${segCount}セグメント)`,
+    });
     state.progress.completedVideos++;
     state.completionTimestamps.push(Date.now());
 
@@ -203,14 +262,14 @@ async function processVideo(
   } catch (e) {
     if (isRateLimitError(e)) {
       keyPool.markRateLimited(keyInfo.index);
-      setVideoStage(state, videoId, "queued", { apiKeyIndex: undefined });
+      setVideoStage(state, videoId, "queued", { apiKeyIndex: undefined, detail: `Key#${keyInfo.index + 1} レート制限 → 再キュー` });
       await logOperation(videoId, "transcribe", "error", { keyIndex: keyInfo.index, error: "rate_limited" });
       return "rate_limited";
     }
 
     keyPool.release(keyInfo.index);
     const safeMsg = sanitizeError(e);
-    setVideoStage(state, videoId, "error", { error: safeMsg });
+    setVideoStage(state, videoId, "error", { error: safeMsg, detail: safeMsg });
     state.progress.errorVideos++;
 
     await update(STORES.VIDEOS, videoId, {

@@ -45,8 +45,12 @@ CREATE INDEX idx_transcriptions_video_id ON transcriptions(video_id);
 CREATE TABLE settings (
   key             TEXT PRIMARY KEY DEFAULT 'app',
   api_keys        JSONB NOT NULL DEFAULT '[]'::jsonb,
-  selected_model  TEXT NOT NULL DEFAULT 'gemini-2.5-flash'
+  selected_model  TEXT NOT NULL DEFAULT 'gemini-2.5-flash',
+  managed_tags    JSONB NOT NULL DEFAULT '["YouTube","TikTok","Instagram","Facebook","LINE","X(Twitter)"]'::jsonb
 );
+
+-- NOTE: 既存DBへの適用:
+-- ALTER TABLE settings ADD COLUMN IF NOT EXISTS managed_tags JSONB NOT NULL DEFAULT '["YouTube","TikTok","Instagram","Facebook","LINE","X(Twitter)"]'::jsonb;
 
 INSERT INTO settings (key) VALUES ('app') ON CONFLICT DO NOTHING;
 

@@ -2,10 +2,9 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { updateVideoTags } from "../../api/videos";
 import { runPlatformAnalysis, getAnalysisResults } from "../../api/analysis";
-import { AD_PLATFORMS } from "../../types";
 import type { Video, ConversionSummary, CrossPlatformAnalysisResult } from "../../types";
 
-const PLATFORM_COLORS: Record<string, string> = {
+const KNOWN_COLORS: Record<string, string> = {
   YouTube: "#FF0000",
   TikTok: "#000000",
   Instagram: "#E1306C",
@@ -14,15 +13,22 @@ const PLATFORM_COLORS: Record<string, string> = {
   "X(Twitter)": "#1DA1F2",
 };
 
+const FALLBACK_COLORS = ["#6366f1", "#ec4899", "#14b8a6", "#f97316", "#8b5cf6", "#06b6d4", "#84cc16", "#f43f5e"];
+
+function getPlatformColor(tag: string, index: number): string {
+  return KNOWN_COLORS[tag] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+}
+
 interface Props {
   videos: Video[];
   convSummaries: ConversionSummary[];
   allMetrics: string[];
+  managedTags: string[];
   showToast: (msg: string, type: "success" | "error") => void;
   onVideoUpdate?: () => void;
 }
 
-export default function PlatformTab({ videos, convSummaries, allMetrics, showToast, onVideoUpdate }: Props) {
+export default function PlatformTab({ videos, convSummaries, allMetrics, managedTags, showToast, onVideoUpdate }: Props) {
   const [analysisResult, setAnalysisResult] = useState<CrossPlatformAnalysisResult | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [resultLoaded, setResultLoaded] = useState(false);
@@ -40,7 +46,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
   // Group videos by platform
   const platformData = useMemo(() => {
     const groups = new Map<string, { videos: Video[]; summaries: ConversionSummary[] }>();
-    for (const p of AD_PLATFORMS) groups.set(p, { videos: [], summaries: [] });
+    for (const p of managedTags) groups.set(p, { videos: [], summaries: [] });
 
     for (const v of videos) {
       for (const tag of v.tags ?? []) {
@@ -52,7 +58,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
       }
     }
     return groups;
-  }, [videos, convSummaries]);
+  }, [videos, convSummaries, managedTags]);
 
   // Bar chart data: per-platform avg metrics
   const barData = useMemo(() => {
@@ -90,7 +96,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
   const handleRunAnalysis = async () => {
     try {
       setLoadingAnalysis(true);
-      const result = await runPlatformAnalysis();
+      const result = await runPlatformAnalysis(managedTags);
       setAnalysisResult(result);
       showToast("媒体分析が完了しました", "success");
     } catch (e: any) {
@@ -113,8 +119,8 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
               <span className="text-sm text-gray-700 dark:text-gray-300 truncate min-w-0 flex-1" title={v.filename}>
                 {v.filename}
               </span>
-              <div className="flex items-center gap-1 shrink-0">
-                {AD_PLATFORMS.map((p) => {
+              <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                {managedTags.map((p, idx) => {
                   const active = (v.tags ?? []).includes(p);
                   return (
                     <button
@@ -125,7 +131,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
                           ? "text-white"
                           : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600"
                       }`}
-                      style={active ? { backgroundColor: PLATFORM_COLORS[p] ?? "#6b7280" } : undefined}
+                      style={active ? { backgroundColor: getPlatformColor(p, idx) } : undefined}
                       title={p}
                     >
                       {p.replace("(Twitter)", "")}
@@ -143,17 +149,17 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
 
       {/* Platform overview cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {AD_PLATFORMS.map((p) => {
-          const data = platformData.get(p)!;
+        {managedTags.map((p, idx) => {
+          const data = platformData.get(p);
           return (
             <div key={p} className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-3 shadow-sm text-center">
               <div
                 className="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold text-white mb-2"
-                style={{ backgroundColor: PLATFORM_COLORS[p] ?? "#6b7280" }}
+                style={{ backgroundColor: getPlatformColor(p, idx) }}
               >
                 {p.replace("(Twitter)", "")}
               </div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{data.videos.length}</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{data?.videos.length ?? 0}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">動画</p>
             </div>
           );
@@ -172,7 +178,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
               <Tooltip />
               <Legend />
               {activePlatforms.map((p) => (
-                <Bar key={p} dataKey={p} fill={PLATFORM_COLORS[p] ?? "#6b7280"} radius={[0, 4, 4, 0]} />
+                <Bar key={p} dataKey={p} fill={getPlatformColor(p, managedTags.indexOf(p))} radius={[0, 4, 4, 0]} />
               ))}
             </BarChart>
           </ResponsiveContainer>
@@ -217,7 +223,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
               <div className="flex items-center gap-2 mb-4">
                 <span
                   className="rounded-full px-3 py-1 text-sm font-bold text-white"
-                  style={{ backgroundColor: PLATFORM_COLORS[pa.platform] ?? "#6b7280" }}
+                  style={{ backgroundColor: getPlatformColor(pa.platform, managedTags.indexOf(pa.platform)) }}
                 >
                   {pa.platform}
                 </span>
@@ -315,7 +321,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
                   <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                     <span
                       className="rounded-full px-2 py-0.5 text-xs font-bold text-white shrink-0"
-                      style={{ backgroundColor: PLATFORM_COLORS[cr.from_platform] ?? "#6b7280" }}
+                      style={{ backgroundColor: getPlatformColor(cr.from_platform, managedTags.indexOf(cr.from_platform)) }}
                     >
                       {cr.from_platform}
                     </span>
@@ -324,7 +330,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, showToa
                     </svg>
                     <span
                       className="rounded-full px-2 py-0.5 text-xs font-bold text-white shrink-0"
-                      style={{ backgroundColor: PLATFORM_COLORS[cr.to_platform] ?? "#6b7280" }}
+                      style={{ backgroundColor: getPlatformColor(cr.to_platform, managedTags.indexOf(cr.to_platform)) }}
                     >
                       {cr.to_platform}
                     </span>

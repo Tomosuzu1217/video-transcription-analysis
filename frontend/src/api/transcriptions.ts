@@ -87,16 +87,35 @@ export async function retryTranscription(videoId: number): Promise<void> {
   const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
   if (!videoData) throw new Error("動画が見つかりません");
 
-  // Optimistic lock: only update if not already transcribing
-  const { data: lockedVideo, error: lockError } = await supabase
+  // Optimistic lock: allow if not transcribing, OR if stuck transcribing (>5 min)
+  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  let lockedVideo: any = null;
+
+  // First try: non-transcribing videos
+  const { data: d1, error: lockError } = await supabase
     .from("videos")
     .update({ status: "transcribing", error_message: null, updated_at: new Date().toISOString() })
     .eq("id", videoId)
     .neq("status", "transcribing")
     .select()
     .maybeSingle();
-
   if (lockError) throw lockError;
+  lockedVideo = d1;
+
+  // Second try: stale transcribing videos (stuck for >5 min)
+  if (!lockedVideo) {
+    const { data: d2, error: staleError } = await supabase
+      .from("videos")
+      .update({ status: "transcribing", error_message: null, updated_at: new Date().toISOString() })
+      .eq("id", videoId)
+      .eq("status", "transcribing")
+      .lt("updated_at", staleThreshold)
+      .select()
+      .maybeSingle();
+    if (staleError) throw staleError;
+    lockedVideo = d2;
+  }
+
   if (!lockedVideo) throw new Error("別のユーザーが書き起こし中です");
 
   try {

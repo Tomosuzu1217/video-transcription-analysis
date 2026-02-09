@@ -31,21 +31,21 @@ async function getSettingsData(): Promise<{ apiKeys: string[]; selectedModel: st
   };
 }
 
-/** Atomically update only the api_keys column (encrypted at rest) */
+/** Atomically update the api_keys column (encrypted at rest). Uses upsert to auto-create the row. */
 async function saveApiKeys(apiKeys: string[]): Promise<void> {
   const encrypted = await encryptApiKeys(apiKeys);
   const { error } = await supabase
     .from("settings")
-    .update({ api_keys: encrypted })
+    .upsert({ key: "app", api_keys: encrypted })
     .eq("key", "app");
   if (error) throw error;
 }
 
-/** Atomically update only the selected_model column */
+/** Atomically update the selected_model column. Uses upsert to auto-create the row. */
 async function saveModel(model: string): Promise<void> {
   const { error } = await supabase
     .from("settings")
-    .update({ selected_model: model })
+    .upsert({ key: "app", selected_model: model })
     .eq("key", "app");
   if (error) throw error;
 }
@@ -98,6 +98,21 @@ export async function getModelSetting(): Promise<ModelResponse> {
 export async function setModelSetting(model: string): Promise<{ message: string; current: string }> {
   await saveModel(model);
   return { message: "モデルを更新しました", current: model };
+}
+
+const DEFAULT_MANAGED_TAGS = ["YouTube", "TikTok", "Instagram", "Facebook", "LINE", "X(Twitter)"];
+
+export async function getManagedTags(): Promise<string[]> {
+  const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
+  return record?.managed_tags ?? DEFAULT_MANAGED_TAGS;
+}
+
+export async function saveManagedTags(tags: string[]): Promise<void> {
+  const { error } = await supabase
+    .from("settings")
+    .upsert({ key: "app", managed_tags: tags })
+    .eq("key", "app");
+  if (error) throw error;
 }
 
 export async function testSingleApiKey(index: number): Promise<TestResult> {

@@ -6,6 +6,8 @@ import {
   getModelSetting,
   setModelSetting,
   testSingleApiKey,
+  getManagedTags,
+  saveManagedTags,
 } from "../api/settings";
 import { getStorageUsage, type StorageUsage } from "../api/storage";
 import Toast, { useToast } from "../components/Toast";
@@ -21,6 +23,9 @@ export default function SettingsPage() {
   const [testProgress, setTestProgress] = useState<{ current: number; total: number } | null>(null);
   const [testResults, setTestResults] = useState<TestResult[] | null>(null);
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
+  const [managedTags, setManagedTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState("");
+  const [loadingTags, setLoadingTags] = useState(true);
   const { toast, showToast, clearToast } = useToast();
   const customModelRef = useRef<HTMLInputElement>(null);
 
@@ -51,11 +56,23 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const fetchTags = useCallback(async () => {
+    try {
+      const tags = await getManagedTags();
+      setManagedTags(tags);
+    } catch {
+      showToast("タグ設定の取得に失敗しました", "error");
+    } finally {
+      setLoadingTags(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchKeys();
     fetchModel();
     fetchStorage();
-  }, [fetchKeys, fetchModel, fetchStorage]);
+    fetchTags();
+  }, [fetchKeys, fetchModel, fetchStorage, fetchTags]);
 
   const handleAddKey = async () => {
     if (!newKey.trim()) return;
@@ -128,6 +145,35 @@ export default function SettingsPage() {
       showToast("モデルを変更しました", "success");
     } catch {
       showToast("モデルの変更に失敗しました", "error");
+    }
+  };
+
+  const handleAddTag = async () => {
+    const tag = newTagInput.trim();
+    if (!tag) return;
+    if (managedTags.includes(tag)) {
+      showToast("このタグは既に存在します", "error");
+      return;
+    }
+    const updated = [...managedTags, tag];
+    try {
+      await saveManagedTags(updated);
+      setManagedTags(updated);
+      setNewTagInput("");
+      showToast("タグを追加しました", "success");
+    } catch {
+      showToast("タグの追加に失敗しました", "error");
+    }
+  };
+
+  const handleRemoveTag = async (tag: string) => {
+    const updated = managedTags.filter((t) => t !== tag);
+    try {
+      await saveManagedTags(updated);
+      setManagedTags(updated);
+      showToast("タグを削除しました", "success");
+    } catch {
+      showToast("タグの削除に失敗しました", "error");
     }
   };
 
@@ -313,6 +359,69 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Tag Management Section */}
+      <section className="rounded-xl bg-white border border-gray-100 shadow-sm">
+        <div className="border-b border-gray-100 px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900">媒体タグ管理</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            動画に付与するタグを管理します。ここで追加したタグが動画のタグ選択プルダウンに表示されます。
+          </p>
+        </div>
+
+        <div className="px-6 py-4 space-y-4">
+          {/* Add new tag */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newTagInput}
+              onChange={(e) => setNewTagInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+              placeholder="新しいタグ名（例: YouTube, TikTok）"
+              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            />
+            <button
+              onClick={handleAddTag}
+              disabled={!newTagInput.trim()}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              追加
+            </button>
+          </div>
+
+          {/* Tag list */}
+          {loadingTags ? (
+            <div className="flex items-center gap-2 py-2 text-sm text-gray-500">
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-r-transparent" />
+              読み込み中...
+            </div>
+          ) : managedTags.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {managedTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-sm font-medium text-blue-700"
+                >
+                  {tag}
+                  <button
+                    onClick={() => handleRemoveTag(tag)}
+                    className="rounded-full p-0.5 text-blue-400 hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                    title="削除"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 py-2">
+              タグが登録されていません。動画の分類用にタグを追加してください。
+            </p>
+          )}
         </div>
       </section>
 

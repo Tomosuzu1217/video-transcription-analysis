@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { uploadVideos, getVideos, deleteVideo, getVideoThumbnailUrl } from "../api/videos";
+import { uploadVideos, getVideos, deleteVideo, getVideoThumbnailUrl, updateVideoTags } from "../api/videos";
 import { batchTranscribeVideos } from "../api/transcriptions";
+import { getManagedTags } from "../api/settings";
 import BatchProgressPanel from "../components/BatchProgressPanel";
+import TagMultiSelect from "../components/TagMultiSelect";
 import Toast, { useToast } from "../components/Toast";
 import { useRealtimeVideos } from "../hooks/useRealtimeVideos";
 import { formatFileSize, formatDuration, formatDate } from "../utils/format";
@@ -26,6 +28,7 @@ export default function VideosPage() {
   const [page, setPage] = useState(1);
   const [totalVideos, setTotalVideos] = useState(0);
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
+  const [managedTags, setManagedTags] = useState<string[]>([]);
   const perPage = 30;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +51,7 @@ export default function VideosPage() {
 
   useEffect(() => {
     fetchVideos();
+    getManagedTags().then(setManagedTags).catch(() => {});
   }, [fetchVideos]);
 
   // Realtime sync: refresh when other users change videos
@@ -158,7 +162,7 @@ export default function VideosPage() {
 
   const handleBatchTranscribe = async () => {
     const pendingIds = videos
-      .filter((v) => v.status === "uploaded" || v.status === "error")
+      .filter((v) => v.status === "uploaded" || v.status === "error" || v.status === "transcribing")
       .map((v) => v.id);
 
     if (pendingIds.length === 0) {
@@ -184,6 +188,15 @@ export default function VideosPage() {
     if (cancelBatchRef.current) {
       cancelBatchRef.current();
       showToast( "バッチ処理をキャンセルしています...", "success");
+    }
+  };
+
+  const handleVideoTagsChange = async (videoId: number, tags: string[]) => {
+    try {
+      await updateVideoTags(videoId, tags);
+      setVideos((prev) => prev.map((v) => v.id === videoId ? { ...v, tags } : v));
+    } catch {
+      showToast("タグの更新に失敗しました", "error");
     }
   };
 
@@ -351,11 +364,11 @@ export default function VideosPage() {
       )}
 
       {/* Auto-transcribe button */}
-      {!batchProgress?.isRunning && videos.some((v) => v.status === "uploaded" || v.status === "error") && (
+      {!batchProgress?.isRunning && videos.some((v) => v.status === "uploaded" || v.status === "error" || v.status === "transcribing") && (
         <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-5 py-3">
           <div>
             <p className="text-sm font-medium text-amber-800">
-              {videos.filter((v) => v.status === "uploaded" || v.status === "error").length}件の動画が書き起こし待ちです
+              {videos.filter((v) => v.status === "uploaded" || v.status === "error" || v.status === "transcribing").length}件の動画が書き起こし待ちです
             </p>
             <p className="text-xs text-amber-600 mt-0.5">
               複数のAPIキーが設定されている場合、並列処理で高速に書き起こします
@@ -396,34 +409,30 @@ export default function VideosPage() {
             />
           </div>
           {/* Tag filter chips */}
-          {(() => {
-            const allTags = Array.from(new Set(videos.flatMap((v) => v.tags ?? [])));
-            if (allTags.length === 0) return null;
-            return (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-medium text-gray-500">タグ:</span>
+          {managedTags.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-gray-500">タグ:</span>
+              <button
+                onClick={() => setTagFilter("")}
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                  tagFilter === "" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                全て
+              </button>
+              {managedTags.map((tag) => (
                 <button
-                  onClick={() => setTagFilter("")}
+                  key={tag}
+                  onClick={() => setTagFilter(tag === tagFilter ? "" : tag)}
                   className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                    tagFilter === "" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    tagFilter === tag ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
-                  全て
+                  {tag}
                 </button>
-                {allTags.sort().map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => setTagFilter(tag === tagFilter ? "" : tag)}
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                      tagFilter === tag ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -501,18 +510,14 @@ export default function VideosPage() {
                 )}
 
                 {/* Tags */}
-                {(video.tags ?? []).length > 0 && (
-                  <div className="mb-3 flex flex-wrap gap-1">
-                    {(video.tags ?? []).map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs text-blue-600"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="mb-3">
+                  <TagMultiSelect
+                    availableTags={managedTags}
+                    selectedTags={video.tags ?? []}
+                    onChange={(tags) => handleVideoTagsChange(video.id, tags)}
+                    compact
+                  />
+                </div>
 
                 {/* Status badge */}
                 <div className="mb-3">

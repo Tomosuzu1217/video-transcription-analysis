@@ -3,9 +3,11 @@ import { useParams, Link } from "react-router-dom";
 import { getVideo, getVideoStreamUrl, renameVideo, updateVideoRanking, updateVideoTags, archiveVideo } from "../api/videos";
 import { getTranscriptionStatus, retryTranscription, getQueueStatus, updateTranscriptionSegment, type QueueStatus } from "../api/transcriptions";
 import { createConversion, getConversions, updateConversion, deleteConversion } from "../api/conversions";
+import { getManagedTags } from "../api/settings";
 import { exportConversionCSV } from "../utils/csv";
 import Toast, { useToast } from "../components/Toast";
 import StoryboardView from "../components/StoryboardView";
+import TagMultiSelect from "../components/TagMultiSelect";
 import type { Video, TranscriptionStatus, TranscriptionSegment, Conversion } from "../types";
 
 function formatTimestamp(seconds: number): string {
@@ -98,7 +100,7 @@ export default function VideoDetailPage() {
   const [savingSegment, setSavingSegment] = useState(false);
 
   // Tag state
-  const [newTag, setNewTag] = useState("");
+  const [managedTags, setManagedTags] = useState<string[]>([]);
 
   // Ranking state
   const [editingRanking, setEditingRanking] = useState(false);
@@ -184,6 +186,7 @@ export default function VideoDetailPage() {
     fetchTranscription();
     fetchConversions();
     getVideoStreamUrl(videoId).then((url) => setVideoSrc(url)).catch(() => {});
+    getManagedTags().then(setManagedTags).catch(() => {});
   }, [fetchVideo, fetchTranscription, fetchConversions, videoId]);
 
   // Poll transcription status every 5 seconds while pending or transcribing
@@ -285,26 +288,13 @@ export default function VideoDetailPage() {
     }
   };
 
-  // Tag handlers
-  const handleAddTag = async () => {
-    const tag = newTag.trim();
-    if (!tag || !video) return;
-    if ((video.tags ?? []).includes(tag)) { showToast("既に追加済みのタグです", "error"); return; }
-    try {
-      const updated = await updateVideoTags(videoId, [...(video.tags ?? []), tag]);
-      setVideo(updated);
-      setNewTag("");
-      showToast("タグを追加しました", "success");
-    } catch { showToast("タグの追加に失敗しました", "error"); }
-  };
-
-  const handleRemoveTag = async (tag: string) => {
+  // Tag handler
+  const handleTagsChange = async (tags: string[]) => {
     if (!video) return;
     try {
-      const updated = await updateVideoTags(videoId, (video.tags ?? []).filter((t) => t !== tag));
+      const updated = await updateVideoTags(videoId, tags);
       setVideo(updated);
-      showToast("タグを削除しました", "success");
-    } catch { showToast("タグの削除に失敗しました", "error"); }
+    } catch { showToast("タグの更新に失敗しました", "error"); }
   };
 
   // Conversion handlers
@@ -513,42 +503,11 @@ export default function VideoDetailPage() {
       </div>
 
       {/* Tags */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {(video.tags ?? []).map((tag) => (
-          <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-            {tag}
-            <button
-              onClick={() => handleRemoveTag(tag)}
-              className="rounded-full p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-            >
-              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </span>
-        ))}
-        <form
-          onSubmit={(e) => { e.preventDefault(); handleAddTag(); }}
-          className="inline-flex items-center gap-1"
-        >
-          <input
-            type="text"
-            value={newTag}
-            onChange={(e) => setNewTag(e.target.value)}
-            placeholder="タグを追加..."
-            className="rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2.5 py-0.5 text-xs text-gray-700 dark:text-gray-200 placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none w-28"
-          />
-          <button
-            type="submit"
-            className="rounded-full bg-gray-100 dark:bg-gray-700 p-1 text-gray-500 dark:text-gray-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-600 transition-colors"
-            title="タグ追加"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </form>
-      </div>
+      <TagMultiSelect
+        availableTags={managedTags}
+        selectedTags={video.tags ?? []}
+        onChange={handleTagsChange}
+      />
 
       {/* Two-column layout: Video (left) + Transcription (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ height: 'calc(100vh - 180px)' }}>

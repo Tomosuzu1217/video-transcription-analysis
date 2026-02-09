@@ -1,8 +1,9 @@
 import { getAll, put, generateId, STORES } from "../services/db";
 import { callGeminiJson } from "../services/gemini";
 import { analyzeSegmentEmotions, calculateEmotionVolatility, detectPersuasionTechniques } from "../services/nlp";
-import { AD_PLATFORMS } from "../types";
-import type { DashboardData, VideoRecord, TranscriptionRecord, ConversionRecord, AnalysisRecord, CrossPlatformAnalysisResult } from "../types";
+import { getManagedTags } from "./settings";
+import { supabase } from "../services/supabase";
+import type { DashboardData, VideoRecord, TranscriptionRecord, ConversionRecord, AnalysisRecord, CrossPlatformAnalysisResult, ABDeepComparisonResult, RankingPlatformInsightResult } from "../types";
 
 async function loadVideosData(): Promise<Array<{
   name: string;
@@ -59,9 +60,15 @@ async function saveAnalysis(analysisType: string, scope: string, result: any, mo
   });
 }
 
-export async function runKeywordAnalysis(): Promise<any> {
-  const videos = await loadVideosData();
-  if (videos.length === 0) return { keywords: [], video_count: 0 };
+export async function runKeywordAnalysis(platformTag?: string): Promise<any> {
+  let videos = await loadVideosData();
+  if (platformTag) {
+    const allVideoRecords = await getAll<VideoRecord>(STORES.VIDEOS);
+    const tagMap = new Map<number, string[]>();
+    for (const v of allVideoRecords) tagMap.set(v.id, (v.tags ?? []) as string[]);
+    videos = videos.filter((v) => (tagMap.get(v.videoId) ?? []).includes(platformTag));
+  }
+  if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。先に動画を書き起こしてください。");
 
   const videoTexts = videos.map((v) => `【${v.name}】\n${v.transcript}`).join("\n\n---\n\n");
 
@@ -80,7 +87,8 @@ ${videoTexts}
 重要: 必ず有効なJSONのみを返してください。`;
 
   const result = await callGeminiJson(prompt);
-  await saveAnalysis("keyword_frequency", "cross_video", result);
+  const scope = platformTag ? `keyword_frequency:${platformTag}` : "keyword_frequency:all";
+  await saveAnalysis("keyword_frequency", scope, result);
   return result;
 }
 
@@ -258,7 +266,7 @@ export async function runPsychologicalContentAnalysis(customPrompt?: string): Pr
     : "";
 
   const prompt = `あなたは心理学、行動経済学、ストーリーテリングの専門家であり、動画広告のコンバージョン最適化に精通しています。
-Dラボ（メンタリストDaiGo）のメソッドに基づき、以下の動画コンテンツを3つの軸で詳細に分析してください。
+心理学的分析手法に基づき、以下の動画コンテンツを3つの軸で詳細に分析してください。
 
 分析の目的: ネット広告の動画企画において、リンクからの登録（コンバージョン）を促す上で最も効果的な動画コンテンツの要素を特定すること。
 
@@ -398,7 +406,7 @@ ${customInstruction}
   return result;
 }
 
-export async function runPlatformAnalysis(): Promise<CrossPlatformAnalysisResult> {
+export async function runPlatformAnalysis(managedTags?: string[]): Promise<CrossPlatformAnalysisResult> {
   const videos = await getAll<VideoRecord>(STORES.VIDEOS);
   const transcriptions = await getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS);
   const conversions = await getAll<ConversionRecord>(STORES.CONVERSIONS);
@@ -413,7 +421,8 @@ export async function runPlatformAnalysis(): Promise<CrossPlatformAnalysisResult
     conversionsByVideo.get(c.video_id)![c.metric_name] = c.metric_value;
   }
 
-  const platformSet = new Set(AD_PLATFORMS as readonly string[]);
+  const tags = managedTags ?? await getManagedTags();
+  const platformSet = new Set(tags);
   const platformGroups = new Map<string, Array<{ name: string; transcript: string; conversions: Record<string, number>; duration: number | null }>>();
 
   for (const v of videos) {
@@ -496,20 +505,228 @@ ${platformSections}
   return result as CrossPlatformAnalysisResult;
 }
 
-export async function getAnalysisResults(type?: string): Promise<any[]> {
-  let results = await getAll<AnalysisRecord>(STORES.ANALYSES);
-  if (type) {
-    results = results.filter((r) => r.analysis_type === type);
+export async function runABDeepComparison(videoIdA: number, videoIdB: number): Promise<ABDeepComparisonResult> {
+  const allVideos = await loadVideosData();
+  const videoA = allVideos.find((v) => v.videoId === videoIdA);
+  const videoB = allVideos.find((v) => v.videoId === videoIdB);
+  if (!videoA || !videoB) throw new Error("選択した動画の書き起こしデータが見つかりません。");
+
+  // NLP pre-analysis for both
+  const buildNlpContext = (v: typeof videoA) => {
+    const emotions = analyzeSegmentEmotions(v.segments);
+    const volatility = calculateEmotionVolatility(emotions);
+    const persuasion = detectPersuasionTechniques(v.transcript);
+    const techList = persuasion.map((t) => `${t.technique}(${t.matches.slice(0, 3).join(",")})`).join(", ") || "検出なし";
+    return `ボラティリティ: 標準偏差${volatility.volatility_std.toFixed(2)}, 方向転換${volatility.direction_changes}回, 最大振幅${volatility.max_amplitude.toFixed(2)} / 説得技法: ${techList}`;
+  };
+
+  const buildVideoBlock = (v: typeof videoA, label: string) => {
+    const convStr = Object.keys(v.conversions).length > 0
+      ? Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ")
+      : "データなし";
+    const rankStr = v.ranking ? `ランキング${v.ranking}位` : "ランキング未設定";
+    return `### 動画${label}: ${v.name}（${rankStr}）\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}\nNLP分析: ${buildNlpContext(v)}`;
+  };
+
+  const prompt = `あなたは心理学・マーケティング・ストーリーテリングの専門家です。
+以下の2つの動画CMを詳細に比較分析してください。各動画のターゲットペルソナ（年齢層・性別・興味・ペインポイント）を推定し、訴求力・構成・感情設計の観点から優劣を判定してください。
+
+${buildVideoBlock(videoA, "A")}
+
+---
+
+${buildVideoBlock(videoB, "B")}
+
+以下のJSON形式で返してください:
+{
+  "summary": "比較分析の総合サマリー（200-300文字）",
+  "video_a_profile": {
+    "name": "${videoA.name}",
+    "strengths": ["強み1", "強み2", "強み3"],
+    "weaknesses": ["弱み1", "弱み2"],
+    "target_persona": {"age_range": "25-34歳", "gender": "男女", "interests": ["興味1"], "pain_points": ["悩み1"]},
+    "persuasion_score": 7.5,
+    "storytelling_score": 8.0
+  },
+  "video_b_profile": {
+    "name": "${videoB.name}",
+    "strengths": ["強み1", "強み2"],
+    "weaknesses": ["弱み1", "弱み2"],
+    "target_persona": {"age_range": "18-24歳", "gender": "女性", "interests": ["興味1"], "pain_points": ["悩み1"]},
+    "persuasion_score": 6.0,
+    "storytelling_score": 7.0
+  },
+  "key_differences": [
+    {"aspect": "比較観点", "video_a": "Aの特徴", "video_b": "Bの特徴", "winner": "A or B or 引き分け", "reason": "判定理由"}
+  ],
+  "persona_fit_analysis": {
+    "better_for_young": "A or B",
+    "better_for_older": "A or B",
+    "better_for_action": "A or B",
+    "explanation": "ペルソナ適合の詳細説明"
+  },
+  "recommendations": [
+    {"target": "A or B or 両方", "suggestion": "改善提案", "priority": "high/medium/low"}
+  ]
+}
+
+重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。スコアは1.0〜10.0の範囲で。
+比較観点は最低5つ以上（冒頭の掴み、ストーリー構成、感情設計、CTA、ペルソナ適合度、言語表現など）含めてください。`;
+
+  const result = await callGeminiJson(prompt);
+  await saveAnalysis("ab_deep_comparison", `${videoA.name} vs ${videoB.name}`, result, "gemini");
+  return result as ABDeepComparisonResult;
+}
+
+export async function runRankingPlatformInsight(managedTags?: string[]): Promise<RankingPlatformInsightResult> {
+  const allVideos = await loadVideosData();
+  if (allVideos.length === 0) throw new Error("書き起こし済みの動画がありません。");
+
+  const tags = managedTags ?? await getManagedTags();
+  const allVideoRecords = await getAll<VideoRecord>(STORES.VIDEOS);
+  const videoTagMap = new Map<number, string[]>();
+  for (const v of allVideoRecords) videoTagMap.set(v.id, (v.tags ?? []) as string[]);
+
+  // Build platform × ranking grouping
+  const platformGroups = new Map<string, { top: typeof allVideos; low: typeof allVideos }>();
+  for (const tag of tags) platformGroups.set(tag, { top: [], low: [] });
+
+  for (const v of allVideos) {
+    const vTags = videoTagMap.get(v.videoId) ?? [];
+    for (const tag of vTags) {
+      if (!platformGroups.has(tag)) continue;
+      const group = platformGroups.get(tag)!;
+      if (v.ranking !== null && v.ranking <= 3) {
+        group.top.push(v);
+      } else {
+        group.low.push(v);
+      }
+    }
   }
-  results.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
-  return results.map((data) => ({
-    id: data.id,
-    analysis_type: data.analysis_type,
-    scope: data.scope,
-    video_id: data.video_id,
-    result: data.result_json ?? {},
-    gemini_model_used: data.gemini_model_used,
-    created_at: data.created_at,
+
+  // Filter out platforms with no videos
+  const activePlatforms = Array.from(platformGroups.entries()).filter(([, g]) => g.top.length + g.low.length > 0);
+  if (activePlatforms.length === 0) {
+    throw new Error("媒体タグが付いた書き起こし済み動画がありません。動画にタグを追加してください。");
+  }
+
+  // Build NLP summaries
+  const nlpForVideo = (v: typeof allVideos[0]) => {
+    const emotions = analyzeSegmentEmotions(v.segments);
+    const volatility = calculateEmotionVolatility(emotions);
+    const persuasion = detectPersuasionTechniques(v.transcript);
+    const techList = persuasion.map((t) => t.technique).join(", ") || "なし";
+    return `ボラティリティ${volatility.volatility_std.toFixed(2)} / 技法:${techList}`;
+  };
+
+  const platformSections = activePlatforms.map(([platform, { top, low }]) => {
+    const topBlock = top.length > 0
+      ? top.map((v) => {
+          const convStr = Object.entries(v.conversions).map(([k, val]) => `${k}:${val}`).join(", ") || "なし";
+          return `    [${v.ranking}位] ${v.name}\n      書き起こし: ${v.transcript.slice(0, 300)}...\n      CV: ${convStr}\n      NLP: ${nlpForVideo(v)}`;
+        }).join("\n")
+      : "    （上位動画なし）";
+
+    const lowBlock = low.length > 0
+      ? low.slice(0, 3).map((v) => {
+          const convStr = Object.entries(v.conversions).map(([k, val]) => `${k}:${val}`).join(", ") || "なし";
+          const rankStr = v.ranking ? `${v.ranking}位` : "未設定";
+          return `    [${rankStr}] ${v.name}\n      書き起こし: ${v.transcript.slice(0, 300)}...\n      CV: ${convStr}\n      NLP: ${nlpForVideo(v)}`;
+        }).join("\n")
+      : "    （比較対象なし）";
+
+    return `### ${platform}（上位${top.length}本 / その他${low.length}本）\n  ■ ランキング上位:\n${topBlock}\n  ■ その他:\n${lowBlock}`;
+  }).join("\n\n");
+
+  const prompt = `あなたはマーケティング戦略・消費者心理・広告クリエイティブの専門家です。
+以下のデータは、ネット広告動画のランキング（人が評価した優劣順位）と配信先SNS媒体別のグルーピングです。
+
+## 分析の目的
+1. 各媒体において、ランキング上位の動画がなぜヒットしているのかを特定する
+2. 各媒体のターゲットペルソナ（年齢・性別・ライフスタイル・購入トリガー）を推定する
+3. 上位と下位の決定的な違い（ヒット要因）を抽出する
+4. 媒体別の具体的なコンテンツ戦略を提案する
+
+## データ
+${platformSections}
+
+以下のJSON形式で返してください:
+{
+  "overall_summary": "全体分析サマリー（300-500文字）",
+  "platform_ranking_matrix": [
+    {
+      "platform": "媒体名",
+      "top_videos": [{"name": "動画名", "ranking": 1, "hit_factors": ["ヒット要因1", "要因2"]}],
+      "low_videos": [{"name": "動画名", "ranking": null, "weak_points": ["弱点1"]}],
+      "platform_success_formula": "この媒体での成功方程式"
+    }
+  ],
+  "persona_profiles": [
+    {
+      "platform": "媒体名",
+      "primary_persona": {
+        "age_range": "25-34歳",
+        "gender": "男性中心",
+        "lifestyle": "ライフスタイル記述",
+        "media_consumption": "メディア接触パターン",
+        "purchase_triggers": ["トリガー1", "トリガー2"],
+        "content_preferences": ["好むコンテンツ形式1"]
+      },
+      "secondary_persona": {"age_range": "35-44歳", "gender": "女性", "lifestyle": "記述"} or null
+    }
+  ],
+  "hit_factor_analysis": [
+    {
+      "factor": "要因名",
+      "importance": "critical/high/medium",
+      "top_video_usage": "上位動画での使われ方",
+      "low_video_gap": "下位動画に足りないもの",
+      "platforms_where_effective": ["YouTube", "TikTok"]
+    }
+  ],
+  "cross_platform_persona_insights": [
+    {"insight": "媒体横断の気づき", "actionable": "具体的アクション"}
+  ],
+  "content_strategy_by_platform": [
+    {
+      "platform": "媒体名",
+      "ideal_length": "推奨尺",
+      "hook_strategy": "冒頭のフック戦略",
+      "persona_messaging": "ペルソナに刺さるメッセージング戦略",
+      "cta_approach": "CTA設計",
+      "sample_script_outline": "台本概要（100-200文字）"
+    }
+  ]
+}
+
+重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。
+hit_factor_analysisは最低5つ以上の要因を含めてください。
+ペルソナは具体的に（「20代女性」ではなく「22-28歳、都市在住、SNSでトレンドをチェック、美容・健康に関心が高い」のように）記述してください。`;
+
+  const result = await callGeminiJson(prompt);
+  await saveAnalysis("ranking_platform_insight", "cross_platform_ranking", result, "gemini");
+  return result as RankingPlatformInsightResult;
+}
+
+export async function getAnalysisResults(type?: string): Promise<any[]> {
+  let query = supabase
+    .from("analyses")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (type) {
+    query = query.eq("analysis_type", type);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map((d: any) => ({
+    id: d.id,
+    analysis_type: d.analysis_type,
+    scope: d.scope,
+    video_id: d.video_id,
+    result: d.result_json ?? {},
+    gemini_model_used: d.gemini_model_used,
+    created_at: d.created_at,
   }));
 }
 
@@ -546,20 +763,27 @@ export async function getDashboard(): Promise<DashboardData> {
   const totalDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) * 10) / 10 : null;
 
   let topKeywords: any[] = [];
-  const allAnalyses = await getAll<AnalysisRecord>(STORES.ANALYSES);
-  const kwAnalyses = allAnalyses
-    .filter((a) => a.analysis_type === "keyword_frequency")
-    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
-  if (kwAnalyses.length > 0) {
-    topKeywords = (kwAnalyses[0].result_json?.keywords ?? []).slice(0, 20);
+  const { data: kwData } = await supabase
+    .from("analyses")
+    .select("result_json")
+    .eq("analysis_type", "keyword_frequency")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (kwData) {
+    topKeywords = (kwData.result_json?.keywords ?? []).slice(0, 20);
   }
 
   let latestAi = null;
-  const aiAnalyses = allAnalyses
-    .filter((a) => a.analysis_type === "ai_recommendation")
-    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
-  if (aiAnalyses.length > 0) {
-    latestAi = aiAnalyses[0].result_json;
+  const { data: aiData } = await supabase
+    .from("analyses")
+    .select("result_json")
+    .eq("analysis_type", "ai_recommendation")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (aiData) {
+    latestAi = aiData.result_json;
   }
 
   return {
@@ -573,5 +797,21 @@ export async function getDashboard(): Promise<DashboardData> {
     top_keywords: topKeywords,
     video_summaries: videoSummaries,
     latest_ai_recommendations: latestAi,
+  };
+}
+
+export async function getAnalysisHistory(
+  limit = 20,
+  offset = 0,
+): Promise<{ results: AnalysisRecord[]; total: number }> {
+  const { data, error, count } = await supabase
+    .from("analyses")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+  if (error) throw error;
+  return {
+    results: (data ?? []) as AnalysisRecord[],
+    total: count ?? 0,
   };
 }

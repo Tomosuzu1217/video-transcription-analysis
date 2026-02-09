@@ -408,6 +408,7 @@ export interface SettingsRecord {
   key: string;
   api_keys: string[];
   selected_model: string;
+  managed_tags: string[];
 }
 
 // ---- Batch Transcription Types ----
@@ -425,6 +426,9 @@ export interface VideoProgress {
   videoId: number;
   filename: string;
   stage: VideoTranscriptionStage;
+  detail?: string;
+  fileSizeBytes?: number;
+  durationSeconds?: number;
   error?: string;
   startedAt?: number;
   completedAt?: number;
@@ -471,4 +475,91 @@ export interface DashboardData {
     conversions: Record<string, number>;
   }>;
   latest_ai_recommendations: AiAnalysisResult | null;
+}
+
+// ---- A/B Deep Comparison Types ----
+
+export interface ABDeepComparisonResult {
+  summary: string;
+  video_a_profile: {
+    name: string;
+    strengths: string[];
+    weaknesses: string[];
+    target_persona: { age_range: string; gender: string; interests: string[]; pain_points: string[] };
+    persuasion_score: number;
+    storytelling_score: number;
+  };
+  video_b_profile: {
+    name: string;
+    strengths: string[];
+    weaknesses: string[];
+    target_persona: { age_range: string; gender: string; interests: string[]; pain_points: string[] };
+    persuasion_score: number;
+    storytelling_score: number;
+  };
+  key_differences: Array<{
+    aspect: string;
+    video_a: string;
+    video_b: string;
+    winner: "A" | "B" | "引き分け";
+    reason: string;
+  }>;
+  persona_fit_analysis: {
+    better_for_young: "A" | "B";
+    better_for_older: "A" | "B";
+    better_for_action: "A" | "B";
+    explanation: string;
+  };
+  recommendations: Array<{
+    target: "A" | "B" | "両方";
+    suggestion: string;
+    priority: string;
+  }>;
+}
+
+// ---- Ranking × Platform Insight Types ----
+
+export interface RankingPlatformInsightResult {
+  overall_summary: string;
+  platform_ranking_matrix: Array<{
+    platform: string;
+    top_videos: Array<{ name: string; ranking: number; hit_factors: string[] }>;
+    low_videos: Array<{ name: string; ranking: number | null; weak_points: string[] }>;
+    platform_success_formula: string;
+  }>;
+  persona_profiles: Array<{
+    platform: string;
+    primary_persona: {
+      age_range: string;
+      gender: string;
+      lifestyle: string;
+      media_consumption: string;
+      purchase_triggers: string[];
+      content_preferences: string[];
+    };
+    secondary_persona: {
+      age_range: string;
+      gender: string;
+      lifestyle: string;
+    } | null;
+  }>;
+  hit_factor_analysis: Array<{
+    factor: string;
+    importance: "critical" | "high" | "medium";
+    top_video_usage: string;
+    low_video_gap: string;
+    platforms_where_effective: string[];
+  }>;
+  cross_platform_persona_insights: Array<{
+    insight: string;
+    actionable: string;
+  }>;
+  content_strategy_by_platform: Array<{
+    platform: string;
+    ideal_length: string;
+    hook_strategy: string;
+    persona_messaging: string;
+    cta_approach: string;
+    sample_script_outline: string;
+  }>;
 }

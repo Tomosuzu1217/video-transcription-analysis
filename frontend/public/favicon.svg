@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded rectangle background -->
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <!-- Film strip left -->
+  <rect x="3" y="4" width="3" height="3" rx="0.5" fill="rgba(255,255,255,0.4)"/>
+  <rect x="3" y="9" width="3" height="3" rx="0.5" fill="rgba(255,255,255,0.4)"/>
+  <rect x="3" y="14" width="3" height="3" rx="0.5" fill="rgba(255,255,255,0.4)"/>
+  <rect x="3" y="19" width="3" height="3" rx="0.5" fill="rgba(255,255,255,0.4)"/>
+  <rect x="3" y="24" width="3" height="3" rx="0.5" fill="rgba(255,255,255,0.4)"/>
+  <!-- Play triangle -->
+  <polygon points="13,9 13,23 23,16" fill="white"/>
+  <!-- Bar chart (analysis) -->
+  <rect x="25" y="18" width="3" height="9" rx="0.5" fill="rgba(255,255,255,0.85)"/>
+  <rect x="25" y="13" width="3" height="2" rx="0.5" fill="rgba(255,255,255,0.5)"/>
+  <rect x="21" y="22" width="3" height="5" rx="0.5" fill="rgba(255,255,255,0.6)"/>
+</svg>

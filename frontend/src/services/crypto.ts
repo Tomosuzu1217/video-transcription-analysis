@@ -7,6 +7,9 @@
 const PASSWORD_HASH = import.meta.env.VITE_APP_PASSWORD_HASH as string;
 const ENC_PREFIX = "enc:";
 
+/** When true, encryption is unavailable — store plain text */
+const ENCRYPTION_DISABLED = !PASSWORD_HASH;
+
 let _aesKey: CryptoKey | null = null;
 
 async function getAesKey(): Promise<CryptoKey> {
@@ -41,6 +44,7 @@ async function getAesKey(): Promise<CryptoKey> {
 }
 
 export async function encryptString(plaintext: string): Promise<string> {
+  if (ENCRYPTION_DISABLED) return plaintext;
   const key = await getAesKey();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(plaintext);
@@ -64,6 +68,10 @@ export async function encryptString(plaintext: string): Promise<string> {
 export async function decryptString(encrypted: string): Promise<string> {
   if (!encrypted.startsWith(ENC_PREFIX)) {
     // Not encrypted (legacy plain text) - return as-is
+    return encrypted;
+  }
+  if (ENCRYPTION_DISABLED) {
+    // Cannot decrypt without a key — return raw value
     return encrypted;
   }
 

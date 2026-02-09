@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Supabase 完全ガイド — 動画CM分析アプリにおける活用と全体像</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm 18mm;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.75;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 0;
+  }
+
+  /* ---- Cover Page ---- */
+  .cover {
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-align: center;
+    padding: 60px 40px;
+  }
+  .cover-logo {
+    width: 80px; height: 80px;
+    background: linear-gradient(135deg, #3ecf8e 0%, #1a9f5c 100%);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(62, 207, 142, 0.3);
+  }
+  .cover-logo span { font-size: 40px; color: #fff; font-weight: bold; }
+  .cover h1 {
+    font-size: 28pt;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+  .cover h2 {
+    font-size: 14pt;
+    font-weight: 400;
+    color: #666;
+    margin-bottom: 48px;
+  }
+  .cover-meta {
+    font-size: 10pt;
+    color: #999;
+    margin-top: auto;
+  }
+
+  /* ---- TOC ---- */
+  .toc {
+    page-break-after: always;
+    padding: 48px 40px;
+  }
+  .toc h2 {
+    font-size: 18pt;
+    margin-bottom: 24px;
+    padding-bottom: 8px;
+    border-bottom: 3px solid #3ecf8e;
+  }
+  .toc ol {
+    list-style: none;
+    counter-reset: toc-counter;
+  }
+  .toc > ol > li {
+    counter-increment: toc-counter;
+    margin-bottom: 6px;
+    font-size: 11pt;
+  }
+  .toc > ol > li::before {
+    content: counter(toc-counter) ".";
+    font-weight: 700;
+    color: #3ecf8e;
+    margin-right: 8px;
+    display: inline-block;
+    width: 24px;
+  }
+  .toc ol ol { margin-left: 32px; margin-top: 4px; }
+  .toc ol ol li { font-size: 10pt; color: #555; margin-bottom: 3px; }
+  .toc ol ol li::before { content: "・"; color: #aaa; }
+
+  /* ---- Content ---- */
+  .content { padding: 0 40px 40px 40px; }
+
+  h1.section-title {
+    font-size: 20pt;
+    font-weight: 800;
+    color: #1a1a1a;
+    margin-top: 48px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 3px solid #3ecf8e;
+    page-break-before: always;
+  }
+  h1.section-title:first-child { page-break-before: avoid; }
+
+  h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin-top: 28px;
+    margin-bottom: 8px;
+    padding-left: 12px;
+    border-left: 4px solid #3ecf8e;
+  }
+  h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #444;
+    margin-top: 20px;
+    margin-bottom: 6px;
+  }
+  p { margin-bottom: 10px; text-align: justify; }
+
+  /* ---- Code ---- */
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-family: "Consolas", "SFMono-Regular", monospace;
+    font-size: 9pt;
+    line-height: 1.55;
+    overflow-x: auto;
+    margin: 10px 0 14px 0;
+    page-break-inside: avoid;
+  }
+  code {
+    font-family: "Consolas", "SFMono-Regular", monospace;
+    font-size: 9.5pt;
+    background: #f0f0f0;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  pre code { background: none; padding: 0; }
+
+  .keyword { color: #d73a49; }
+  .string { color: #032f62; }
+  .comment { color: #6a737d; font-style: italic; }
+  .type { color: #6f42c1; }
+  .func { color: #005cc5; }
+
+  /* ---- Tables ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px 0;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+  th {
+    background: #3ecf8e;
+    color: #fff;
+    font-weight: 600;
+    padding: 8px 12px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #e8e8e8;
+    vertical-align: top;
+  }
+  tr:nth-child(even) { background: #f9fafb; }
+
+  /* ---- Boxes ---- */
+  .box {
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 14px 0;
+    page-break-inside: avoid;
+  }
+  .box-green { background: #f0fdf4; border-left: 4px solid #3ecf8e; }
+  .box-blue { background: #eff6ff; border-left: 4px solid #3b82f6; }
+  .box-yellow { background: #fefce8; border-left: 4px solid #eab308; }
+  .box-red { background: #fef2f2; border-left: 4px solid #ef4444; }
+  .box-gray { background: #f9fafb; border-left: 4px solid #9ca3af; }
+  .box-title {
+    font-weight: 700;
+    font-size: 10.5pt;
+    margin-bottom: 6px;
+  }
+
+  /* ---- Diagrams (ASCII) ---- */
+  .diagram {
+    background: #fafbfc;
+    border: 2px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 18px 20px;
+    font-family: "Consolas", monospace;
+    font-size: 9pt;
+    line-height: 1.5;
+    white-space: pre;
+    margin: 14px 0;
+    overflow-x: auto;
+    page-break-inside: avoid;
+  }
+
+  /* ---- Lists ---- */
+  ul, ol { margin: 6px 0 12px 24px; }
+  li { margin-bottom: 4px; }
+
+  /* ---- Step numbers ---- */
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    background: #3ecf8e;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13pt;
+    border-radius: 50%;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .step-header {
+    display: flex;
+    align-items: center;
+    margin-top: 24px;
+    margin-bottom: 8px;
+    font-size: 13pt;
+    font-weight: 700;
+  }
+
+  /* ---- Comparison ---- */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 14px 0;
+  }
+  .compare-card {
+    border-radius: 8px;
+    padding: 16px;
+    page-break-inside: avoid;
+  }
+  .compare-card h4 {
+    font-size: 11pt;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  /* ---- Footer ---- */
+  .page-footer {
+    text-align: center;
+    font-size: 8pt;
+    color: #bbb;
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+  }
+
+  /* ---- Highlights ---- */
+  .highlight { background: #fef08a; padding: 1px 4px; border-radius: 2px; }
+  strong { color: #111; }
+
+  .emoji { font-size: 14pt; margin-right: 4px; }
+
+  .indent { margin-left: 20px; }
+
+  /* avoid break in middle of sections */
+  .no-break { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ============== COVER ============== -->
+<div class="cover">
+  <div class="cover-logo"><span>S</span></div>
+  <h1>Supabase 完全ガイド</h1>
+  <h2>動画CM分析アプリにおける導入・実装・拡張の全体像</h2>
+  <div style="margin: 24px 0; color: #555; font-size: 11pt; max-width: 500px; line-height: 1.8;">
+    本ドキュメントでは、動画CM分析アプリケーションにおいて<br>
+    Supabase をなぜ・どのように導入したかを<br>
+    初学者にもわかりやすく解説します。
+  </div>
+  <div class="cover-meta">
+    作成日: 2026年2月9日<br>
+    プロジェクト: 動画CM書き起こし・分析アプリ
+  </div>
+</div>
+
+<!-- ============== TOC ============== -->
+<div class="toc">
+  <h2>目次</h2>
+  <ol>
+    <li>Supabase とは何か
+      <ol>
+        <li>誕生の背景と思想</li>
+        <li>主要コンポーネントの全体像</li>
+        <li>Firebase との違い</li>
+      </ol>
+    </li>
+    <li>なぜ Firebase だけでは完結しなかったのか
+      <ol>
+        <li>Firebase Hosting の役割と限界</li>
+        <li>BaaS（Backend as a Service）の必要性</li>
+        <li>Supabase を選んだ理由</li>
+      </ol>
+    </li>
+    <li>Supabase の主要機能 — 詳細解説
+      <ol>
+        <li>PostgreSQL データベース</li>
+        <li>Storage（ファイルストレージ）</li>
+        <li>Authentication（認証）</li>
+        <li>Realtime（リアルタイム通信）</li>
+        <li>Edge Functions（サーバーレス関数）</li>
+        <li>Row Level Security（RLS）</li>
+        <li>Auto-generated API</li>
+      </ol>
+    </li>
+    <li>本プロジェクトでの実装手順 — Step by Step
+      <ol>
+        <li>プロジェクト作成と接続設定</li>
+        <li>データベース設計（全9テーブル）</li>
+        <li>RLS ポリシー設定</li>
+        <li>Storage バケット設定</li>
+        <li>フロントエンド接続コード</li>
+        <li>CRUD 操作の抽象化</li>
+        <li>Realtime の活用</li>
+      </ol>
+    </li>
+    <li>アーキテクチャ全体図 — 3サービスの連携</li>
+    <li>データの流れ — 主要ユースケース</li>
+    <li>セキュリティ設計</li>
+    <li>無料枠の詳細と運用戦略</li>
+    <li>拡張可能性 — Supabase でできること</li>
+    <li>まとめ</li>
+  </ol>
+</div>
+
+<!-- ============== CHAPTER 1 ============== -->
+<div class="content">
+
+<h1 class="section-title">1. Supabase とは何か</h1>
+
+<h2>1.1 誕生の背景と思想</h2>
+
+<p>
+<strong>Supabase（スーパーベース）</strong>は、2020年にシンガポールで設立されたオープンソースの BaaS（Backend as a Service）プラットフォームです。Google が提供する Firebase の代替として生まれましたが、根本的な設計思想が異なります。
+</p>
+
+<div class="box box-green">
+  <div class="box-title">Supabase の設計思想</div>
+  <ul>
+    <li><strong>オープンソース:</strong> すべてのコンポーネントがオープンソース。ベンダーロックインなし</li>
+    <li><strong>PostgreSQL 中心:</strong> 世界で最も信頼されるリレーショナルDBを基盤にしている</li>
+    <li><strong>既存ツールの活用:</strong> 新しい独自技術ではなく、実績のあるOSSを組み合わせている</li>
+    <li><strong>標準SQL:</strong> 独自クエリ言語ではなく、業界標準のSQLがそのまま使える</li>
+  </ul>
+</div>
+
+<h2>1.2 主要コンポーネントの全体像</h2>
+
+<p>Supabase は単一の製品ではなく、複数のオープンソースツールを統合したプラットフォームです。</p>
+
+<div class="diagram">┌─────────────────────────────────────────────────────────────────┐
+│                     Supabase プラットフォーム                       │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐  │
+│  │  PostgreSQL   │  │   GoTrue     │  │     PostgREST         │  │
+│  │  データベース  │  │   認証       │  │   自動REST API生成     │  │
+│  │              │  │              │  │                       │  │
+│  │  テーブル     │  │  メール認証   │  │  テーブル → API       │  │
+│  │  ビュー      │  │  OAuth       │  │  自動エンドポイント    │  │
+│  │  関数        │  │  JWT         │  │                       │  │
+│  └──────┬───────┘  └──────────────┘  └───────────────────────┘  │
+│         │                                                       │
+│  ┌──────┴───────┐  ┌──────────────┐  ┌───────────────────────┐  │
+│  │   Realtime   │  │  Storage     │  │   Edge Functions      │  │
+│  │  リアルタイム │  │  ファイル保管 │  │  サーバーレス関数      │  │
+│  │              │  │              │  │                       │  │
+│  │  WebSocket   │  │  S3互換      │  │  Deno Runtime         │  │
+│  │  変更通知    │  │  CDN配信     │  │  TypeScript対応       │  │
+│  └──────────────┘  └──────────────┘  └───────────────────────┘  │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │  Row Level Security (RLS) — 全コンポーネント共通セキュリティ  │  │
+│  └────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘</div>
+
+<h2>1.3 Firebase との違い</h2>
+
+<table>
+  <tr>
+    <th>比較項目</th>
+    <th>Firebase</th>
+    <th>Supabase</th>
+  </tr>
+  <tr>
+    <td><strong>提供元</strong></td>
+    <td>Google（クローズドソース）</td>
+    <td>Supabase Inc.（オープンソース）</td>
+  </tr>
+  <tr>
+    <td><strong>データベース</strong></td>
+    <td>Firestore（NoSQL / ドキュメント型）</td>
+    <td>PostgreSQL（リレーショナル / SQL）</td>
+  </tr>
+  <tr>
+    <td><strong>クエリ言語</strong></td>
+    <td>独自API（制限あり）</td>
+    <td>標準SQL（制限なし）</td>
+  </tr>
+  <tr>
+    <td><strong>テーブル結合</strong></td>
+    <td>できない（非正規化が必要）</td>
+    <td>JOIN で自由に結合可能</td>
+  </tr>
+  <tr>
+    <td><strong>データ整合性</strong></td>
+    <td>アプリ側で担保</td>
+    <td>外部キー・制約でDB側が担保</td>
+  </tr>
+  <tr>
+    <td><strong>セルフホスト</strong></td>
+    <td>不可能</td>
+    <td>Docker で自社サーバーに設置可能</td>
+  </tr>
+  <tr>
+    <td><strong>ベンダーロックイン</strong></td>
+    <td>高い（Google依存）</td>
+    <td>低い（標準的な技術の組み合わせ）</td>
+  </tr>
+  <tr>
+    <td><strong>Hosting</strong></td>
+    <td>Firebase Hosting あり</td>
+    <td>なし（別途必要）</td>
+  </tr>
+  <tr>
+    <td><strong>無料枠 DB</strong></td>
+    <td>Firestore: 1GiB</td>
+    <td>PostgreSQL: 500MB</td>
+  </tr>
+  <tr>
+    <td><strong>無料枠 Storage</strong></td>
+    <td>Cloud Storage: 5GB</td>
+    <td>1GB</td>
+  </tr>
+</table>
+
+<div class="box box-yellow">
+  <div class="box-title">なぜ両方を使うのか？</div>
+  <p>Firebase は <strong>Hosting（静的ファイル配信）</strong> が非常に優秀で無料枠も大きいですが、データベースの Firestore は複雑なクエリに向きません。Supabase は逆に <strong>データベースとストレージ</strong> が強力ですが Hosting 機能がありません。それぞれの得意分野を組み合わせることで、<strong>すべて無料枠内で本格的なアプリ</strong> を構築しています。</p>
+</div>
+
+
+<!-- ============== CHAPTER 2 ============== -->
+<h1 class="section-title">2. なぜ Firebase だけでは完結しなかったのか</h1>
+
+<h2>2.1 Firebase Hosting の役割と限界</h2>
+
+<p>
+Firebase Hosting は、ビルドした HTML / CSS / JavaScript ファイルを世界中の CDN（Content Delivery Network）に配置し、ユーザーに高速に配信するサービスです。いわば<strong>「Webサイトの看板を掲げる場所」</strong>です。
+</p>
+
+<div class="compare-grid">
+  <div class="compare-card" style="background: #f0fdf4;">
+    <h4 style="color: #16a34a;">Firebase Hosting ができること</h4>
+    <ul>
+      <li>HTML/CSS/JS を世界中に高速配信</li>
+      <li>HTTPS（暗号化通信）を自動で設定</li>
+      <li>カスタムドメインの設定</li>
+      <li>デプロイが <code>firebase deploy</code> 一発</li>
+      <li>月10GBまで無料のデータ転送</li>
+    </ul>
+  </div>
+  <div class="compare-card" style="background: #fef2f2;">
+    <h4 style="color: #dc2626;">Firebase Hosting ができないこと</h4>
+    <ul>
+      <li>データの保存・検索・更新</li>
+      <li>ファイル（動画・画像）の保管</li>
+      <li>ユーザー認証の管理</li>
+      <li>サーバー側のプログラム実行</li>
+      <li>複数ユーザー間のデータ共有</li>
+    </ul>
+  </div>
+</div>
+
+<h2>2.2 BaaS（Backend as a Service）の必要性</h2>
+
+<p>Web アプリケーションは通常、<strong>フロントエンド</strong>（画面表示）と<strong>バックエンド</strong>（データ管理）の2層で構成されます。</p>
+
+<div class="diagram">通常のWebアプリの構成:
+
+  ユーザー ──→ フロントエンド ──→ バックエンド ──→ データベース
+  (ブラウザ)    (HTML/CSS/JS)     (サーバー)      (データ保管)
+
+本プロジェクトでの構成:
+
+  ユーザー ──→ Firebase Hosting ──→ Supabase
+  (ブラウザ)    (フロントエンド)      (バックエンド全部)
+                                    ├── PostgreSQL (データ)
+                                    ├── Storage (動画ファイル)
+                                    └── Realtime (リアルタイム通知)</div>
+
+<p>
+従来であれば、バックエンドには自分でサーバーを用意し、Node.js や Python などでプログラムを書き、データベースをインストール・管理する必要がありました。これには専門知識が必要で、サーバーの維持費もかかります。
+</p>
+
+<p>
+<strong>BaaS（Backend as a Service）</strong>は、このバックエンド部分をクラウドサービスとして提供してくれるものです。サーバーの構築・運用をすべてサービス側が行うため、開発者はフロントエンドの開発に集中できます。
+</p>
+
+<h2>2.3 Supabase を選んだ理由</h2>
+
+<div class="box box-blue">
+  <div class="box-title">本プロジェクトの要件</div>
+  <ol>
+    <li><strong>複数人でのデータ共有:</strong> チームで同じ動画・分析データを閲覧・編集したい</li>
+    <li><strong>複雑なデータ関係:</strong> 動画 → 書き起こし → コンバージョン → 分析結果 という多段階の関連データ</li>
+    <li><strong>大容量ファイル保管:</strong> 動画ファイル（数十MB〜数百MB）を安全に保管</li>
+    <li><strong>無料で運用:</strong> 個人・小規模チームのため、コストをゼロに抑えたい</li>
+    <li><strong>将来の拡張性:</strong> ユーザー認証やAI機能の追加に対応できること</li>
+  </ol>
+</div>
+
+<p>これらすべてを満たすのが Supabase でした。特に、<strong>PostgreSQL による複雑なデータ管理</strong>と<strong>Storage によるファイル保管</strong>が両方無料枠で使えることが決定的でした。</p>
+
+<div class="box box-gray">
+  <div class="box-title">移行の経緯</div>
+  <p>本プロジェクトは以下の段階を経て現在の構成になりました:</p>
+  <ol>
+    <li><strong>Phase 1: Firebase Firestore</strong> → NoSQL のため複雑なクエリに限界</li>
+    <li><strong>Phase 2: ブラウザ内 IndexedDB</strong> → オフラインで動くが、複数人で共有できない</li>
+    <li><strong>Phase 3: Supabase PostgreSQL</strong> → すべての要件を満たす（現在の構成）</li>
+  </ol>
+</div>
+
+
+<!-- ============== CHAPTER 3 ============== -->
+<h1 class="section-title">3. Supabase の主要機能 — 詳細解説</h1>
+
+<h2>3.1 PostgreSQL データベース</h2>
+
+<h3>PostgreSQL とは</h3>
+<p>
+PostgreSQL（ポストグレスキューエル）は、1996年に最初のバージョンがリリースされた<strong>世界で最も先進的なオープンソース・リレーショナルデータベース</strong>です。30年近い歴史の中で、銀行、政府、大企業のシステムで使われてきた信頼性があります。
+</p>
+
+<h3>リレーショナルデータベースの基本概念</h3>
+
+<p>データを<strong>テーブル（表）</strong>の形で管理します。Excel のスプレッドシートに似ていますが、テーブル同士を<strong>関連付ける（リレーション）</strong>ことができます。</p>
+
+<div class="diagram">テーブルのイメージ:
+
+  videos テーブル（動画の情報）
+  ┌────┬────────────────┬───────────┬──────────┐
+  │ id │ filename       │ status    │ duration │
+  ├────┼────────────────┼───────────┼──────────┤
+  │  1 │ CM_夏セール.mp4 │ transcribed│ 30.5     │
+  │  2 │ CM_新商品.mp4   │ uploaded  │ 15.2     │
+  │  3 │ CM_キャンペーン │ archived  │ 45.0     │
+  └────┴────────────────┴───────────┴──────────┘
+         │
+         │ video_id で関連付け（外部キー）
+         ▼
+  transcriptions テーブル（書き起こし）
+  ┌────┬──────────┬────────────────────────────┐
+  │ id │ video_id │ full_text                  │
+  ├────┼──────────┼────────────────────────────┤
+  │  1 │    1     │ この夏、最大50%オフ...      │
+  │  2 │    3     │ 期間限定キャンペーン...      │
+  └────┴──────────┴────────────────────────────┘</div>
+
+<h3>SQL の基本操作</h3>
+
+<p>SQL（Structured Query Language）は、データベースを操作するための標準言語です。</p>
+
+<pre><code><span class="comment">-- データの取得（SELECT）</span>
+<span class="keyword">SELECT</span> filename, status <span class="keyword">FROM</span> videos <span class="keyword">WHERE</span> status = <span class="string">'transcribed'</span>;
+
+<span class="comment">-- データの挿入（INSERT）</span>
+<span class="keyword">INSERT INTO</span> videos (id, filename, status) <span class="keyword">VALUES</span> (4, <span class="string">'新CM.mp4'</span>, <span class="string">'uploaded'</span>);
+
+<span class="comment">-- データの更新（UPDATE）</span>
+<span class="keyword">UPDATE</span> videos <span class="keyword">SET</span> status = <span class="string">'transcribed'</span> <span class="keyword">WHERE</span> id = 2;
+
+<span class="comment">-- テーブル結合（JOIN）— 動画と書き起こしを一緒に取得</span>
+<span class="keyword">SELECT</span> v.filename, t.full_text
+<span class="keyword">FROM</span> videos v
+<span class="keyword">JOIN</span> transcriptions t <span class="keyword">ON</span> v.id = t.video_id;</code></pre>
+
+<h3>本プロジェクトで活用している PostgreSQL 機能</h3>
+
+<table>
+  <tr>
+    <th>機能</th>
+    <th>説明</th>
+    <th>活用場面</th>
+  </tr>
+  <tr>
+    <td>外部キー制約</td>
+    <td>テーブル間の参照整合性を保証</td>
+    <td>動画削除時に書き起こしも自動削除（CASCADE）</td>
+  </tr>
+  <tr>
+    <td>CHECK 制約</td>
+    <td>カラムの値を制限</td>
+    <td>status が決められた値以外に設定されるのを防止</td>
+  </tr>
+  <tr>
+    <td>JSONB 型</td>
+    <td>JSON データを効率的に保存・検索</td>
+    <td>タグ配列、サムネイル情報、セグメントデータ</td>
+  </tr>
+  <tr>
+    <td>TIMESTAMPTZ</td>
+    <td>タイムゾーン付き日時</td>
+    <td>作成日時・更新日時の自動管理</td>
+  </tr>
+  <tr>
+    <td>DEFAULT 値</td>
+    <td>挿入時の初期値</td>
+    <td><code>status = 'uploaded'</code>, <code>tags = '[]'</code> など</td>
+  </tr>
+  <tr>
+    <td>インデックス</td>
+    <td>検索の高速化</td>
+    <td>status, ranking, created_at での検索を高速化</td>
+  </tr>
+</table>
+
+
+<h2>3.2 Storage（ファイルストレージ）</h2>
+
+<p>
+Supabase Storage は、画像・動画・ドキュメントなどの<strong>大きなファイル</strong>を保管するサービスです。Amazon S3 と互換性のある API を持ち、ファイルは「バケット」と呼ばれるフォルダのような単位で管理されます。
+</p>
+
+<div class="diagram">Storage の構造:
+
+  videos バケット（非公開）
+  ├── 1/                        ← 動画ID=1 のフォルダ
+  │   ├── video.mp4             ← 元の動画ファイル
+  │   ├── thumb_0.jpg           ← 0秒時点のサムネイル
+  │   ├── thumb_5.jpg           ← 5秒時点のサムネイル
+  │   └── thumb_10.jpg          ← 10秒時点のサムネイル
+  ├── 2/
+  │   └── video.mp4
+  └── 3/
+      ├── thumb_0.jpg           ← アーカイブ後（動画削除済み）
+      ├── thumb_5.jpg
+      └── thumb_10.jpg</div>
+
+<h3>署名付き URL（Signed URL）</h3>
+
+<p>
+非公開バケットのファイルにアクセスするために、<strong>期限付きの一時的な URL</strong> を生成します。この URL を知っている人だけが、指定された時間内にファイルにアクセスできます。
+</p>
+
+<pre><code><span class="comment">// 署名付き URL の生成（4時間有効）</span>
+<span class="keyword">const</span> { data } = <span class="keyword">await</span> supabase.storage
+  .<span class="func">from</span>(<span class="string">'videos'</span>)
+  .<span class="func">createSignedUrl</span>(<span class="string">'1/video.mp4'</span>, 60 * 60 * 4);
+
+<span class="comment">// 結果: https://xxx.supabase.co/storage/v1/object/sign/videos/1/video.mp4?token=eyJ...</span>
+<span class="comment">// この URL は 4時間後に無効になる</span></code></pre>
+
+
+<h2>3.3 Authentication（認証）</h2>
+
+<p>
+Supabase Auth（内部的には GoTrue というOSSを使用）は、ユーザーの本人確認を行うサービスです。<strong>本プロジェクトでは独自のパスワードゲートを実装しているため、Supabase Auth は使用していません</strong>が、将来の拡張として活用可能です。
+</p>
+
+<h3>対応する認証方式</h3>
+<table>
+  <tr>
+    <th>認証方式</th>
+    <th>説明</th>
+  </tr>
+  <tr>
+    <td>メール & パスワード</td>
+    <td>最も基本的な方式。メール確認付き</td>
+  </tr>
+  <tr>
+    <td>マジックリンク</td>
+    <td>パスワード不要。メールに送られたリンクをクリックでログイン</td>
+  </tr>
+  <tr>
+    <td>OAuth（ソーシャルログイン）</td>
+    <td>Google, GitHub, Apple, Twitter, Facebook, LINE など20以上に対応</td>
+  </tr>
+  <tr>
+    <td>電話番号（SMS）</td>
+    <td>SMSで送られるコードで認証</td>
+  </tr>
+  <tr>
+    <td>SAML SSO</td>
+    <td>企業のシングルサインオン（有料プラン）</td>
+  </tr>
+</table>
+
+
+<h2>3.4 Realtime（リアルタイム通信）</h2>
+
+<p>
+データベースの変更をリアルタイムで全クライアントに通知する機能です。WebSocket 技術を使い、ページをリロードしなくてもデータが自動更新されます。
+</p>
+
+<div class="diagram">Realtime の動作:
+
+  ユーザーA（動画アップロード）          ユーザーB（動画一覧を見ている）
+       │                                    │
+       │  INSERT INTO videos ...             │
+       ▼                                    │
+  ┌──────────┐                              │
+  │ Supabase │ ── WebSocket 通知 ──────────→ │
+  │ Database │    "videos テーブルに          │
+  └──────────┘     新しい行が追加された"      ▼
+                                     画面が自動で更新される
+                                     （新しい動画が表示される）</div>
+
+<pre><code><span class="comment">// Realtime の購読（本プロジェクトでの実装）</span>
+supabase
+  .<span class="func">channel</span>(<span class="string">'videos-changes'</span>)
+  .<span class="func">on</span>(<span class="string">'postgres_changes'</span>, {
+    event: <span class="string">'*'</span>,        <span class="comment">// INSERT, UPDATE, DELETE すべて</span>
+    schema: <span class="string">'public'</span>,
+    table: <span class="string">'videos'</span>
+  }, (payload) => {
+    console.<span class="func">log</span>(<span class="string">'変更検知:'</span>, payload);
+    <span class="func">refreshVideoList</span>();  <span class="comment">// 画面を更新</span>
+  })
+  .<span class="func">subscribe</span>();</code></pre>
+
+
+<h2>3.5 Edge Functions（サーバーレス関数）</h2>
+
+<p>
+サーバー上でコードを実行できる機能です。Deno（DenoはNode.jsの作者が開発した新しいJavaScript/TypeScriptランタイム）で動作し、TypeScript をそのまま実行できます。<strong>本プロジェクトでは未使用</strong>ですが、拡張として活用可能です。
+</p>
+
+<div class="box box-blue">
+  <div class="box-title">Edge Functions が有用な場面</div>
+  <ul>
+    <li>APIキーをサーバー側で安全に管理したい場合</li>
+    <li>外部APIとの連携（Webhook受信など）</li>
+    <li>重い計算処理をサーバーで実行したい場合</li>
+    <li>定期的なバッチ処理（日次レポート生成など）</li>
+  </ul>
+</div>
+
+
+<h2>3.6 Row Level Security（RLS）</h2>
+
+<p>
+<strong>RLS は Supabase の最も重要なセキュリティ機能</strong>です。データベースの各行（レコード）に対して「誰がアクセスできるか」をSQL で定義します。
+</p>
+
+<h3>RLS の概念</h3>
+
+<div class="diagram">RLS なし:
+  全ユーザーが全データにアクセス可能（危険）
+
+RLS あり:
+  ┌─────────────────────────────────────────┐
+  │ videos テーブル                          │
+  ├────┬────────────┬────────────┬──────────┤
+  │ id │ filename   │ owner_id   │ status   │
+  ├────┼────────────┼────────────┼──────────┤
+  │  1 │ CM_A.mp4   │ user_001   │ ✅ 見える │  ← user_001 がログイン中
+  │  2 │ CM_B.mp4   │ user_002   │ ❌ 見えない│
+  │  3 │ CM_C.mp4   │ user_001   │ ✅ 見える │
+  └────┴────────────┴────────────┴──────────┘
+
+  ポリシー例: WHERE owner_id = auth.uid()</div>
+
+<h3>本プロジェクトでの RLS 設定</h3>
+
+<pre><code><span class="comment">-- 1. RLS を有効化（これにより、デフォルトで全アクセスがブロックされる）</span>
+<span class="keyword">ALTER TABLE</span> videos <span class="keyword">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="comment">-- 2. ポリシーを作成（anon ユーザーに全操作を許可）</span>
+<span class="keyword">CREATE POLICY</span> <span class="string">"Allow all for anon"</span> <span class="keyword">ON</span> videos
+  <span class="keyword">FOR ALL</span>
+  <span class="keyword">USING</span> (<span class="keyword">true</span>)          <span class="comment">-- SELECT/UPDATE/DELETE 時の条件（全許可）</span>
+  <span class="keyword">WITH CHECK</span> (<span class="keyword">true</span>);    <span class="comment">-- INSERT/UPDATE 時の条件（全許可）</span></code></pre>
+
+<div class="box box-yellow">
+  <div class="box-title">なぜ全許可なのか？</div>
+  <p>本プロジェクトでは、アプリにアクセスする前に <strong>パスワードゲート</strong>（SHA-256 ハッシュによる認証画面）を設けています。パスワードを知っている人 = チームメンバー = 全データにアクセス可能、という設計のため、DB側では全許可にしています。もし個人ごとのアクセス制御が必要になった場合は、Supabase Auth と組み合わせて RLS ポリシーを厳格化できます。</p>
+</div>
+
+
+<h2>3.7 Auto-generated API（自動生成 REST API）</h2>
+
+<p>
+Supabase の大きな特徴の一つが、<strong>テーブルを作成するだけで REST API が自動的に生成される</strong>ことです。内部的には PostgREST というOSSが動いています。
+</p>
+
+<pre><code><span class="comment">// テーブルを作るだけで、以下のようなAPI操作が自動で可能になる</span>
+
+<span class="comment">// 全件取得</span>
+<span class="keyword">const</span> { data } = <span class="keyword">await</span> supabase.<span class="func">from</span>(<span class="string">'videos'</span>).<span class="func">select</span>(<span class="string">'*'</span>);
+
+<span class="comment">// 条件付き取得</span>
+<span class="keyword">const</span> { data } = <span class="keyword">await</span> supabase.<span class="func">from</span>(<span class="string">'videos'</span>)
+  .<span class="func">select</span>(<span class="string">'*'</span>)
+  .<span class="func">eq</span>(<span class="string">'status'</span>, <span class="string">'transcribed'</span>)
+  .<span class="func">order</span>(<span class="string">'created_at'</span>, { ascending: <span class="keyword">false</span> });
+
+<span class="comment">// 挿入</span>
+<span class="keyword">await</span> supabase.<span class="func">from</span>(<span class="string">'videos'</span>).<span class="func">insert</span>({ filename: <span class="string">'新CM.mp4'</span>, status: <span class="string">'uploaded'</span> });
+
+<span class="comment">// 更新</span>
+<span class="keyword">await</span> supabase.<span class="func">from</span>(<span class="string">'videos'</span>).<span class="func">update</span>({ status: <span class="string">'transcribed'</span> }).<span class="func">eq</span>(<span class="string">'id'</span>, 1);
+
+<span class="comment">// 削除</span>
+<span class="keyword">await</span> supabase.<span class="func">from</span>(<span class="string">'videos'</span>).<span class="func">delete</span>().<span class="func">eq</span>(<span class="string">'id'</span>, 1);</code></pre>
+
+<p>
+これにより、バックエンドのAPI開発が<strong>ゼロ</strong>になります。通常であれば Express.js や FastAPI などでエンドポイントを一つ一つ実装する必要がありますが、Supabase では テーブル設計 = API設計 となります。
+</p>
+
+
+<!-- ============== CHAPTER 4 ============== -->
+<h1 class="section-title">4. 本プロジェクトでの実装手順 — Step by Step</h1>
+
+<div class="step-header"><span class="step-num">1</span> プロジェクト作成と接続設定</div>
+
+<h3>Supabase 側の作業</h3>
+<ol>
+  <li><a href="https://supabase.com">supabase.com</a> でアカウント作成</li>
+  <li>「New Project」で新規プロジェクトを作成</li>
+  <li>リージョン（サーバーの場所）を選択 — 日本からのアクセスなら東京リージョン推奨</li>
+  <li>プロジェクト作成後、Settings → API から以下を取得:
+    <ul>
+      <li><strong>Project URL:</strong> <code>https://xxxxx.supabase.co</code></li>
+      <li><strong>anon public key:</strong> <code>eyJhbGciOi...</code>（長い文字列）</li>
+    </ul>
+  </li>
+</ol>
+
+<h3>フロントエンド側の作業</h3>
+
+<pre><code><span class="comment">// .env ファイルに接続情報を設定</span>
+VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
+
+<span class="comment">// ※ VITE_ プレフィックスにより、Vite ビルド時に環境変数として読み込まれる</span></code></pre>
+
+<pre><code><span class="comment">// services/supabase.ts — Supabase クライアントの初期化</span>
+<span class="keyword">import</span> { createClient } <span class="keyword">from</span> <span class="string">"@supabase/supabase-js"</span>;
+
+<span class="keyword">const</span> supabaseUrl = <span class="keyword">import</span>.meta.env.VITE_SUPABASE_URL;
+<span class="keyword">const</span> supabaseAnonKey = <span class="keyword">import</span>.meta.env.VITE_SUPABASE_ANON_KEY;
+
+<span class="keyword">export const</span> supabase = <span class="func">createClient</span>(supabaseUrl, supabaseAnonKey);</code></pre>
+
+<div class="box box-green">
+  <div class="box-title">シングルトンパターン</div>
+  <p>Supabase クライアントはアプリ全体で<strong>1つだけ</strong>作成し、全ファイルから共有します。複数のクライアントを作ると、WebSocket 接続が無駄に増え、メモリを消費します。</p>
+</div>
+
+
+<div class="step-header"><span class="step-num">2</span> データベース設計（全9テーブル）</div>
+
+<p>Supabase の SQL エディタで以下のスキーマを実行しました。各テーブルの設計理由を詳細に解説します。</p>
+
+<h3>テーブル関連図（ER図）</h3>
+
+<div class="diagram">                         ┌──────────────┐
+                         │   settings   │  シングルトン（1行のみ）
+                         │──────────────│
+                         │ key (PK)     │  = 'app'
+                         │ api_keys     │  Gemini APIキー配列
+                         │ selected_model│  使用モデル名
+                         └──────────────┘
+
+  ┌──────────────────────────────────────────────────────────┐
+  │                      videos (PK: id)                     │
+  │──────────────────────────────────────────────────────────│
+  │ id, filename, file_size, duration_seconds, status,       │
+  │ error_message, ranking, ranking_notes, storage_path,     │
+  │ tags, thumbnails, created_at, updated_at                 │
+  └────┬────────────────┬────────────────┬──────────────────┘
+       │ CASCADE        │ CASCADE        │ CASCADE
+       ▼                ▼                ▼
+  ┌────────────┐  ┌────────────┐  ┌──────────────┐
+  │transcriptions│  │conversions │  │  ab_tests    │
+  │────────────│  │────────────│  │──────────────│
+  │ video_id(FK)│  │ video_id(FK)│  │ video_a_id   │
+  │ full_text  │  │ metric_name│  │ video_b_id   │
+  │ segments   │  │ metric_value│  │ target_metric│
+  │ language   │  │ date_recorded│ │ status       │
+  └────────────┘  └────────────┘  └──────────────┘
+
+  ┌────────────┐  ┌────────────┐  ┌──────────────┐
+  │  analyses  │  │ competitors│  │   alerts     │
+  │────────────│  │────────────│  │──────────────│
+  │ analysis_type│ │ name       │  │ metric_name  │
+  │ scope      │  │ metrics    │  │ condition    │
+  │ video_id   │  │ notes      │  │ threshold    │
+  │ result_json│  │            │  │ video_id     │
+  └────────────┘  └────────────┘  └──────────────┘
+
+  ┌──────────────────┐
+  │transcription_logs │  デバッグ・監査用
+  │──────────────────│
+  │ video_id         │
+  │ operation        │
+  │ status, details  │
+  └──────────────────┘</div>
+
+<h3>各テーブルの詳細設計</h3>
+
+<table>
+  <tr>
+    <th>テーブル</th>
+    <th>主な列</th>
+    <th>設計の理由</th>
+  </tr>
+  <tr>
+    <td><strong>videos</strong></td>
+    <td>filename, status, tags, thumbnails, ranking</td>
+    <td>アプリの中核。status で処理状態を管理。tags(JSONB) で媒体分類。ON DELETE CASCADE で関連データを自動削除</td>
+  </tr>
+  <tr>
+    <td><strong>transcriptions</strong></td>
+    <td>video_id, full_text, segments, language</td>
+    <td>AI書き起こし結果。segments(JSONB) でタイムスタンプ付きテキストを保持</td>
+  </tr>
+  <tr>
+    <td><strong>conversions</strong></td>
+    <td>video_id, metric_name, metric_value</td>
+    <td>動画ごとの成果指標（CTR, CVR等）。metric_name で柔軟な指標定義</td>
+  </tr>
+  <tr>
+    <td><strong>analyses</strong></td>
+    <td>analysis_type, result_json, gemini_model_used</td>
+    <td>AI分析結果のキャッシュ。再分析不要で過去結果を参照可能</td>
+  </tr>
+  <tr>
+    <td><strong>settings</strong></td>
+    <td>api_keys, selected_model</td>
+    <td>アプリ全体設定。1行のみ（key='app'）。チーム全員で共有</td>
+  </tr>
+  <tr>
+    <td><strong>ab_tests</strong></td>
+    <td>video_a_id, video_b_id, target_metric, status</td>
+    <td>2つの動画のA/B比較テスト。結果はconversionsから動的計算</td>
+  </tr>
+  <tr>
+    <td><strong>competitors</strong></td>
+    <td>name, metrics(JSONB)</td>
+    <td>競合のベンチマークデータ。metrics を JSONB にして柔軟に指標を追加可能</td>
+  </tr>
+  <tr>
+    <td><strong>alerts</strong></td>
+    <td>metric_name, condition, threshold, enabled</td>
+    <td>指標監視ルール。condition('above'/'below') と threshold で自動チェック</td>
+  </tr>
+  <tr>
+    <td><strong>transcription_logs</strong></td>
+    <td>video_id, operation, status, details</td>
+    <td>書き起こし処理のログ。エラー追跡・デバッグ用</td>
+  </tr>
+</table>
+
+<h3>重要な設計パターン</h3>
+
+<div class="box box-blue no-break">
+  <div class="box-title">ON DELETE CASCADE（カスケード削除）</div>
+  <p>動画を削除すると、関連する書き起こし・コンバージョンデータが<strong>自動的に</strong>削除されます。これにより、「孤立データ」（親のいない子データ）が発生することを防ぎます。</p>
+<pre><code><span class="comment">-- 動画ID=1を削除すると...</span>
+<span class="keyword">DELETE FROM</span> videos <span class="keyword">WHERE</span> id = 1;
+
+<span class="comment">-- transcriptions の video_id=1 の行も自動削除</span>
+<span class="comment">-- conversions の video_id=1 の行も自動削除</span>
+<span class="comment">-- 手動で削除する必要なし！</span></code></pre>
+</div>
+
+<div class="box box-blue no-break">
+  <div class="box-title">CHECK 制約（値の制限）</div>
+  <p>status カラムに無効な値が入ることを防ぎます。アプリのバグで不正な値を保存しようとすると、データベースがエラーを返します。</p>
+<pre><code><span class="keyword">CHECK</span> (status <span class="keyword">IN</span> (<span class="string">'uploaded'</span>, <span class="string">'transcribing'</span>, <span class="string">'transcribed'</span>, <span class="string">'error'</span>, <span class="string">'archived'</span>))
+
+<span class="comment">-- これにより:</span>
+<span class="comment">-- status = 'transcribed'  → OK</span>
+<span class="comment">-- status = 'hoge'         → エラー！挿入できない</span></code></pre>
+</div>
+
+<div class="box box-blue no-break">
+  <div class="box-title">JSONB 型の活用</div>
+  <p>リレーショナルDBでありながら、柔軟な構造のデータも扱えるのが PostgreSQL の強みです。タグや分析結果のように<strong>構造が変わりうるデータ</strong>は JSONB 型で保存しています。</p>
+<pre><code><span class="comment">-- tags の例: ["YouTube", "TikTok", "Instagram"]</span>
+<span class="comment">-- thumbnails の例: [{"time": 0, "storage_path": "1/thumb_0.jpg"}, ...]</span>
+<span class="comment">-- segments の例: [{"start_time": 0, "end_time": 5.2, "text": "こんにちは"}, ...]</span></code></pre>
+</div>
+
+
+<div class="step-header"><span class="step-num">3</span> RLS ポリシー設定</div>
+
+<pre><code><span class="comment">-- 全9テーブルで同じパターン:</span>
+
+<span class="comment">-- ① RLS を有効化（デフォルトで全アクセスブロック）</span>
+<span class="keyword">ALTER TABLE</span> videos <span class="keyword">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="comment">-- ② anon ロールに全操作を許可するポリシーを作成</span>
+<span class="keyword">CREATE POLICY</span> <span class="string">"Allow all for anon"</span> <span class="keyword">ON</span> videos
+  <span class="keyword">FOR ALL USING</span> (<span class="keyword">true</span>) <span class="keyword">WITH CHECK</span> (<span class="keyword">true</span>);</code></pre>
+
+<div class="box box-yellow">
+  <div class="box-title">セキュリティの多層防御</div>
+  <p>「全許可」に見えますが、以下の多層防御でセキュリティを確保しています:</p>
+  <ol>
+    <li><strong>パスワードゲート:</strong> アプリ自体にパスワードが必要</li>
+    <li><strong>anon key の制限:</strong> Supabase の anon key は RLS ポリシーに従った操作のみ可能</li>
+    <li><strong>Storage の非公開設定:</strong> ファイルは署名付きURLでのみアクセス可能</li>
+    <li><strong>HTTPS:</strong> 通信はすべて暗号化</li>
+  </ol>
+</div>
+
+
+<div class="step-header"><span class="step-num">4</span> Storage バケット設定</div>
+
+<pre><code><span class="comment">-- videos バケットの作成（非公開）</span>
+<span class="keyword">INSERT INTO</span> storage.buckets (id, name, public)
+  <span class="keyword">VALUES</span> (<span class="string">'videos'</span>, <span class="string">'videos'</span>, <span class="keyword">false</span>)
+  <span class="keyword">ON CONFLICT</span> (id) <span class="keyword">DO NOTHING</span>;
+
+<span class="comment">-- Storage のアクセスポリシー</span>
+<span class="keyword">CREATE POLICY</span> <span class="string">"Allow all storage for anon"</span> <span class="keyword">ON</span> storage.objects
+  <span class="keyword">FOR ALL</span>
+  <span class="keyword">USING</span> (bucket_id = <span class="string">'videos'</span>)
+  <span class="keyword">WITH CHECK</span> (bucket_id = <span class="string">'videos'</span>);</code></pre>
+
+<p><code>public: false</code> により、ファイルに直接アクセスするURLは存在しません。必ず署名付きURL を生成してアクセスする必要があります。</p>
+
+
+<div class="step-header"><span class="step-num">5</span> フロントエンド接続コード</div>
+
+<p>アプリケーションから Supabase を利用するために、以下のサービス層を実装しました。</p>
+
+<h3>services/supabase.ts — 接続</h3>
+<pre><code><span class="keyword">import</span> { createClient } <span class="keyword">from</span> <span class="string">"@supabase/supabase-js"</span>;
+
+<span class="keyword">export const</span> supabase = <span class="func">createClient</span>(
+  <span class="keyword">import</span>.meta.env.VITE_SUPABASE_URL,
+  <span class="keyword">import</span>.meta.env.VITE_SUPABASE_ANON_KEY
+);</code></pre>
+
+<h3>services/videoStorage.ts — ファイル操作</h3>
+<pre><code><span class="comment">// アップロード</span>
+<span class="keyword">export async function</span> <span class="func">uploadVideo</span>(path: <span class="type">string</span>, file: <span class="type">File</span>) {
+  <span class="keyword">await</span> supabase.storage.<span class="func">from</span>(<span class="string">"videos"</span>).<span class="func">upload</span>(path, file);
+}
+
+<span class="comment">// 署名付き URL 生成（4時間有効、3.5時間キャッシュ）</span>
+<span class="keyword">export async function</span> <span class="func">getVideoSignedUrl</span>(path: <span class="type">string</span>) {
+  <span class="keyword">const</span> { data } = <span class="keyword">await</span> supabase.storage
+    .<span class="func">from</span>(<span class="string">"videos"</span>)
+    .<span class="func">createSignedUrl</span>(path, 60 * 60 * 4);
+  <span class="keyword">return</span> data.signedUrl;
+}
+
+<span class="comment">// 削除</span>
+<span class="keyword">export async function</span> <span class="func">deleteFromStorage</span>(path: <span class="type">string</span>) {
+  <span class="keyword">await</span> supabase.storage.<span class="func">from</span>(<span class="string">"videos"</span>).<span class="func">remove</span>([path]);
+}</code></pre>
+
+
+<div class="step-header"><span class="step-num">6</span> CRUD 操作の抽象化</div>
+
+<h3>services/db.ts — 共通データ操作</h3>
+
+<pre><code><span class="comment">// 汎用的なCRUD関数で、全テーブルの操作を統一</span>
+
+<span class="keyword">export async function</span> <span class="func">put</span>&lt;<span class="type">T</span>&gt;(table: <span class="type">string</span>, record: <span class="type">T</span>) {
+  <span class="keyword">await</span> supabase.<span class="func">from</span>(table).<span class="func">upsert</span>(record <span class="keyword">as any</span>);
+}
+
+<span class="keyword">export async function</span> <span class="func">get</span>&lt;<span class="type">T</span>&gt;(table: <span class="type">string</span>, id: <span class="type">number</span>): <span class="type">Promise</span>&lt;<span class="type">T</span> | <span class="keyword">null</span>&gt; {
+  <span class="keyword">const</span> { data } = <span class="keyword">await</span> supabase.<span class="func">from</span>(table)
+    .<span class="func">select</span>(<span class="string">"*"</span>).<span class="func">eq</span>(<span class="string">"id"</span>, id).<span class="func">single</span>();
+  <span class="keyword">return</span> data <span class="keyword">as</span> <span class="type">T</span>;
+}
+
+<span class="keyword">export async function</span> <span class="func">getAll</span>&lt;<span class="type">T</span>&gt;(table: <span class="type">string</span>): <span class="type">Promise</span>&lt;<span class="type">T</span>[]&gt; {
+  <span class="keyword">const</span> { data } = <span class="keyword">await</span> supabase.<span class="func">from</span>(table).<span class="func">select</span>(<span class="string">"*"</span>);
+  <span class="keyword">return</span> (data ?? []) <span class="keyword">as</span> <span class="type">T</span>[];
+}
+
+<span class="keyword">export async function</span> <span class="func">del</span>(table: <span class="type">string</span>, id: <span class="type">number</span>) {
+  <span class="keyword">await</span> supabase.<span class="func">from</span>(table).<span class="func">delete</span>().<span class="func">eq</span>(<span class="string">"id"</span>, id);
+}
+
+<span class="keyword">export async function</span> <span class="func">update</span>&lt;<span class="type">T</span>&gt;(table: <span class="type">string</span>, id: <span class="type">number</span>, fields: <span class="type">Partial</span>&lt;<span class="type">T</span>&gt;) {
+  <span class="keyword">await</span> supabase.<span class="func">from</span>(table).<span class="func">update</span>(fields <span class="keyword">as any</span>).<span class="func">eq</span>(<span class="string">"id"</span>, id);
+}</code></pre>
+
+<div class="box box-green">
+  <div class="box-title">抽象化のメリット</div>
+  <p>この共通関数により、各APIファイル（api/videos.ts, api/analysis.ts 等）は<strong>ビジネスロジックだけに集中</strong>できます。データベースアクセスの詳細は db.ts に隠蔽されているため、もし将来 Supabase から別のサービスに移行する場合も、db.ts だけを修正すれば済みます。</p>
+</div>
+
+
+<div class="step-header"><span class="step-num">7</span> Realtime の活用</div>
+
+<pre><code><span class="comment">// videos テーブルのリアルタイム更新を有効化（SQL）</span>
+<span class="keyword">ALTER PUBLICATION</span> supabase_realtime <span class="keyword">ADD TABLE</span> videos;</code></pre>
+
+<p>これにより、あるユーザーが動画をアップロード・編集・削除すると、他のユーザーのブラウザにもリアルタイムで変更が通知されます。</p>
+
+
+<!-- ============== CHAPTER 5 ============== -->
+<h1 class="section-title">5. アーキテクチャ全体図 — 3サービスの連携</h1>
+
+<div class="diagram">┌─────────────────────────────────────────────────────────────────────┐
+│                        ユーザーのブラウザ                              │
+│                                                                     │
+│  React 19 + Vite + TypeScript + Tailwind CSS                        │
+│                                                                     │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
+│  │動画管理   │ │書き起こし │ │コンバージョン│ │マーケティング│ │設定     │  │
+│  │ページ    │ │ページ    │ │ページ    │ │ダッシュボード│ │ページ   │  │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬──────┘ └────┬────┘  │
+│       │            │            │            │             │        │
+│  ┌────┴────────────┴────────────┴────────────┴─────────────┴────┐   │
+│  │                    API レイヤー (api/*.ts)                    │   │
+│  │  videos.ts | transcriptions.ts | analysis.ts | alerts.ts ... │   │
+│  └────┬────────────────────┬─────────────────────┬──────────────┘   │
+│       │                    │                     │                  │
+│  ┌────┴──────┐  ┌──────────┴──────┐  ┌──────────┴──────┐          │
+│  │services/  │  │services/        │  │ Gemini API      │          │
+│  │db.ts      │  │videoStorage.ts  │  │ (Google AI)     │          │
+│  │(CRUD)     │  │(ファイル操作)    │  │                 │          │
+│  └────┬──────┘  └──────────┬──────┘  └──────────┬──────┘          │
+│       │                    │                     │                  │
+└───────┼────────────────────┼─────────────────────┼──────────────────┘
+        │                    │                     │
+   HTTPS │               HTTPS│                HTTPS│
+        │                    │                     │
+        ▼                    ▼                     ▼
+  ┌───────────────────────────────────┐     ┌──────────────┐
+  │         Supabase Cloud            │     │ Google Cloud  │
+  │                                   │     │──────────────│
+  │  ┌───────────┐  ┌──────────────┐  │     │ Gemini API   │
+  │  │PostgreSQL │  │  Storage     │  │     │ (AI分析)     │
+  │  │(データ)   │  │  (ファイル)   │  │     └──────────────┘
+  │  │           │  │              │  │
+  │  │ 9テーブル  │  │ videos      │  │
+  │  │           │  │  バケット     │  │
+  │  └───────────┘  └──────────────┘  │
+  │                                   │
+  │  ┌───────────────────────────┐    │
+  │  │  Realtime (WebSocket)     │    │
+  │  │  videos テーブル監視       │    │
+  │  └───────────────────────────┘    │
+  └───────────────────────────────────┘
+
+  ┌───────────────────────────────────┐
+  │       Firebase Hosting            │
+  │  (ビルド済み静的ファイルの配信)     │
+  │  HTML / CSS / JS → CDN → 世界中  │
+  └───────────────────────────────────┘</div>
+
+<div class="box box-green">
+  <div class="box-title">各サービスの役割まとめ</div>
+  <table>
+    <tr><th>サービス</th><th>役割</th><th>たとえ</th></tr>
+    <tr><td>Firebase Hosting</td><td>アプリ本体の配信</td><td>お店の建物・外観</td></tr>
+    <tr><td>Supabase Database</td><td>データの保管・検索</td><td>お店の帳簿・台帳</td></tr>
+    <tr><td>Supabase Storage</td><td>動画・画像ファイルの保管</td><td>お店の倉庫</td></tr>
+    <tr><td>Supabase Realtime</td><td>変更のリアルタイム通知</td><td>店内放送システム</td></tr>
+    <tr><td>Google Gemini API</td><td>AI による分析・提案</td><td>外部コンサルタント</td></tr>
+  </table>
+</div>
+
+
+<!-- ============== CHAPTER 6 ============== -->
+<h1 class="section-title">6. データの流れ — 主要ユースケース</h1>
+
+<h2>6.1 動画アップロード → 書き起こし → 分析</h2>
+
+<div class="diagram">① 動画アップロード
+   ユーザー → [ファイル選択] → videoStorage.uploadVideo()
+   → Supabase Storage にファイル保存
+   → db.put('videos', {...}) で videos テーブルに登録
+   → status = 'uploaded'
+
+② 書き起こし
+   ユーザー → [書き起こし開始]
+   → db.update('videos', id, {status: 'transcribing'})
+   → videoStorage.getVideoSignedUrl() で動画URLを取得
+   → Gemini API に動画を送信 → 書き起こしテキスト受信
+   → db.put('transcriptions', {...}) で結果を保存
+   → db.update('videos', id, {status: 'transcribed'})
+
+③ AI分析
+   ユーザー → [分析実行]
+   → db.getAll('transcriptions') で全書き起こし取得
+   → db.getAll('conversions') で全コンバージョン取得
+   → Gemini API にデータを送信 → 分析結果受信
+   → db.put('analyses', {...}) で結果を保存
+
+④ アーカイブ（ストレージ節約）
+   ユーザー → [アーカイブ]
+   → videoStorage.getVideoSignedUrl() で動画URL取得
+   → Canvas API でサムネイル抽出（5秒間隔）
+   → videoStorage.uploadThumbnail() でサムネイル保存
+   → db.update('videos', id, {status:'archived', thumbnails:[...]})
+   → videoStorage.deleteFromStorage() で動画ファイル削除
+   → ストレージ使用量が大幅に削減（動画10MB → サムネイル200KB）</div>
+
+
+<h2>6.2 媒体別分析（プラットフォーム分析）</h2>
+
+<div class="diagram">① 媒体タグ付け
+   ユーザー → [YouTube] [TikTok] などのボタンをクリック
+   → db.update('videos', id, {tags: ["YouTube", "TikTok"]})
+   → video.tags にプラットフォーム情報が保存される
+
+② AI分析実行
+   ユーザー → [媒体分析を実行]
+   → db.getAll('videos') → タグで媒体別にグルーピング
+   → 各媒体の書き起こし・コンバージョンデータを集約
+   → Gemini API に媒体特性を含むプロンプトを送信:
+     YouTube: 長尺OK、SEO重要、サムネイル/フック重視
+     TikTok: 15-60秒、最初1秒が勝負、縦型
+     Instagram: ビジュアル重視、ストーリーズ/リール
+     Facebook: 30代以上、シェア誘導、コミュニティ感
+     LINE: 短尺、直接的CTA、クーポン連動
+     X(Twitter): 短いメッセージ、リツイート誘導
+   → 分析結果を表示 + db.put('analyses', {...}) で保存</div>
+
+
+<!-- ============== CHAPTER 7 ============== -->
+<h1 class="section-title">7. セキュリティ設計</h1>
+
+<div class="diagram">セキュリティの多層防御:
+
+  第1層: Firebase Hosting
+  └── HTTPS（TLS暗号化）でデータ通信を保護
+
+  第2層: パスワードゲート（PasswordGate.tsx）
+  └── SHA-256 ハッシュでパスワード照合
+  └── パスワードを知らない人はアプリ自体を使えない
+
+  第3層: Supabase anon key
+  └── RLS ポリシーで許可された操作のみ実行可能
+  └── service_role key はフロントエンドに含めない
+
+  第4層: Row Level Security (RLS)
+  └── 各テーブルにアクセス制御ポリシーを定義
+  └── SQL レベルでデータ保護
+
+  第5層: Storage 署名付き URL
+  └── ファイルは期限付きURL（4時間）でのみアクセス可能
+  └── URL を知っていても期限切れならアクセス不可
+
+  第6層: 環境変数
+  └── API キー等は .env ファイルで管理
+  └── Git リポジトリには含めない（.gitignore）</div>
+
+<div class="box box-red">
+  <div class="box-title">anon key はフロントエンドに含まれる — これは安全か？</div>
+  <p>Supabase の anon key はフロントエンドの JavaScript に含まれるため、ブラウザの開発者ツールで確認できます。しかし、<strong>これは設計通り</strong>です。anon key でできることは RLS ポリシーで厳密に制限されているため、key が漏洩しても RLS が許可した操作以外は実行できません。</p>
+  <p>一方、<strong>service_role key</strong>（管理者権限）は絶対にフロントエンドに含めてはいけません。この key は RLS を無視して全データにアクセスできます。</p>
+</div>
+
+
+<!-- ============== CHAPTER 8 ============== -->
+<h1 class="section-title">8. 無料枠の詳細と運用戦略</h1>
+
+<table>
+  <tr>
+    <th>リソース</th>
+    <th>無料枠</th>
+    <th>現在の使用量</th>
+    <th>残り</th>
+  </tr>
+  <tr>
+    <td><strong>Supabase Database</strong></td>
+    <td>500 MB</td>
+    <td>約 5 MB</td>
+    <td>約 495 MB（99%）</td>
+  </tr>
+  <tr>
+    <td><strong>Supabase Storage</strong></td>
+    <td>1 GB</td>
+    <td>約 37 MB（3.7%）</td>
+    <td>約 963 MB（96.3%）</td>
+  </tr>
+  <tr>
+    <td><strong>Supabase 帯域幅</strong></td>
+    <td>5 GB / 月</td>
+    <td>少量</td>
+    <td>ほぼ全量</td>
+  </tr>
+  <tr>
+    <td><strong>Supabase API リクエスト</strong></td>
+    <td>無制限（※）</td>
+    <td>-</td>
+    <td>-</td>
+  </tr>
+  <tr>
+    <td><strong>Firebase Hosting 転送量</strong></td>
+    <td>10 GB / 月</td>
+    <td>少量</td>
+    <td>ほぼ全量</td>
+  </tr>
+  <tr>
+    <td><strong>Firebase Hosting ストレージ</strong></td>
+    <td>1 GB</td>
+    <td>ビルド済みJS約数MB</td>
+    <td>ほぼ全量</td>
+  </tr>
+</table>
+
+<p>※ Supabase 無料枠の API リクエストに明示的な上限はありませんが、同時接続数やレート制限があります。</p>
+
+<h3>ストレージ容量の目安</h3>
+
+<div class="box box-green">
+  <div class="box-title">動画の保存可能数（1GB上限）</div>
+  <table>
+    <tr><th>動画の長さ</th><th>1本あたりサイズ（目安）</th><th>保存可能本数</th></tr>
+    <tr><td>15秒 CM</td><td>約 5 MB</td><td>約 190 本</td></tr>
+    <tr><td>30秒 CM</td><td>約 10 MB</td><td>約 96 本</td></tr>
+    <tr><td>1分 CM</td><td>約 20 MB</td><td>約 48 本</td></tr>
+    <tr><td>3分 動画</td><td>約 60 MB</td><td>約 16 本</td></tr>
+  </table>
+  <p style="margin-top:8px;"><strong>アーカイブ機能を使えば:</strong> 動画 10MB → サムネイル 200KB（約98%削減）。書き起こし完了済みの動画をアーカイブすれば、はるかに多くの動画を管理できます。</p>
+</div>
+
+
+<!-- ============== CHAPTER 9 ============== -->
+<h1 class="section-title">9. 拡張可能性 — Supabase でできること</h1>
+
+<p>現在使用していない Supabase の機能を活用することで、以下のような拡張が可能です。</p>
+
+<h2>9.1 ユーザー認証（Supabase Auth）</h2>
+
+<div class="box box-blue no-break">
+  <div class="box-title">現在 → 拡張後</div>
+  <p><strong>現在:</strong> 共有パスワード1つでチーム全員がアクセス</p>
+  <p><strong>拡張後:</strong> 個人アカウントで管理。Google/GitHub ログイン対応。ユーザーごとの権限設定（閲覧のみ、編集可能、管理者）</p>
+</div>
+
+<pre><code><span class="comment">// 拡張例: Google ログインの実装</span>
+<span class="keyword">const</span> { data, error } = <span class="keyword">await</span> supabase.auth.<span class="func">signInWithOAuth</span>({
+  provider: <span class="string">'google'</span>,
+  options: { redirectTo: <span class="string">'https://movie-analysis-d05fb.web.app/callback'</span> }
+});
+
+<span class="comment">// RLS を厳格化: 自分のデータのみ操作可能</span>
+<span class="comment">// CREATE POLICY "Users can manage own videos" ON videos</span>
+<span class="comment">//   USING (owner_id = auth.uid());</span></code></pre>
+
+
+<h2>9.2 Edge Functions（サーバーレス関数）</h2>
+
+<div class="box box-blue no-break">
+  <div class="box-title">現在 → 拡張後</div>
+  <p><strong>現在:</strong> Gemini API キーがフロントエンド（ブラウザ）に存在</p>
+  <p><strong>拡張後:</strong> API キーをサーバー側（Edge Function）で安全に管理。ブラウザからはキー不要</p>
+</div>
+
+<pre><code><span class="comment">// Edge Function の例 (supabase/functions/analyze/index.ts)</span>
+<span class="keyword">import</span> { serve } <span class="keyword">from</span> <span class="string">"https://deno.land/std/http/server.ts"</span>;
+
+<span class="func">serve</span>(<span class="keyword">async</span> (req) => {
+  <span class="keyword">const</span> GEMINI_KEY = Deno.env.<span class="func">get</span>(<span class="string">"GEMINI_API_KEY"</span>); <span class="comment">// サーバー側で安全に保持</span>
+  <span class="keyword">const</span> { videoId } = <span class="keyword">await</span> req.<span class="func">json</span>();
+
+  <span class="comment">// Gemini API を呼び出し</span>
+  <span class="keyword">const</span> result = <span class="keyword">await</span> <span class="func">callGemini</span>(GEMINI_KEY, videoId);
+
+  <span class="keyword">return new</span> <span class="func">Response</span>(JSON.<span class="func">stringify</span>(result));
+});</code></pre>
+
+
+<h2>9.3 Database Functions & Triggers（データベース関数とトリガー）</h2>
+
+<div class="box box-blue no-break">
+  <div class="box-title">現在 → 拡張後</div>
+  <p><strong>現在:</strong> updated_at はアプリ側で手動更新</p>
+  <p><strong>拡張後:</strong> データ変更時に自動で updated_at を更新、統計値の自動計算</p>
+</div>
+
+<pre><code><span class="comment">-- updated_at 自動更新トリガー</span>
+<span class="keyword">CREATE OR REPLACE FUNCTION</span> <span class="func">update_updated_at</span>()
+<span class="keyword">RETURNS TRIGGER AS</span> $$
+<span class="keyword">BEGIN</span>
+  NEW.updated_at = <span class="func">now</span>();
+  <span class="keyword">RETURN</span> NEW;
+<span class="keyword">END</span>;
+$$ <span class="keyword">LANGUAGE</span> plpgsql;
+
+<span class="keyword">CREATE TRIGGER</span> videos_updated_at
+  <span class="keyword">BEFORE UPDATE ON</span> videos
+  <span class="keyword">FOR EACH ROW EXECUTE FUNCTION</span> <span class="func">update_updated_at</span>();</code></pre>
+
+
+<h2>9.4 全文検索（PostgreSQL Full Text Search）</h2>
+
+<div class="box box-blue no-break">
+  <div class="box-title">現在 → 拡張後</div>
+  <p><strong>現在:</strong> フロントエンドでのテキスト検索（ブラウザのメモリで処理）</p>
+  <p><strong>拡張後:</strong> PostgreSQL のインデックスによる高速全文検索。数万件でも一瞬で検索</p>
+</div>
+
+<pre><code><span class="comment">-- 全文検索インデックスの作成</span>
+<span class="keyword">ALTER TABLE</span> transcriptions
+  <span class="keyword">ADD COLUMN</span> fts tsvector
+  <span class="keyword">GENERATED ALWAYS AS</span> (to_tsvector(<span class="string">'japanese'</span>, full_text)) STORED;
+
+<span class="keyword">CREATE INDEX</span> idx_transcriptions_fts <span class="keyword">ON</span> transcriptions <span class="keyword">USING</span> GIN(fts);
+
+<span class="comment">-- 検索クエリ</span>
+<span class="keyword">SELECT</span> * <span class="keyword">FROM</span> transcriptions
+<span class="keyword">WHERE</span> fts @@ to_tsquery(<span class="string">'japanese'</span>, <span class="string">'割引 & キャンペーン'</span>);</code></pre>
+
+
+<h2>9.5 Vector 検索（pgvector — AI類似検索）</h2>
+
+<div class="box box-blue no-break">
+  <div class="box-title">現在 → 拡張後</div>
+  <p><strong>現在:</strong> AI分析は都度 Gemini API に問い合わせ</p>
+  <p><strong>拡張後:</strong> テキストをベクトル化して保存 → 「この動画に似た動画」を瞬時に検索</p>
+</div>
+
+<pre><code><span class="comment">-- pgvector 拡張を有効化</span>
+<span class="keyword">CREATE EXTENSION</span> vector;
+
+<span class="comment">-- ベクトル列を追加</span>
+<span class="keyword">ALTER TABLE</span> transcriptions
+  <span class="keyword">ADD COLUMN</span> embedding vector(768);
+
+<span class="comment">-- 類似検索（コサイン距離）</span>
+<span class="keyword">SELECT</span> video_id, full_text,
+       1 - (embedding &lt;=&gt; <span class="string">'[0.1, 0.2, ...]'</span>) <span class="keyword">AS</span> similarity
+<span class="keyword">FROM</span> transcriptions
+<span class="keyword">ORDER BY</span> embedding &lt;=&gt; <span class="string">'[0.1, 0.2, ...]'</span>
+<span class="keyword">LIMIT</span> 5;</code></pre>
+
+
+<h2>9.6 Database Webhooks（外部連携通知）</h2>
+
+<div class="box box-blue no-break">
+  <div class="box-title">現在 → 拡張後</div>
+  <p><strong>現在:</strong> Realtime で画面更新のみ</p>
+  <p><strong>拡張後:</strong> データ変更時に Slack 通知、メール送信、外部 API 呼び出し</p>
+</div>
+
+<pre><code><span class="comment">// Webhook 設定例（Supabase Dashboard から設定）</span>
+<span class="comment">// トリガー: videos テーブルに INSERT が発生したとき</span>
+<span class="comment">// アクション: Slack Webhook URL にメッセージを送信</span>
+<span class="comment">//</span>
+<span class="comment">// 結果: 動画がアップロードされるたびに</span>
+<span class="comment">// Slack チャンネルに「新しい動画がアップロードされました: CM_新商品.mp4」と通知</span></code></pre>
+
+
+<h2>9.7 Supabase Cron（定期実行ジョブ）</h2>
+
+<div class="box box-blue no-break">
+  <div class="box-title">現在 → 拡張後</div>
+  <p><strong>現在:</strong> 手動でのみ分析・レポート作成</p>
+  <p><strong>拡張後:</strong> 毎朝自動でレポート生成、週次で自動分析実行</p>
+</div>
+
+<pre><code><span class="comment">-- pg_cron 拡張を使用（Supabase Pro プランで利用可能）</span>
+<span class="keyword">SELECT</span> cron.<span class="func">schedule</span>(
+  <span class="string">'daily-report'</span>,
+  <span class="string">'0 9 * * *'</span>,  <span class="comment">-- 毎朝9時</span>
+  $$ <span class="keyword">SELECT</span> <span class="func">generate_daily_report</span>() $$
+);</code></pre>
+
+
+<h2>9.8 拡張機能の優先度マトリクス</h2>
+
+<table>
+  <tr>
+    <th>拡張機能</th>
+    <th>実装難易度</th>
+    <th>ビジネス価値</th>
+    <th>無料枠で可能</th>
+    <th>優先度</th>
+  </tr>
+  <tr>
+    <td>DB Triggers（自動更新）</td>
+    <td>低</td>
+    <td>中</td>
+    <td>はい</td>
+    <td style="color:#16a34a; font-weight:bold;">高</td>
+  </tr>
+  <tr>
+    <td>全文検索</td>
+    <td>中</td>
+    <td>高</td>
+    <td>はい</td>
+    <td style="color:#16a34a; font-weight:bold;">高</td>
+  </tr>
+  <tr>
+    <td>Supabase Auth</td>
+    <td>中</td>
+    <td>高</td>
+    <td>はい</td>
+    <td style="color:#eab308; font-weight:bold;">中</td>
+  </tr>
+  <tr>
+    <td>Edge Functions</td>
+    <td>中</td>
+    <td>中</td>
+    <td>はい（50万回/月）</td>
+    <td style="color:#eab308; font-weight:bold;">中</td>
+  </tr>
+  <tr>
+    <td>Database Webhooks</td>
+    <td>低</td>
+    <td>中</td>
+    <td>はい</td>
+    <td style="color:#eab308; font-weight:bold;">中</td>
+  </tr>
+  <tr>
+    <td>pgvector（AI類似検索）</td>
+    <td>高</td>
+    <td>高</td>
+    <td>はい</td>
+    <td style="color:#9ca3af; font-weight:bold;">低</td>
+  </tr>
+  <tr>
+    <td>Cron ジョブ</td>
+    <td>低</td>
+    <td>中</td>
+    <td>Pro プランのみ</td>
+    <td style="color:#9ca3af; font-weight:bold;">低</td>
+  </tr>
+</table>
+
+
+<!-- ============== CHAPTER 10 ============== -->
+<h1 class="section-title">10. まとめ</h1>
+
+<h2>本プロジェクトにおける Supabase の役割</h2>
+
+<div class="box box-green">
+  <p>Supabase は、Firebase Hosting だけでは実現できなかった<strong>データ管理・ファイル保管・リアルタイム通信</strong>を、無料枠の範囲内で提供してくれるバックエンドサービスです。</p>
+  <p>PostgreSQL という世界標準のデータベースを基盤としているため、学んだスキルは他のプロジェクトでもそのまま活用できます。また、オープンソースのためベンダーロックインのリスクが低く、将来的に自社サーバーに移行することも可能です。</p>
+</div>
+
+<h2>3サービスの組み合わせ</h2>
+
+<div class="diagram">┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
+│ Firebase Hosting │    │     Supabase     │    │   Gemini API     │
+│──────────────────│    │──────────────────│    │──────────────────│
+│ 役割: 配信       │    │ 役割: データ管理  │    │ 役割: AI分析     │
+│ 費用: 無料       │    │ 費用: 無料       │    │ 費用: 無料枠     │
+│ 得意: CDN, HTTPS │    │ 得意: DB, Storage│    │ 得意: 自然言語処理│
+│                  │    │       Realtime   │    │                  │
+│ たとえ:          │    │ たとえ:          │    │ たとえ:          │
+│ 「お店の建物」   │    │ 「倉庫と帳簿」   │    │ 「外部の専門家」 │
+└──────────────────┘    └──────────────────┘    └──────────────────┘
+
+  すべて無料枠で、本格的なWebアプリケーションが稼働中
+  https://movie-analysis-d05fb.web.app</div>
+
+<h2>技術選定の教訓</h2>
+
+<ol>
+  <li><strong>各サービスの得意分野を理解する:</strong> Firebase は配信、Supabase はデータ管理、Gemini は AI。万能なサービスはない</li>
+  <li><strong>無料枠を賢く組み合わせる:</strong> 複数サービスの無料枠を組み合わせれば、個人でも本格アプリが作れる</li>
+  <li><strong>標準技術を選ぶ:</strong> SQL, REST API, WebSocket — 標準技術は学習コストが長期的に報われる</li>
+  <li><strong>段階的に拡張する:</strong> 最初はシンプルに。必要になったら Auth, Edge Functions, pgvector を追加</li>
+  <li><strong>セキュリティは多層防御:</strong> 1つの対策に頼らず、パスワードゲート + RLS + 署名付きURL + HTTPS を組み合わせる</li>
+</ol>
+
+<div class="page-footer">
+  Supabase 完全ガイド — 動画CM分析アプリケーション &copy; 2026
+</div>
+
+</div>
+</body>
+</html>
