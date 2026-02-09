@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>動画CM分析アプリ 操作・機能ガイド</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.75;
+    color: #1f2937;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 20mm 18mm;
+  }
+  @media screen {
+    body { padding: 40px 48px; max-width: 900px; background: #f8f9fa; }
+    .page-content { background: white; padding: 48px 52px; border-radius: 8px; box-shadow: 0 1px 8px rgba(0,0,0,0.08); }
+  }
+  @media print {
+    body { padding: 0; }
+    .page-content { padding: 0; }
+    .no-print { display: none !important; }
+  }
+
+  /* Cover */
+  .cover { text-align: center; page-break-after: always; padding: 60px 0 40px; }
+  .cover-icon { font-size: 64pt; margin-bottom: 16px; }
+  .cover h1 { font-size: 22pt; color: #1e3a5f; margin-bottom: 8px; letter-spacing: 0.5px; }
+  .cover .subtitle { font-size: 13pt; color: #6b7280; margin-bottom: 40px; }
+  .cover .meta { font-size: 10pt; color: #9ca3af; line-height: 2; }
+  .cover .meta strong { color: #4b5563; }
+
+  /* TOC */
+  .toc { page-break-after: always; }
+  .toc h2 { font-size: 16pt; color: #1e3a5f; border-bottom: 3px solid #3b82f6; padding-bottom: 6px; margin-bottom: 16px; }
+  .toc ol { padding-left: 24px; }
+  .toc > ol > li { font-size: 11pt; font-weight: 700; color: #1e3a5f; margin-bottom: 6px; line-height: 2; }
+  .toc ol ol { padding-left: 20px; }
+  .toc ol ol li { font-size: 10pt; font-weight: 400; color: #374151; margin-bottom: 2px; line-height: 1.8; }
+
+  /* Headings */
+  h2 { font-size: 16pt; color: #1e3a5f; border-bottom: 3px solid #3b82f6; padding-bottom: 6px; margin: 32px 0 14px; page-break-after: avoid; }
+  h3 { font-size: 13pt; color: #1e40af; margin: 22px 0 10px; page-break-after: avoid; }
+  h4 { font-size: 11pt; color: #374151; margin: 16px 0 8px; border-left: 4px solid #93c5fd; padding-left: 10px; page-break-after: avoid; }
+  h5 { font-size: 10.5pt; color: #4b5563; margin: 12px 0 6px; font-weight: 600; }
+
+  /* Body elements */
+  p { margin-bottom: 8px; text-align: justify; }
+  ul, ol { padding-left: 22px; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+  strong { color: #1e40af; }
+
+  /* Info boxes */
+  .info-box {
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+    padding: 12px 16px; margin: 12px 0; font-size: 10pt;
+  }
+  .info-box.warn { background: #fffbeb; border-color: #fde68a; }
+  .info-box.green { background: #f0fdf4; border-color: #bbf7d0; }
+  .info-box .label { font-weight: 700; color: #1e40af; margin-right: 6px; }
+  .info-box.warn .label { color: #92400e; }
+  .info-box.green .label { color: #166534; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 9.5pt; }
+  th { background: #f0f4ff; color: #1e3a5f; font-weight: 700; text-align: left; padding: 8px 10px; border: 1px solid #d1d5db; }
+  td { padding: 7px 10px; border: 1px solid #e5e7eb; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9fafb; }
+
+  /* Flow diagrams */
+  .flow { display: flex; align-items: center; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
+  .flow-step { background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px; padding: 6px 14px; font-size: 9.5pt; font-weight: 600; color: #1e40af; }
+  .flow-arrow { color: #93c5fd; font-size: 14pt; font-weight: 700; }
+
+  /* Feature cards */
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .feature-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #fafbfc; }
+  .feature-card h5 { margin: 0 0 4px; color: #1e40af; font-size: 10pt; }
+  .feature-card p { font-size: 9.5pt; margin: 0; color: #4b5563; }
+
+  .page-break { page-break-before: always; }
+  .keep-together { page-break-inside: avoid; }
+
+  /* Screenshot placeholder */
+  .screenshot { border: 2px dashed #d1d5db; border-radius: 8px; padding: 20px; text-align: center; color: #9ca3af; font-size: 9pt; margin: 10px 0; background: #f9fafb; }
+</style>
+</head>
+<body>
+<div class="page-content">
+
+<!-- ============================================================ -->
+<!-- 表紙 -->
+<!-- ============================================================ -->
+<div class="cover">
+  <div class="cover-icon">&#127909;</div>
+  <h1>動画CM分析アプリ<br>操作・機能ガイド</h1>
+  <p class="subtitle">全機能の詳細マニュアル &mdash; 初学者向け</p>
+  <div style="width:80px;height:3px;background:linear-gradient(90deg,#3b82f6,#8b5cf6);margin:24px auto 32px;border-radius:2px;"></div>
+  <div class="meta">
+    <strong>アプリURL:</strong> https://movie-analysis-d05fb.web.app<br>
+    <strong>作成日:</strong> 2026年2月9日<br>
+    <strong>バージョン:</strong> 2.0（ダッシュボード統合版）
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 目次 -->
+<!-- ============================================================ -->
+<div class="toc">
+  <h2>目次</h2>
+  <ol>
+    <li>アプリの概要と全体像
+      <ol>
+        <li>このアプリでできること</li>
+        <li>画面構成（4ページ構成）</li>
+        <li>用語集</li>
+      </ol>
+    </li>
+    <li>初回セットアップ
+      <ol>
+        <li>ログイン（パスワード認証）</li>
+        <li>Gemini APIキーの登録</li>
+        <li>AIモデルの選択</li>
+        <li>タグの設定</li>
+      </ol>
+    </li>
+    <li>ダッシュボード（トップページ）
+      <ol>
+        <li>概要タブ</li>
+        <li>動画比較タブ</li>
+        <li>推移タブ</li>
+        <li>レポートタブ</li>
+        <li>ROIタブ</li>
+        <li>ファネルタブ</li>
+        <li>競合比較タブ</li>
+        <li>アラートタブ</li>
+        <li>媒体分析タブ</li>
+        <li>ランキングインサイトタブ</li>
+        <li>分析履歴タブ</li>
+      </ol>
+    </li>
+    <li>動画管理ページ
+      <ol>
+        <li>動画のアップロード</li>
+        <li>書き起こし（文字起こし）</li>
+        <li>一括書き起こし</li>
+        <li>動画の検索・フィルター</li>
+        <li>タグ管理</li>
+        <li>CSV エクスポート</li>
+      </ol>
+    </li>
+    <li>動画詳細ページ
+      <ol>
+        <li>動画再生</li>
+        <li>書き起こし結果の閲覧・編集</li>
+        <li>書き起こしのエクスポート</li>
+        <li>ランキング・メタデータ編集</li>
+        <li>コンバージョン指標の管理</li>
+        <li>アーカイブ</li>
+      </ol>
+    </li>
+    <li>分析ページ
+      <ol>
+        <li>キーワード分析タブ</li>
+        <li>相関分析タブ</li>
+        <li>AI総合分析タブ</li>
+        <li>書き起こし一覧タブ</li>
+        <li>分析履歴タブ</li>
+      </ol>
+    </li>
+    <li>設定ページ
+      <ol>
+        <li>APIキー管理</li>
+        <li>モデル選択</li>
+        <li>ストレージ使用量</li>
+        <li>タグ管理</li>
+      </ol>
+    </li>
+    <li>データのエクスポート機能一覧</li>
+    <li>よくある質問（FAQ）</li>
+    <li>技術仕様</li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<!-- 第1章 -->
+<!-- ============================================================ -->
+<h2>1. アプリの概要と全体像</h2>
+
+<h3>1.1 このアプリでできること</h3>
+<p>本アプリは、<strong>動画CM（コマーシャル）の内容を自動で文字起こしし、AIを使って多角的に分析する</strong>ためのWebアプリケーションです。マーケティング担当者やクリエイターが動画コンテンツの効果を科学的に把握し、改善に活かすことを目的としています。</p>
+
+<div class="info-box green">
+  <span class="label">主な用途:</span>
+  動画の内容を自動テキスト化 → キーワード分析・心理分析・AI推奨 → コンバージョンとの相関把握 → 次回動画の改善提案を受ける
+</div>
+
+<p><strong>主要機能の一覧:</strong></p>
+<table>
+  <tr><th>カテゴリ</th><th>できること</th></tr>
+  <tr><td>動画管理</td><td>動画ファイルのアップロード・一覧管理・タグ付け・ランキング設定・アーカイブ</td></tr>
+  <tr><td>書き起こし</td><td>Google Gemini AIによる自動文字起こし（日本語対応）、一括処理、手動編集、エクスポート（TXT/SRT/VTT/JSON）</td></tr>
+  <tr><td>キーワード分析</td><td>頻出キーワードの抽出、SNS媒体別フィルター、棒グラフ可視化</td></tr>
+  <tr><td>相関分析</td><td>キーワードの出現とコンバージョン率の相関を統計的に分析</td></tr>
+  <tr><td>AI総合分析</td><td>心理分析・ランキング比較・AI推奨・テキスト検索を統合した高度な分析</td></tr>
+  <tr><td>マーケティングレポート</td><td>ターゲット分析・競合優位性・改善提案・次回動画の方向性をAIが自動生成</td></tr>
+  <tr><td>コンバージョン管理</td><td>動画ごとのCV指標（再生回数、クリック率など）の入力・比較・推移グラフ</td></tr>
+  <tr><td>A/Bテスト</td><td>2つの動画を比較しAIが深掘り分析</td></tr>
+  <tr><td>ROI分析</td><td>投資対効果の計算と可視化</td></tr>
+  <tr><td>競合比較</td><td>競合他社のベンチマーク数値を登録して自社と比較</td></tr>
+  <tr><td>アラート</td><td>指標が閾値を超えた場合に自動で通知</td></tr>
+  <tr><td>媒体分析</td><td>YouTube/TikTok/Instagram等のプラットフォーム別最適化提案</td></tr>
+  <tr><td>エクスポート</td><td>CSV・HTML・PPTX（PowerPoint）・各種字幕形式でのデータ書き出し</td></tr>
+</table>
+
+<h3>1.2 画面構成（4ページ構成）</h3>
+<p>アプリは上部ナビゲーションバーで切り替える<strong>4つのメインページ</strong>と、動画をクリックして開く<strong>動画詳細ページ</strong>で構成されています。</p>
+
+<table>
+  <tr><th>ページ名</th><th>URL</th><th>概要</th></tr>
+  <tr><td><strong>ダッシュボード</strong></td><td>/</td><td>全体サマリー・CV比較・推移グラフ・レポート・ROI・競合・アラート等（11タブ）</td></tr>
+  <tr><td><strong>動画管理</strong></td><td>/videos</td><td>動画のアップロード・一覧・書き起こし・タグ管理</td></tr>
+  <tr><td><strong>分析</strong></td><td>/analysis</td><td>キーワード・相関・AI総合分析・書き起こし一覧・履歴（5タブ）</td></tr>
+  <tr><td><strong>設定</strong></td><td>/settings</td><td>APIキー・モデル選択・ストレージ・タグ設定</td></tr>
+  <tr><td><strong>動画詳細</strong></td><td>/videos/:id</td><td>個別動画の再生・書き起こし編集・CV入力・ランキング設定</td></tr>
+</table>
+
+<h3>1.3 用語集</h3>
+<table>
+  <tr><th style="width:25%">用語</th><th>意味</th></tr>
+  <tr><td><strong>書き起こし</strong></td><td>動画の音声をAIがテキスト（文字）に変換すること。「文字起こし」とも言います。</td></tr>
+  <tr><td><strong>Gemini API</strong></td><td>Googleが提供するAIサービス。本アプリでは音声認識と分析に使用します。利用には無料のAPIキーが必要です。</td></tr>
+  <tr><td><strong>APIキー</strong></td><td>AIサービスを利用するための「認証パスワード」のようなもの。Google AI Studioで無料取得できます。</td></tr>
+  <tr><td><strong>コンバージョン（CV）</strong></td><td>動画を見た人が取った行動の成果指標。例：クリック率、再生回数、購入数、問い合わせ数など。</td></tr>
+  <tr><td><strong>ROI</strong></td><td>Return On Investment（投資対効果）。投資した金額に対してどれだけのリターンがあったかの指標。</td></tr>
+  <tr><td><strong>ROAS</strong></td><td>Return On Ad Spend（広告費用対効果）。広告に使った1円あたりの売上。</td></tr>
+  <tr><td><strong>ファネル</strong></td><td>顧客が「認知→関心→検討→購入」と進む過程を漏斗（ファネル）型に図示したもの。</td></tr>
+  <tr><td><strong>A/Bテスト</strong></td><td>2つのバージョンを比較して、どちらがより効果的かを検証する手法。</td></tr>
+  <tr><td><strong>タグ</strong></td><td>動画を分類するためのラベル。例：「YouTube」「TikTok」「Instagram」など。</td></tr>
+  <tr><td><strong>セグメント</strong></td><td>書き起こしテキストの時間区間ごとの区切り。例：「0:00〜0:05 こんにちは」。</td></tr>
+  <tr><td><strong>SRT / VTT</strong></td><td>字幕ファイルの形式。SRTはSubRip形式、VTTはWebVTT形式。動画編集ソフトで字幕として読み込めます。</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 第2章 -->
+<!-- ============================================================ -->
+<h2 class="page-break">2. 初回セットアップ</h2>
+
+<h3>2.1 ログイン（パスワード認証）</h3>
+<p>アプリにアクセスすると、最初に<strong>パスワード入力画面</strong>が表示されます。これはチーム全員で共有する1つのパスワードです。</p>
+<div class="flow">
+  <span class="flow-step">アプリURLにアクセス</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">パスワードを入力</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">ダッシュボードが表示</span>
+</div>
+<div class="info-box">
+  <span class="label">補足:</span>パスワードはブラウザに記憶されるため、次回以降は自動ログインされます。ログアウトは画面右上の「ログアウト」ボタンから行えます。
+</div>
+
+<h3>2.2 Gemini APIキーの登録</h3>
+<p>書き起こしやAI分析を利用するためには、<strong>Google Gemini APIキー</strong>が最低1つ必要です。</p>
+
+<h4>APIキーの取得手順</h4>
+<ol>
+  <li>ブラウザで <strong>Google AI Studio</strong>（https://aistudio.google.com）にアクセス</li>
+  <li>Googleアカウントでログイン</li>
+  <li>左メニューの「Get API key」→「Create API key」をクリック</li>
+  <li>生成された文字列（例: <code>AIzaSy...</code>）をコピー</li>
+</ol>
+
+<h4>アプリへの登録手順</h4>
+<ol>
+  <li>ナビゲーションバーの「<strong>設定</strong>」をクリック</li>
+  <li>「Gemini APIキー管理」セクションの入力欄にコピーしたキーを貼り付け</li>
+  <li>「追加」ボタンをクリック</li>
+  <li>「全キーをテスト」ボタンで正常に登録できたか確認</li>
+</ol>
+
+<div class="info-box green">
+  <span class="label">ポイント:</span>APIキーは<strong>複数登録可能</strong>です。一括書き起こし時にキーを並列で使用するため、複数登録するとより高速に処理できます（無料枠のレート制限を分散）。
+</div>
+
+<h3>2.3 AIモデルの選択</h3>
+<p>設定ページの「モデル選択」で、使用するGeminiモデルを選べます。</p>
+<table>
+  <tr><th>モデル名</th><th>特徴</th><th>おすすめ用途</th></tr>
+  <tr><td>gemini-2.5-flash</td><td>高速・低コスト</td><td>日常的な書き起こし・分析（デフォルト推奨）</td></tr>
+  <tr><td>gemini-2.5-pro</td><td>高精度・やや低速</td><td>重要な分析・レポート生成</td></tr>
+</table>
+
+<h3>2.4 タグの設定</h3>
+<p>設定ページの「タグ管理」で、動画を分類するためのタグを登録します。初期値として以下が設定されています：</p>
+<p><strong>YouTube / TikTok / Instagram / Facebook / LINE / X(Twitter)</strong></p>
+<p>自社で使用するSNSや分類に合わせて、タグの追加・削除が可能です。</p>
+
+<!-- ============================================================ -->
+<!-- 第3章 -->
+<!-- ============================================================ -->
+<h2 class="page-break">3. ダッシュボード（トップページ）</h2>
+<p>ダッシュボードは、アプリのトップページとして機能する<strong>統合分析画面</strong>です。11個のタブに分かれており、それぞれ異なる角度からデータを分析できます。</p>
+
+<div class="info-box">
+  <span class="label">タグ絞込:</span>画面右上の「タグ絞込」ドロップダウンで、特定のSNS媒体（例: YouTube）に絞ったデータ表示が全タブに適用されます。
+</div>
+
+<h3>3.1 概要タブ</h3>
+<p>アプリ全体の状況を一目で把握できるダッシュボードです。</p>
+
+<h4>分析実行ボタン</h4>
+<p>画面右上の「<strong>分析を実行</strong>」ボタンをクリックすると、以下の4つの分析を自動で順番に実行します：</p>
+<div class="flow">
+  <span class="flow-step">1. キーワード分析</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">2. 相関分析</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">3. AIレコメンデーション</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">4. データ更新</span>
+</div>
+<p>実行中はステップインジケーターとプログレスバーが表示され、各ステップの進行状況と経過時間を確認できます。</p>
+
+<h4>サマリーカード（5枚）</h4>
+<table>
+  <tr><th>カード</th><th>表示内容</th></tr>
+  <tr><td>動画総数</td><td>登録されている動画の総数</td></tr>
+  <tr><td>書き起こし完了</td><td>書き起こしが完了した動画数 / 総数</td></tr>
+  <tr><td>処理中 / エラー</td><td>現在処理中の動画数とエラーが発生した動画数</td></tr>
+  <tr><td>平均再生時間</td><td>全動画の平均再生時間（MM:SS形式）</td></tr>
+  <tr><td>CV指標登録数</td><td>コンバージョンデータが入力されている動画数</td></tr>
+</table>
+
+<h4>ストレージ使用量</h4>
+<p>Supabase Storageの使用量をバーで表示します（無料枠: 1GB）。動画ファイルのアップロード量に応じて増加します。</p>
+
+<h4>アラート通知</h4>
+<p>設定したアラートルールに該当するデータがある場合、赤い警告ボックスが表示されます。「アラート設定を確認 →」リンクからアラートタブに移動できます。</p>
+
+<h4>トップキーワードチャート</h4>
+<p>最新のキーワード分析結果から、上位15個のキーワードを横棒グラフで表示します。どのキーワードが動画内で多く使われているかが視覚的にわかります。</p>
+
+<h4>動画別コンバージョン比較チャート</h4>
+<p>各動画のコンバージョン指標を横棒グラフで並べて比較します。複数の指標がある場合は色分けされたバーで表示されます。</p>
+
+<h4>Top/Bottomパフォーマー</h4>
+<p>コンバージョン指標の上位3本（Topパフォーマー）と下位3本（要改善）を並べて表示します。</p>
+
+<h4>動画一覧テーブル</h4>
+<p>全動画をテーブル形式で一覧表示します。ファイル名、ステータス（書き起こし完了/処理中/エラー等）、再生時間、コンバージョン指標が確認できます。</p>
+
+<h4>AIレコメンデーション</h4>
+<p>最新のAI分析結果を表示します。概要サマリー、効果的なキーワード一覧（理由と出現動画付き）、改善提案（優先度バッジ付き）が含まれます。</p>
+
+<h3 class="page-break">3.2 動画比較タブ</h3>
+<p>2〜4本の動画を選択して、パフォーマンスを視覚的に比較します。</p>
+
+<h4>使い方</h4>
+<ol>
+  <li>コンバージョンデータのある動画がチップ（ボタン）で一覧表示されます</li>
+  <li>比較したい動画を<strong>2〜4本</strong>クリックして選択（青くなります）</li>
+  <li>自動でレーダーチャートと数値比較テーブルが生成されます</li>
+</ol>
+
+<h4>レーダーチャート</h4>
+<p>選択した動画の各指標を0〜100に正規化し、レーダー（蜘蛛の巣）チャートで重ねて表示します。動画ごとに色分けされ、どの指標が強い/弱いかが一目でわかります。</p>
+
+<h4>数値比較テーブル</h4>
+<p>全指標を行、選択した動画を列としたテーブルです。各行で最大値が<strong>青字太字</strong>でハイライトされます。</p>
+
+<h3>3.3 推移タブ</h3>
+<p>特定の指標の時系列変化を折れ線グラフで可視化します。</p>
+<ol>
+  <li>「指標」ドロップダウンから見たい指標（例: クリック率）を選択</li>
+  <li>動画の作成日順に折れ線グラフが描画されます</li>
+  <li>各データポイントにマウスを合わせると、動画名・日付・数値が表示されます</li>
+</ol>
+
+<h3>3.4 レポートタブ</h3>
+<p>Gemini AIが全データを統合分析し、<strong>マーケティング総合レポート</strong>を自動生成します。</p>
+
+<h4>レポート生成</h4>
+<ol>
+  <li>（任意）追加の分析指示をテキストエリアに入力（例:「20代女性をターゲットにした分析を重視」）</li>
+  <li>「<strong>レポート生成</strong>」ボタンをクリック</li>
+  <li>AIが分析中はスピナーが表示されます（通常30秒〜2分）</li>
+</ol>
+
+<h4>レポートの内容</h4>
+<table>
+  <tr><th>セクション</th><th>内容</th></tr>
+  <tr><td>エグゼクティブサマリー</td><td>分析結果の要約（1段落）</td></tr>
+  <tr><td>ターゲット分析</td><td>想定されるターゲット層とそれぞれへのキーメッセージ</td></tr>
+  <tr><td>コンテンツ評価マトリクス</td><td>各動画の10点満点スコア・強み・弱み</td></tr>
+  <tr><td>競合優位性</td><td>自社コンテンツの競合に対する強みとその根拠</td></tr>
+  <tr><td>改善優先度</td><td>改善すべき領域（高/中/低の優先度）、推奨アクション、期待効果</td></tr>
+  <tr><td>次回動画の方向性</td><td>推奨テーマ・構成・感情曲線・キーメッセージ</td></tr>
+</table>
+
+<h4>エクスポート</h4>
+<ul>
+  <li><strong>HTMLエクスポート</strong>: ブラウザで開けるHTML形式のレポートファイルをダウンロード</li>
+  <li><strong>PPTXエクスポート</strong>: PowerPoint形式のプレゼンテーションファイルをダウンロード</li>
+</ul>
+
+<h4>AI台本提案</h4>
+<p>「<strong>AI台本提案</strong>」ボタンをクリックすると、過去の分析結果に基づいて次回動画の台本構成案をAIが提案します。台本構成、推奨構成、タイミングガイド、感情曲線、キーメッセージ、参考動画が含まれます。</p>
+
+<h3 class="page-break">3.5 ROIタブ</h3>
+<p>動画広告の<strong>投資対効果</strong>を計算・可視化します。</p>
+
+<h4>使い方</h4>
+<ol>
+  <li>「収益指標」ドロップダウンから売上に相当する指標を選択（例: 売上額）</li>
+  <li>「コスト指標」ドロップダウンから費用に相当する指標を選択（例: 広告費）</li>
+  <li>自動で以下が計算・表示されます：</li>
+</ol>
+<table>
+  <tr><th>指標</th><th>計算式</th><th>意味</th></tr>
+  <tr><td>ROI</td><td>(売上 - コスト) / コスト × 100</td><td>投資に対する利益率。100%なら投資額の2倍の売上</td></tr>
+  <tr><td>ROAS</td><td>売上 / コスト</td><td>広告費1円あたりの売上。2.0なら2倍の売上</td></tr>
+  <tr><td>CPA</td><td>コスト / コンバージョン数</td><td>1コンバージョンあたりの獲得コスト</td></tr>
+</table>
+
+<h3>3.6 ファネルタブ</h3>
+<p>マーケティングファネル（顧客が購入に至るまでの段階的な流れ）を自由に構築・可視化します。</p>
+
+<h4>使い方</h4>
+<ol>
+  <li>「指標を追加」ドロップダウンから段階ごとの指標を選択（例: インプレッション→クリック→購入）</li>
+  <li>（任意）動画を絞り込むか、全動画の合計で表示するか選択</li>
+  <li>ステージは上下矢印ボタンで並び替え可能</li>
+  <li>横棒グラフで各段階の値と通過率（コンバージョン率）が表示されます</li>
+</ol>
+
+<h3>3.7 競合比較タブ</h3>
+<p>競合他社のベンチマーク数値を登録し、自社動画と比較します。</p>
+<ol>
+  <li>「競合を追加」フォームで競合名と各指標の数値を入力</li>
+  <li>登録した競合データと自社動画の指標が同じグラフ上に表示されます</li>
+  <li>競合データは編集・削除が可能です</li>
+</ol>
+
+<h3>3.8 アラートタブ</h3>
+<p>指標が指定した閾値を超えた（または下回った）場合に自動で警告を出す<strong>アラートルール</strong>を設定します。</p>
+
+<h4>アラート作成</h4>
+<table>
+  <tr><th>設定項目</th><th>説明</th></tr>
+  <tr><td>指標</td><td>監視する指標名（ドロップダウンから選択）</td></tr>
+  <tr><td>条件</td><td>「以上（above）」または「以下（below）」</td></tr>
+  <tr><td>閾値</td><td>基準となる数値</td></tr>
+  <tr><td>動画（任意）</td><td>特定の動画のみを対象にする場合に選択</td></tr>
+  <tr><td>有効/無効</td><td>アラートの有効・無効を切り替え</td></tr>
+</table>
+<p>アラートが発動すると、概要タブの上部に赤い通知が表示されます。</p>
+
+<h3 class="page-break">3.9 媒体分析タブ</h3>
+<p>SNSプラットフォーム（YouTube / TikTok / Instagram 等）ごとに、<strong>AI がコンテンツの最適化提案</strong>を行います。</p>
+
+<h4>分析内容</h4>
+<table>
+  <tr><th>分析項目</th><th>内容</th></tr>
+  <tr><td>プラットフォーム特性</td><td>最適な動画長、効果的なフック手法、ストーリーテリングパターン</td></tr>
+  <tr><td>トーン&スタイル</td><td>各媒体に適した雰囲気・語彙・テンポのガイドライン</td></tr>
+  <tr><td>CTA戦略</td><td>プラットフォーム別の行動喚起（Call to Action）最適化提案</td></tr>
+  <tr><td>ベスト/ワースト動画</td><td>該当媒体で高い/低いパフォーマンスの動画と改善ギャップ</td></tr>
+  <tr><td>クロスプラットフォーム提案</td><td>他媒体用にコンテンツを再利用する際のアダプテーション案</td></tr>
+</table>
+
+<h3>3.10 ランキングインサイトタブ</h3>
+<p>動画のランキング（順位）とプラットフォームを掛け合わせた<strong>マトリクス分析</strong>です。</p>
+
+<h4>分析内容</h4>
+<ul>
+  <li><strong>プラットフォーム-ランキングマトリクス:</strong> 各動画がどの媒体でどの程度効果的かを一覧化</li>
+  <li><strong>ペルソナプロファイル:</strong> 各プラットフォームのターゲット層のデモグラフィックス・行動パターン</li>
+  <li><strong>ヒットファクター分析:</strong> 成功動画に共通する要因を「重要度（高/中/低）」で分類</li>
+  <li><strong>コンテンツ戦略:</strong> 媒体別の理想的な動画長・フック戦略・ペルソナメッセージング・CTA手法・台本概要</li>
+</ul>
+
+<h3>3.11 分析履歴タブ</h3>
+<p>過去に実行した全ての分析結果を時系列で閲覧できます。</p>
+<table>
+  <tr><th>表示項目</th><th>内容</th></tr>
+  <tr><td>日時</td><td>分析が実行された日時</td></tr>
+  <tr><td>分析タイプ</td><td>キーワード分析、相関分析、AI推奨、マーケティングレポート等</td></tr>
+  <tr><td>モデル</td><td>使用されたGeminiモデル名</td></tr>
+  <tr><td>スコープ</td><td>分析の範囲（全体/特定動画など）</td></tr>
+</table>
+<p>各行をクリックすると、分析結果のJSON詳細が展開表示されます。ページネーション機能付き（20件/ページ）。</p>
+
+<!-- ============================================================ -->
+<!-- 第4章 -->
+<!-- ============================================================ -->
+<h2 class="page-break">4. 動画管理ページ</h2>
+<p>動画ファイルのアップロード、一覧管理、書き起こし処理を行うページです。</p>
+
+<h3>4.1 動画のアップロード</h3>
+<h4>対応ファイル形式</h4>
+<div class="feature-grid">
+  <div class="feature-card">
+    <h5>動画ファイル</h5>
+    <p>MP4, WebM, MOV, AVI, MKV, FLV, WMV, M4V</p>
+  </div>
+  <div class="feature-card">
+    <h5>音声ファイル</h5>
+    <p>MP3, WAV, AAC, OGG, FLAC, WMA, M4A, Opus</p>
+  </div>
+</div>
+
+<h4>アップロード手順</h4>
+<ol>
+  <li>ページ上部の<strong>ドラッグ&ドロップエリア</strong>にファイルをドラッグ、またはクリックしてファイルを選択</li>
+  <li>複数ファイルを同時に選択可能</li>
+  <li>アップロードの進行状況がプログレスバーで表示されます</li>
+  <li>完了すると動画一覧に自動で追加されます</li>
+</ol>
+
+<div class="info-box warn">
+  <span class="label">容量制限:</span>Supabase無料枠の制約により、1ファイルあたり<strong>最大50MB</strong>、ストレージ合計<strong>最大1GB</strong>です。動画は圧縮してからアップロードすることをお勧めします。
+</div>
+
+<h3>4.2 書き起こし（文字起こし）</h3>
+<p>アップロードした動画の音声をGemini AIがテキストに変換します。</p>
+
+<h4>個別の書き起こし</h4>
+<ol>
+  <li>動画一覧からカードをクリックして詳細ページを開く</li>
+  <li>「書き起こし開始」ボタンをクリック</li>
+  <li>処理中はステータスが「書き起こし中」に変わり、進行状況が表示されます</li>
+  <li>完了するとテキストとタイムスタンプ付きセグメントが表示されます</li>
+</ol>
+
+<h3>4.3 一括書き起こし</h3>
+<p>まだ書き起こしされていない動画をまとめて処理できます。</p>
+<ol>
+  <li>「アップロード済」ステータスの動画がある場合、画面上部に「<strong>N本の動画が未書き起こし</strong>」という通知が表示されます</li>
+  <li>「<strong>一括書き起こし</strong>」ボタンをクリック</li>
+  <li>バッチ進行パネルが表示され、各動画の処理状況がリアルタイムで更新されます：</li>
+</ol>
+<table>
+  <tr><th>ステータス</th><th>意味</th></tr>
+  <tr><td>待機中（queued）</td><td>処理待ち</td></tr>
+  <tr><td>ダウンロード中</td><td>ストレージから動画を取得中</td></tr>
+  <tr><td>準備中</td><td>APIへの送信準備中</td></tr>
+  <tr><td>書き起こし中</td><td>Gemini AIが音声認識を実行中</td></tr>
+  <tr><td>保存中</td><td>結果をデータベースに保存中</td></tr>
+  <tr><td>完了</td><td>書き起こし成功</td></tr>
+  <tr><td>エラー</td><td>処理に失敗（APIキー制限等）</td></tr>
+</table>
+<p>複数のAPIキーを登録している場合、<strong>並列処理</strong>されるため高速です。APIキーの状態（利用可能/使用中/レート制限）も表示されます。</p>
+
+<h3>4.4 動画の検索・フィルター</h3>
+<ul>
+  <li><strong>ファイル名検索:</strong> テキスト入力で動画をフィルター（部分一致、大文字小文字区別なし）</li>
+  <li><strong>タグフィルター:</strong> タグチップ（YouTube, TikTok等）をクリックして特定タグの動画のみ表示</li>
+</ul>
+
+<h3>4.5 タグ管理</h3>
+<p>各動画カードにタグ選択UIがあり、ドロップダウンから複数のタグを付与できます。タグは設定ページで事前に定義したものが表示されます。</p>
+
+<h3>4.6 CSVエクスポート</h3>
+<p>「<strong>CSV出力</strong>」ボタンで、現在表示中の動画リストをCSVファイルとしてダウンロードできます。ファイル名、ステータス、再生時間、タグ等の情報が含まれます。</p>
+
+<!-- ============================================================ -->
+<!-- 第5章 -->
+<!-- ============================================================ -->
+<h2 class="page-break">5. 動画詳細ページ</h2>
+<p>動画一覧からカードをクリックすると開く、個別動画の詳細画面です。</p>
+
+<h3>5.1 動画再生</h3>
+<ul>
+  <li>HTML5ビデオプレーヤーで動画を再生できます</li>
+  <li><strong>再生速度の変更:</strong> 0.5倍〜2倍速に調整可能</li>
+  <li><strong>タイムライン連動:</strong> 書き起こしのセグメント（時間区間）をクリックすると、その時点から再生が開始されます</li>
+</ul>
+
+<h3>5.2 書き起こし結果の閲覧・編集</h3>
+
+<h4>全文表示</h4>
+<p>書き起こし結果がテキストエリアに表示されます。直接編集が可能で、「保存」ボタンで変更を反映できます。</p>
+
+<h4>セグメント表示</h4>
+<p>書き起こしテキストは時間区間（セグメント）ごとに分割されて表示されます。</p>
+<ul>
+  <li>各セグメントには<strong>開始時間〜終了時間</strong>とテキストが表示されます</li>
+  <li>セグメントをクリックすると、動画がその時点にジャンプして再生されます</li>
+  <li>各セグメントのテキストを個別に編集・保存できます</li>
+</ul>
+
+<h3>5.3 書き起こしのエクスポート</h3>
+<p>書き起こし結果を以下の形式でダウンロードできます：</p>
+<table>
+  <tr><th>形式</th><th>用途</th><th>ファイル拡張子</th></tr>
+  <tr><td>テキスト</td><td>プレーンテキストとして利用</td><td>.txt</td></tr>
+  <tr><td>SRT</td><td>字幕ファイル（動画編集ソフトで読込可能）</td><td>.srt</td></tr>
+  <tr><td>VTT</td><td>Web用字幕ファイル</td><td>.vtt</td></tr>
+  <tr><td>JSON</td><td>プログラムでの利用・データ保存</td><td>.json</td></tr>
+</table>
+
+<h3>5.4 ランキング・メタデータ編集</h3>
+<ul>
+  <li><strong>ファイル名の変更:</strong> ファイル名横の編集ボタンから変更可能</li>
+  <li><strong>ランキング設定:</strong> 数値（1位、2位...）を入力して動画に順位を付けられます。補足メモも入力可能</li>
+  <li><strong>タグの変更:</strong> マルチセレクトで複数タグの付与・解除</li>
+</ul>
+
+<h3>5.5 コンバージョン指標の管理</h3>
+<p>動画ごとにパフォーマンス指標を記録します。</p>
+
+<h4>指標の追加</h4>
+<ol>
+  <li>「指標名」に名前を入力（例: 再生回数、クリック率、CV率）</li>
+  <li>「値」に数値を入力</li>
+  <li>（任意）記録日、メモを入力</li>
+  <li>「追加」ボタンで保存</li>
+</ol>
+<p>登録した指標はダッシュボードの比較・推移・ROI等の分析に自動で反映されます。各指標は編集・削除も可能です。コンバージョンデータのCSVエクスポートもできます。</p>
+
+<h3>5.6 アーカイブ</h3>
+<p>「<strong>アーカイブ</strong>」ボタンで動画をアーカイブ状態にできます。アーカイブすると元の動画ファイルがストレージから削除されますが、<strong>書き起こしテキストとメタデータは保持</strong>されます。ストレージ容量を節約したい場合に有効です。</p>
+
+<!-- ============================================================ -->
+<!-- 第6章 -->
+<!-- ============================================================ -->
+<h2 class="page-break">6. 分析ページ</h2>
+<p>5つのタブで構成される、動画コンテンツの詳細分析を行うページです。</p>
+
+<h3>6.1 キーワード分析タブ</h3>
+<p>全動画の書き起こしテキストから頻出キーワードを抽出し、ランキング化します。</p>
+
+<h4>媒体フィルター（新機能）</h4>
+<p>「<strong>媒体</strong>」ドロップダウンで、分析対象をSNS別に絞り込めます。</p>
+<ul>
+  <li><strong>全体:</strong> 全動画を対象に分析</li>
+  <li><strong>YouTube / TikTok / Instagram 等:</strong> 該当タグが付いた動画のみを対象に分析</li>
+</ul>
+
+<h4>分析結果</h4>
+<ul>
+  <li><strong>トップ20棒グラフ:</strong> 上位20キーワードを横棒グラフで可視化</li>
+  <li><strong>トップ50テーブル:</strong> 順位、キーワード、出現回数、該当動画名を一覧表示</li>
+  <li><strong>CSVエクスポート:</strong> 分析結果をCSVファイルとしてダウンロード可能</li>
+</ul>
+
+<h3>6.2 相関分析タブ</h3>
+<p>キーワードの出現とコンバージョン率の間に<strong>統計的な相関</strong>があるかを分析します。</p>
+
+<h4>分析結果</h4>
+<ul>
+  <li><strong>散布図チャート:</strong> X軸＝効果スコア、Y軸＝平均CV率、バブルサイズ＝動画数</li>
+  <li><strong>相関テーブル:</strong> キーワードごとに以下を表示：
+    <ul>
+      <li>キーワードあり時の平均CV率</li>
+      <li>キーワードなし時の平均CV率</li>
+      <li>効果スコア（差分）</li>
+      <li>該当動画数</li>
+    </ul>
+  </li>
+  <li><strong>CSVエクスポート:</strong> 相関データをCSVでダウンロード</li>
+</ul>
+
+<div class="info-box">
+  <span class="label">読み方:</span>効果スコアが<strong>正の大きな値</strong>のキーワードは、コンバージョン率を高める可能性があるキーワードです。逆に負の値は、CV率の低い動画に多く含まれるキーワードです。
+</div>
+
+<h3>6.3 AI総合分析タブ</h3>
+<p>4つの分析機能を<strong>1つのタブに統合</strong>した、最も強力な分析機能です。</p>
+
+<h4>テキスト検索</h4>
+<p>上部の検索バーで、全動画の書き起こしテキストから<strong>全文検索</strong>ができます。検索結果には動画名とマッチしたテキスト部分が表示されます。</p>
+
+<h4>AI総合分析の実行</h4>
+<p>「<strong>AI総合分析を実行</strong>」ボタンをクリックすると、以下の3つの分析が<strong>同時並行</strong>で実行されます：</p>
+
+<table>
+  <tr><th>分析名</th><th>内容</th></tr>
+  <tr>
+    <td><strong>AI推奨</strong></td>
+    <td>書き起こしとCV データを総合分析し、効果的なキーワード・改善提案・ファネル改善案を生成</td>
+  </tr>
+  <tr>
+    <td><strong>ランキング比較</strong></td>
+    <td>ランキング上位と下位の動画を比較し、心理分析・ストーリーテリング・言語テクニック・差異を詳細分析</td>
+  </tr>
+  <tr>
+    <td><strong>コンテンツ心理分析</strong></td>
+    <td>心理学的分析手法に基づき、感情ボラティリティ・ストーリーテリング手法・CV導線の分析を実行</td>
+  </tr>
+</table>
+
+<h4>カスタムプロンプト</h4>
+<p>「追加指示」テキストエリアに自由な分析指示を入力できます。例：「美容系商材のターゲットに絞った分析をして」「冒頭30秒のフック手法を重点的に」</p>
+
+<h4>結果の表示</h4>
+<p>各分析結果は<strong>折りたたみ可能なセクション</strong>で表示されます。セクション右上に「最終実行日時」が表示され、前回の分析結果もいつでも確認できます。</p>
+
+<h3>6.4 書き起こし一覧タブ</h3>
+<p>全動画の書き起こしテキストを一覧表示します。</p>
+<ul>
+  <li>各動画ごとに折りたたみ式のセクションで表示</li>
+  <li>動画名、セグメント数、再生時間、言語が確認できます</li>
+  <li>展開すると全文テキストとセグメント一覧（タイムスタンプ付き）を閲覧可能</li>
+  <li>「詳細を見る」リンクから動画詳細ページに移動できます</li>
+</ul>
+
+<h3>6.5 分析履歴タブ</h3>
+<p>ダッシュボードの分析履歴タブと同様に、過去の全分析結果を時系列で閲覧・展開できます。20件ごとのページネーション付き。</p>
+
+<!-- ============================================================ -->
+<!-- 第7章 -->
+<!-- ============================================================ -->
+<h2 class="page-break">7. 設定ページ</h2>
+
+<h3>7.1 APIキー管理</h3>
+<ul>
+  <li><strong>キーの追加:</strong> テキスト入力欄にAPIキーを貼り付け、「追加」をクリック</li>
+  <li><strong>キーの一覧:</strong> 登録済みキーはマスク表示（セキュリティのため先頭数文字のみ表示）</li>
+  <li><strong>キーの削除:</strong> 各キーの「削除」ボタンで除去（確認ダイアログあり）</li>
+  <li><strong>全キーテスト:</strong> 全登録キーを順にテストし、有効/無効を判定。エラーの場合はエラーメッセージを表示</li>
+</ul>
+
+<h3>7.2 モデル選択</h3>
+<p>ドロップダウンメニューから使用するGemini AIモデルを選択します。カスタムモデル名の入力も可能です。選択は即座に保存されます。</p>
+
+<h3>7.3 ストレージ使用量</h3>
+<p>Supabase Storageの使用量をバーグラフで表示します。使用済み容量（MB）と上限（1GB）が数値で確認できます。</p>
+
+<h3>7.4 タグ管理</h3>
+<ul>
+  <li><strong>タグの追加:</strong> テキスト入力欄にタグ名を入力して「追加」（重複は不可）</li>
+  <li><strong>タグの削除:</strong> 各タグチップの「×」ボタンで削除</li>
+  <li>追加・削除は即座にデータベースに保存されます</li>
+  <li>ここで管理するタグが、動画管理ページやキーワード分析の媒体フィルターに反映されます</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- 第8章 -->
+<!-- ============================================================ -->
+<h2 class="page-break">8. データのエクスポート機能一覧</h2>
+
+<table>
+  <tr><th>データ</th><th>形式</th><th>操作場所</th><th>内容</th></tr>
+  <tr><td>動画リスト</td><td>CSV</td><td>動画管理ページ「CSV出力」</td><td>ファイル名、ステータス、再生時間、タグ等</td></tr>
+  <tr><td>書き起こし</td><td>TXT</td><td>動画詳細ページ</td><td>プレーンテキスト全文</td></tr>
+  <tr><td>書き起こし</td><td>SRT</td><td>動画詳細ページ</td><td>タイムスタンプ付き字幕ファイル</td></tr>
+  <tr><td>書き起こし</td><td>VTT</td><td>動画詳細ページ</td><td>Web用字幕ファイル</td></tr>
+  <tr><td>書き起こし</td><td>JSON</td><td>動画詳細ページ</td><td>構造化データ（セグメント含む）</td></tr>
+  <tr><td>コンバージョン</td><td>CSV</td><td>動画詳細ページ</td><td>指標名、値、日付、メモ</td></tr>
+  <tr><td>キーワード分析</td><td>CSV</td><td>分析ページ「キーワード」タブ</td><td>順位、キーワード、出現回数、該当動画</td></tr>
+  <tr><td>相関分析</td><td>CSV</td><td>分析ページ「相関」タブ</td><td>キーワード、CV平均、効果スコア</td></tr>
+  <tr><td>マーケティングレポート</td><td>HTML</td><td>ダッシュボード「レポート」タブ</td><td>ブラウザで表示できる完全なレポート</td></tr>
+  <tr><td>マーケティングレポート</td><td>PPTX</td><td>ダッシュボード「レポート」タブ</td><td>PowerPointプレゼンテーション</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 第9章 -->
+<!-- ============================================================ -->
+<h2>9. よくある質問（FAQ）</h2>
+
+<h4>Q. APIキーは有料ですか？</h4>
+<p>A. Google Gemini APIには<strong>無料枠</strong>があります。個人利用や小規模チームであれば、通常は無料枠内で収まります。大量の動画を処理する場合は有料プランが必要になる可能性があります。</p>
+
+<h4>Q. 書き起こしが「エラー」になりました。どうすれば？</h4>
+<p>A. 主な原因は<strong>APIキーのレート制限</strong>です。以下を試してください：</p>
+<ol>
+  <li>数分待ってからリトライ（動画詳細ページの「リトライ」ボタン）</li>
+  <li>設定ページで「全キーをテスト」してキーが有効か確認</li>
+  <li>複数のAPIキーを登録してレート制限を分散</li>
+</ol>
+
+<h4>Q. 動画をアップロードできません</h4>
+<p>A. ファイルサイズが<strong>50MB以下</strong>か確認してください。また、ストレージ上限（1GB）に達していないか、設定ページのストレージ使用量を確認してください。</p>
+
+<h4>Q. 分析結果が空です</h4>
+<p>A. 分析には<strong>書き起こし済みの動画</strong>が必要です。まず動画の書き起こしを完了させてから分析を実行してください。</p>
+
+<h4>Q. 相関分析で結果が出ません</h4>
+<p>A. 相関分析には、書き起こし済みの動画に加えて<strong>コンバージョン指標が登録</strong>されている必要があります。動画詳細ページからCV指標を入力してください。</p>
+
+<h4>Q. タグはどう使い分ければよいですか？</h4>
+<p>A. 主な使い方は<strong>投稿先SNS</strong>での分類です。例えばYouTube用の動画には「YouTube」タグ、TikTok用には「TikTok」タグを付けることで、媒体別の分析が可能になります。</p>
+
+<h4>Q. ダークモードはありますか？</h4>
+<p>A. はい。ナビゲーションバー右側の太陽/月アイコンをクリックすると、ライトモードとダークモードを切り替えられます。設定はブラウザに記憶されます。</p>
+
+<h4>Q. データは安全ですか？</h4>
+<p>A. データはSupabase（クラウドデータベース）に暗号化通信（HTTPS）で保存されます。アプリはパスワード認証で保護されています。ただし、高度なセキュリティが必要な場合は追加対策を検討してください。</p>
+
+<!-- ============================================================ -->
+<!-- 第10章 -->
+<!-- ============================================================ -->
+<h2 class="page-break">10. 技術仕様</h2>
+
+<table>
+  <tr><th style="width:30%">項目</th><th>詳細</th></tr>
+  <tr><td>フロントエンド</td><td>React 19 + TypeScript + Vite + Tailwind CSS</td></tr>
+  <tr><td>データ可視化</td><td>Recharts（棒グラフ、折れ線、レーダー、散布図）</td></tr>
+  <tr><td>ホスティング</td><td>Firebase Hosting（無料枠）</td></tr>
+  <tr><td>データベース</td><td>Supabase PostgreSQL（無料枠: 500MB）</td></tr>
+  <tr><td>ファイルストレージ</td><td>Supabase Storage（無料枠: 1GB）</td></tr>
+  <tr><td>AI / 音声認識</td><td>Google Gemini API（ユーザー提供キー）</td></tr>
+  <tr><td>認証方式</td><td>共有パスワード（SHA-256ハッシュ）</td></tr>
+  <tr><td>対応ブラウザ</td><td>Chrome, Edge, Firefox, Safari（最新版推奨）</td></tr>
+  <tr><td>対応デバイス</td><td>PC推奨（レスポンシブ対応あり）</td></tr>
+  <tr><td>PPTX生成</td><td>PptxGenJS ライブラリ</td></tr>
+</table>
+
+<div style="margin-top: 40px; text-align: center; border-top: 2px solid #e5e7eb; padding-top: 20px;">
+  <p style="color: #9ca3af; font-size: 9pt;">
+    動画CM分析アプリ 操作・機能ガイド v2.0<br>
+    &copy; 2026 動画CM分析チーム
+  </p>
+</div>
+
+</div><!-- /page-content -->
+
+<div class="no-print" style="text-align:center; margin-top: 32px; padding: 16px;">
+  <p style="color:#6b7280; font-size: 11pt; margin-bottom: 12px;">
+    このガイドをPDFとして保存するには:<br>
+    <strong>Ctrl + P</strong>（Windows）/ <strong>Cmd + P</strong>（Mac）→ 送信先を「PDFとして保存」に変更 → 保存
+  </p>
+  <button onclick="window.print()" style="background:#3b82f6;color:white;border:none;padding:10px 24px;border-radius:8px;font-size:11pt;cursor:pointer;font-weight:600;">
+    PDFとして保存 (印刷ダイアログを開く)
+  </button>
+</div>
+
+</body>
+</html>
