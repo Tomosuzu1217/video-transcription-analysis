@@ -1,13 +1,20 @@
+export interface VideoThumbnail {
+  time: number;
+  storage_path: string;
+}
+
 export interface Video {
   id: number;
   filename: string;
   file_size: number | null;
   duration_seconds: number | null;
-  status: "uploaded" | "transcribing" | "transcribed" | "error";
+  status: "uploaded" | "transcribing" | "transcribed" | "error" | "archived";
   error_message: string | null;
   ranking: number | null;
   ranking_notes: string | null;
   storage_path: string;
+  tags: string[];
+  thumbnails: VideoThumbnail[];
   created_at: string;
   updated_at: string;
 }
@@ -208,6 +215,103 @@ export interface PsychologicalContentResult {
   }>;
 }
 
+export interface MarketingReportResult {
+  executive_summary: string;
+  target_audience_analysis: Array<{
+    segment: string;
+    description: string;
+    effective_videos: string[];
+    key_messages: string[];
+  }>;
+  competitive_advantages: Array<{
+    advantage: string;
+    evidence: string;
+    leverage_suggestion: string;
+  }>;
+  content_performance_matrix: Array<{
+    video_name: string;
+    strengths: string[];
+    weaknesses: string[];
+    overall_score: number;
+  }>;
+  improvement_priorities: Array<{
+    area: string;
+    current_state: string;
+    recommended_action: string;
+    expected_impact: string;
+    priority: string;
+  }>;
+  next_video_direction: {
+    theme: string;
+    key_messages: string[];
+    recommended_structure: string;
+    target_emotion_arc: string;
+    estimated_effectiveness: string;
+  };
+}
+
+// ---- A/B Test, Competitor, Alert Types ----
+
+export interface ABTest {
+  id: number;
+  name: string;
+  video_a_id: number;
+  video_b_id: number;
+  target_metric: string;
+  status: "draft" | "running" | "completed";
+  notes: string | null;
+  created_at: string;
+}
+
+export interface ABTestResult {
+  test: ABTest;
+  video_a_name: string;
+  video_b_name: string;
+  value_a: number | null;
+  value_b: number | null;
+  lift_percent: number | null;
+  z_score: number | null;
+  significant: boolean;
+}
+
+export interface Competitor {
+  id: number;
+  name: string;
+  metrics: Record<string, number>;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Alert {
+  id: number;
+  metric_name: string;
+  condition: "above" | "below";
+  threshold: number;
+  video_id: number | null;
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface TriggeredAlert extends Alert {
+  current_value: number;
+  video_filename: string;
+}
+
+export interface FunnelStage {
+  name: string;
+  value: number;
+  rate: number | null;
+}
+
+export interface ContentSuggestion {
+  script_outline: string;
+  key_messages: string[];
+  recommended_structure: string;
+  timing_guide: string;
+  target_emotion_arc: string;
+  reference_videos: string[];
+}
+
 // ---- Shared DB Record Types (used across API files) ----
 
 export interface VideoRecord {
@@ -220,6 +324,7 @@ export interface VideoRecord {
   ranking: number | null;
   ranking_notes: string | null;
   storage_path: string;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }

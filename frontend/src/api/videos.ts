@@ -1,6 +1,7 @@
 import { get, getAll, put, del, update, generateId, STORES } from "../services/db";
-import { saveVideo as uploadToStorage, getVideoSignedUrl, deleteVideo as deleteFromStorage } from "../services/videoStorage";
-import type { Video } from "../types";
+import { saveVideo as uploadToStorage, getVideoSignedUrl, deleteVideo as deleteFromStorage, uploadThumbnail, deleteThumbnails } from "../services/videoStorage";
+import { extractThumbnails } from "../utils/thumbnailExtractor";
+import type { Video, VideoThumbnail } from "../types";
 
 export interface UploadResult {
   successes: Video[];
@@ -90,6 +91,8 @@ export async function uploadVideos(
         ranking: null,
         ranking_notes: null,
         storage_path: storagePath,
+        tags: [],
+        thumbnails: [],
         created_at: now,
         updated_at: now,
       };
@@ -123,9 +126,14 @@ export async function deleteVideo(id: number): Promise<void> {
   // Get video to find storage path
   const video = await get<Video>(STORES.VIDEOS, id);
 
-  // Delete from Supabase Storage
+  // Delete video file from Supabase Storage
   if (video?.storage_path) {
     try { await deleteFromStorage(video.storage_path); } catch { /* ignore */ }
+  }
+
+  // Delete thumbnails from Supabase Storage
+  if (video?.thumbnails?.length) {
+    try { await deleteThumbnails(video.thumbnails.map((t) => t.storage_path)); } catch { /* ignore */ }
   }
 
   // Delete from database (CASCADE deletes transcriptions and conversions)
@@ -171,10 +179,48 @@ export async function updateVideoRanking(
   return getVideo(id);
 }
 
-export async function getRankedVideos(): Promise<{ videos: Video[]; total: number }> {
-  const allVideos = await getAll<Video>(STORES.VIDEOS);
-  const videos = allVideos
-    .filter((v) => v.ranking != null)
-    .sort((a, b) => (a.ranking ?? 0) - (b.ranking ?? 0));
-  return { videos, total: videos.length };
+export async function updateVideoTags(id: number, tags: string[]): Promise<Video> {
+  await update(STORES.VIDEOS, id, { tags, updated_at: new Date().toISOString() });
+  return getVideo(id);
 }
+
+export async function archiveVideo(
+  id: number,
+  onProgress?: (stage: string) => void,
+): Promise<Video> {
+  const video = await getVideo(id);
+  if (!video.storage_path) throw new Error("動画ファイルが見つかりません");
+  if (!video.duration_seconds) throw new Error("動画の長さが不明です");
+
+  // 1. Get signed URL for video
+  onProgress?.("サムネイル抽出中...");
+  const videoUrl = await getVideoSignedUrl(video.storage_path);
+
+  // 2. Extract thumbnails
+  const frames = await extractThumbnails(videoUrl, video.duration_seconds);
+
+  // 3. Upload thumbnails
+  onProgress?.("サムネイルをアップロード中...");
+  const thumbs: VideoThumbnail[] = [];
+  for (const frame of frames) {
+    const path = await uploadThumbnail(id, frame.time, frame.blob);
+    thumbs.push({ time: frame.time, storage_path: path });
+  }
+
+  // 4. Update video record
+  onProgress?.("動画ファイルを削除中...");
+  await update(STORES.VIDEOS, id, {
+    thumbnails: thumbs,
+    status: "archived",
+    updated_at: new Date().toISOString(),
+  });
+
+  // 5. Delete original video file
+  await deleteFromStorage(video.storage_path);
+
+  // Clear signed URL cache
+  _signedUrlCache.delete(id);
+
+  return getVideo(id);
+}
+

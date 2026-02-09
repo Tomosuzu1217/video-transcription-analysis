@@ -2,20 +2,19 @@ import { supabase } from "./supabase";
 
 const BUCKET = "videos";
 
-/** Remove path traversal sequences and dangerous characters from filename */
-function sanitizeFileName(name: string): string {
-  return name
-    .replace(/\.\.[/\\]/g, "")    // remove ../ or ..\
-    .replace(/[/\\]/g, "_")       // replace path separators
-    .replace(/[\x00-\x1f]/g, "")  // remove control characters
-    .replace(/^\.+/, "")          // remove leading dots
-    .slice(0, 255)                // limit length
-    || "unnamed";
+/** Extract file extension (ASCII-safe, lowercase) */
+function getExtension(filename: string): string {
+  const dot = filename.lastIndexOf(".");
+  if (dot < 0) return "mp4";
+  const ext = filename.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ext || "mp4";
 }
 
 export async function saveVideo(id: number, file: File): Promise<string> {
-  const safeName = sanitizeFileName(file.name);
-  const path = `${id}/${safeName}`;
+  // Use ASCII-safe path: {id}/media.{ext}
+  // Japanese/non-ASCII filenames cause issues with S3-compatible storage
+  const ext = getExtension(file.name);
+  const path = `${id}/media.${ext}`;
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, file, {
@@ -48,5 +47,30 @@ export async function deleteVideo(storagePath: string): Promise<void> {
   const { error } = await supabase.storage
     .from(BUCKET)
     .remove([storagePath]);
+  if (error) throw error;
+}
+
+export async function uploadThumbnail(
+  videoId: number,
+  timeSec: number,
+  blob: Blob,
+): Promise<string> {
+  const path = `${videoId}/thumb_${timeSec}.jpg`;
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, blob, {
+      cacheControl: "86400",
+      upsert: true,
+      contentType: "image/jpeg",
+    });
+  if (error) throw error;
+  return path;
+}
+
+export async function deleteThumbnails(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .remove(paths);
   if (error) throw error;
 }

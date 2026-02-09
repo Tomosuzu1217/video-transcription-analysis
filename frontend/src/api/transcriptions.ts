@@ -40,8 +40,6 @@ export interface FullTranscription {
   segments: TranscriptionSegmentData[];
 }
 
-const _transcriptionDataCache = new Map<number, { full_text: string; segments: TranscriptionSegmentData[]; filename: string }>();
-
 export async function getTranscriptionStatus(videoId: number): Promise<TranscriptionStatus> {
   const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
   if (!videoData) throw new Error("動画が見つかりません");
@@ -69,11 +67,6 @@ export async function getTranscriptionStatus(videoId: number): Promise<Transcrip
       created_at: tData.created_at ?? "",
       segments,
     };
-    _transcriptionDataCache.set(videoId, {
-      full_text: transcription.full_text,
-      segments: segments.map((s) => ({ id: s.id, start_time: s.start_time, end_time: s.end_time, text: s.text })),
-      filename: videoData.filename ?? "video",
-    });
   }
 
   const statusMap: Record<string, TranscriptionStatus["status"]> = {
@@ -193,49 +186,6 @@ export async function batchTranscribeVideos(
 
 export { isBatchRunning };
 
-function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const ms = Math.round((seconds % 1) * 1000);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
-}
-
-function formatVtt(seconds: number): string {
-  return formatTime(seconds).replace(",", ".");
-}
-
-function generateExportContent(
-  data: { full_text: string; segments: TranscriptionSegmentData[]; filename: string },
-  format: string,
-): string {
-  switch (format) {
-    case "txt":
-      return data.full_text;
-    case "srt":
-      return data.segments.map((s, i) =>
-        `${i + 1}\n${formatTime(s.start_time)} --> ${formatTime(s.end_time)}\n${s.text}\n`
-      ).join("\n");
-    case "vtt":
-      return "WEBVTT\n\n" + data.segments.map((s) =>
-        `${formatVtt(s.start_time)} --> ${formatVtt(s.end_time)}\n${s.text}\n`
-      ).join("\n");
-    case "json":
-      return JSON.stringify({ full_text: data.full_text, segments: data.segments }, null, 2);
-    default:
-      return data.full_text;
-  }
-}
-
-export function getTranscriptionExportUrl(videoId: number, format: "txt" | "srt" | "vtt" | "json"): string {
-  const cached = _transcriptionDataCache.get(videoId);
-  if (!cached) return "#";
-  const content = generateExportContent(cached, format);
-  const encoded = encodeURIComponent(content);
-  const mimeType = format === "json" ? "application/json" : "text/plain";
-  return `data:${mimeType};charset=utf-8,${encoded}`;
-}
-
 export async function searchTranscriptions(
   queryStr: string,
 ): Promise<{ query: string; total: number; results: SearchResult[] }> {
@@ -287,12 +237,6 @@ export async function getAllTranscriptions(): Promise<{
       text: s.text,
     }));
 
-    _transcriptionDataCache.set(videoId, {
-      full_text: tData.full_text ?? "",
-      segments,
-      filename,
-    });
-
     transcriptions.push({
       video_id: videoId,
       video_filename: filename,
@@ -336,12 +280,4 @@ export async function updateTranscriptionSegment(
       edited_at: new Date().toISOString(),
     })
     .eq("id", tData.id);
-
-  // Update cache
-  const videoData = await get<VideoRecord>(STORES.VIDEOS, videoId);
-  _transcriptionDataCache.set(videoId, {
-    full_text: fullText,
-    segments: segments.map((s, i) => ({ id: i + 1, start_time: s.start_time, end_time: s.end_time, text: s.text })),
-    filename: videoData?.filename ?? "video",
-  });
 }

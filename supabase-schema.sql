@@ -10,11 +10,13 @@ CREATE TABLE videos (
   file_size       BIGINT,
   duration_seconds DOUBLE PRECISION,
   status          TEXT NOT NULL DEFAULT 'uploaded'
-                  CHECK (status IN ('uploaded', 'transcribing', 'transcribed', 'error')),
+                  CHECK (status IN ('uploaded', 'transcribing', 'transcribed', 'error', 'archived')),
   error_message   TEXT,
   ranking         INTEGER,
   ranking_notes   TEXT,
   storage_path    TEXT NOT NULL DEFAULT '',
+  tags            JSONB NOT NULL DEFAULT '[]'::jsonb,
+  thumbnails      JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -89,6 +91,39 @@ CREATE TABLE transcription_logs (
 CREATE INDEX idx_transcription_logs_video_id ON transcription_logs(video_id);
 CREATE INDEX idx_transcription_logs_timestamp ON transcription_logs(timestamp DESC);
 
+-- A/Bテスト
+CREATE TABLE ab_tests (
+  id            BIGINT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  video_a_id    BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  video_b_id    BIGINT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  target_metric TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'draft'
+                CHECK (status IN ('draft','running','completed')),
+  notes         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 競合データ
+CREATE TABLE competitors (
+  id         BIGINT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  metrics    JSONB NOT NULL DEFAULT '{}'::jsonb,
+  notes      TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- アラートルール
+CREATE TABLE alerts (
+  id          BIGINT PRIMARY KEY,
+  metric_name TEXT NOT NULL,
+  condition   TEXT NOT NULL CHECK (condition IN ('above','below')),
+  threshold   DOUBLE PRECISION NOT NULL,
+  video_id    BIGINT REFERENCES videos(id) ON DELETE CASCADE,
+  enabled     BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ============================================================
 -- RLSポリシー（全テーブルでanon roleに全操作を許可）
 -- ============================================================
@@ -98,6 +133,9 @@ ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transcription_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ab_tests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competitors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow all for anon" ON videos FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON transcriptions FOR ALL USING (true) WITH CHECK (true);
@@ -105,6 +143,9 @@ CREATE POLICY "Allow all for anon" ON settings FOR ALL USING (true) WITH CHECK (
 CREATE POLICY "Allow all for anon" ON analyses FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON conversions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON transcription_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON ab_tests FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON competitors FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON alerts FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- Realtime（videosテーブルのリアルタイム更新を有効化）

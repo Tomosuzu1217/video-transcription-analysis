@@ -7,6 +7,9 @@ export const STORES = {
   ANALYSES: "analyses",
   TRANSCRIPTION_LOGS: "transcription_logs",
   CONVERSIONS: "conversions",
+  AB_TESTS: "ab_tests",
+  COMPETITORS: "competitors",
+  ALERTS: "alerts",
 } as const;
 
 type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -18,6 +21,9 @@ const PRIMARY_KEYS: Record<StoreName, string> = {
   analyses: "id",
   transcription_logs: "id",
   conversions: "id",
+  ab_tests: "id",
+  competitors: "id",
+  alerts: "id",
 };
 
 /** Crypto-random numeric ID within safe integer range */

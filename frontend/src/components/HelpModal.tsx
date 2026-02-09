@@ -40,17 +40,17 @@ const sections = [
       "完了すると、動画一覧にカードが追加されます。",
     ],
     tips: [
-      "動画形式: mp4, mov, avi, mkv, webm, wmv, flv, mpeg, mpg, m4v, 3gp, ts, mts, m2ts, ogv, vob",
+      "動画形式: mp4, webm, mov, avi, mkv, flv, wmv, m4v",
       "音声形式: mp3, wav, aac, ogg, flac, wma, m4a, opus",
       "最大ファイルサイズ: 50MB（Supabase Storage無料枠の制限）",
-      "一度に最大20ファイルまでアップロード可能",
+      "複数ファイルの同時アップロードに対応",
     ],
   },
   {
     id: "transcription",
     title: "STEP 2: 書き起こしを確認する",
     content: [
-      "アップロードが完了すると、自動で書き起こし処理が始まります。",
+      "動画管理画面の「一括書き起こし」ボタンで、Gemini AIによる書き起こし処理を開始します。",
     ],
     steps: [
       "動画カードのステータスを確認します:",
@@ -62,7 +62,9 @@ const sections = [
       "詳細画面では以下のことができます:",
       "  -- 動画の再生（再生速度の変更: 0.5x 〜 2.0x）",
       "  -- 書き起こしテキストの確認（タイムスタンプ付き）",
+      "  -- セグメント単位のテキスト編集（鉛筆アイコンをクリック）",
       "  -- テキストのコピー、TXT/SRT/VTT/JSON形式でのダウンロード",
+      "  -- ランキングの設定・編集",
       "エラーが出た場合は「再書き起こし」ボタンで再試行できます。",
     ],
   },
@@ -74,7 +76,7 @@ const sections = [
     ],
     steps: [
       "動画の詳細画面を開きます（動画カードをクリック）。",
-      "画面下部の「コンバージョン」セクションを見つけます。",
+      "ページ下部の「コンバージョン」セクションを見つけます。",
       "「指標名」に項目名を入力します（例: クリック数、登録数、売上など）。",
       "「値」に数値を入力します。",
       "必要に応じて「備考」を入力します。",
@@ -133,6 +135,37 @@ const sections = [
     ],
   },
   {
+    id: "marketing",
+    title: "マーケティング分析",
+    content: [
+      "「マーケティング」タブでは、動画CMのパフォーマンスを多角的に分析できます。",
+    ],
+    steps: [
+      "--- 概要 ---",
+      "動画別のコンバージョン指標を棒グラフで比較します。",
+      "トップ/要改善パフォーマーをハイライト表示します。",
+      "タグで絞り込みが可能です。",
+      "",
+      "--- 動画比較 ---",
+      "2〜4本の動画を選択して、レーダーチャートで多次元比較します。",
+      "全指標を正規化（0-100）して公平に比較できます。",
+      "数値比較テーブルで詳細を確認できます。",
+      "",
+      "--- 推移 ---",
+      "コンバージョン指標の推移を折れ線グラフで表示します。",
+      "指標の選択とタグフィルタリングが可能です。",
+      "",
+      "--- レポート ---",
+      "Gemini AIが包括的なマーケティングレポートを生成します。",
+      "ターゲット分析、競合優位性、改善提案、次回動画の方向性を含みます。",
+      "HTMLファイルとしてエクスポート可能です。",
+    ],
+    tips: [
+      "動画にタグを付けると、キャンペーンやカテゴリ別の分析が可能になります。",
+      "タグは動画詳細ページのヘッダー部分で追加・削除できます。",
+    ],
+  },
+  {
     id: "settings",
     title: "設定の使い方",
     content: [
@@ -170,15 +203,15 @@ const sections = [
     content: [],
     steps: [
       "--- 書き起こしが終わらない ---",
-      "初回起動時はWhisperモデル（約3GB）のダウンロードが必要です。",
-      "動画の長さに応じて処理に時間がかかります。画面は自動更新されます。",
+      "Gemini APIの処理に時間がかかる場合があります。画面は自動更新されます。",
+      "複数のAPIキーを登録すると並列処理で高速化されます。",
       "",
       "--- AI分析が実行できない ---",
       "「設定」タブでAPIキーが正しく登録されているか確認してください。",
       "「全キーをテスト」で「有効」と表示されるか確認してください。",
       "",
       "--- アップロードに失敗する ---",
-      "ファイルサイズが500MBを超えていないか確認してください。",
+      "ファイルサイズが50MBを超えていないか確認してください。",
       "対応していない動画形式の場合は変換してからアップロードしてください。",
       "",
       "--- 相関分析が実行できない ---",
@@ -205,11 +238,11 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative flex w-full max-w-4xl max-h-[85vh] rounded-xl bg-white shadow-2xl overflow-hidden mx-4">
+      <div className="relative flex w-full max-w-4xl max-h-[85vh] rounded-xl bg-white dark:bg-gray-800 shadow-2xl overflow-hidden mx-4">
         {/* Sidebar */}
-        <nav className="w-56 shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto">
-          <div className="px-4 py-4 border-b border-gray-200">
-            <h2 className="text-base font-bold text-gray-900">操作マニュアル</h2>
+        <nav className="w-56 shrink-0 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
+          <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">操作マニュアル</h2>
           </div>
           <ul className="py-2">
             {sections.map((s) => (
@@ -218,8 +251,8 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
                   onClick={() => setActiveSection(s.id)}
                   className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                     activeSection === s.id
-                      ? "bg-blue-100 text-blue-700 font-medium"
-                      : "text-gray-600 hover:bg-gray-100"
+                      ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}
                 >
                   {s.title}
@@ -232,11 +265,11 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
         {/* Content */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <h3 className="text-lg font-semibold text-gray-900">{current.title}</h3>
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{current.title}</h3>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -247,7 +280,7 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
           {/* Body */}
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
             {current.content.map((p, i) => (
-              <p key={i} className="text-sm text-gray-700 leading-relaxed">{p}</p>
+              <p key={i} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{p}</p>
             ))}
 
             {current.steps && (
@@ -257,7 +290,7 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
                   if (step.startsWith("---") && step.endsWith("---")) {
                     return (
                       <li key={i} className="pt-3 pb-1">
-                        <p className="text-sm font-semibold text-gray-800">
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                           {step.replace(/^-+\s*/, "").replace(/\s*-+$/, "")}
                         </p>
                       </li>
@@ -270,16 +303,16 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
                   // Sub-item (indented with --)
                   if (step.startsWith("  --")) {
                     return (
-                      <li key={i} className="flex gap-2 pl-6 text-sm text-gray-600">
-                        <span className="shrink-0 text-gray-400">-</span>
+                      <li key={i} className="flex gap-2 pl-6 text-sm text-gray-600 dark:text-gray-400">
+                        <span className="shrink-0 text-gray-400 dark:text-gray-500">-</span>
                         <span>{step.replace(/^\s*--\s*/, "")}</span>
                       </li>
                     );
                   }
                   // Normal step
                   return (
-                    <li key={i} className="flex gap-3 text-sm text-gray-700">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-700">
+                    <li key={i} className="flex gap-3 text-sm text-gray-700 dark:text-gray-300">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40 text-xs font-medium text-blue-700 dark:text-blue-300">
                         {i + 1}
                       </span>
                       <span className="leading-relaxed pt-0.5">{step}</span>
@@ -290,11 +323,11 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
             )}
 
             {current.tips && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
-                <p className="text-xs font-semibold text-amber-700 mb-1">ヒント</p>
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-4 py-3">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">ヒント</p>
                 <ul className="space-y-1">
                   {current.tips.map((tip, i) => (
-                    <li key={i} className="text-sm text-amber-800">{tip}</li>
+                    <li key={i} className="text-sm text-amber-800 dark:text-amber-300">{tip}</li>
                   ))}
                 </ul>
               </div>

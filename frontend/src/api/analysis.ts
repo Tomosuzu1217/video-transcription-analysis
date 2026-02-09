@@ -83,30 +83,6 @@ ${videoTexts}
   return result;
 }
 
-export async function runVideoKeywordAnalysis(videoId: number): Promise<any> {
-  const videos = await loadVideosData();
-  const video = videos.find((v) => v.videoId === videoId);
-  if (!video) throw new Error("動画が見つかりません");
-
-  const prompt = `以下の動画CMの書き起こしテキストからキーワードとフレーズを抽出してください。
-
-${video.transcript}
-
-以下のJSON形式で返してください:
-{
-  "video_id": ${videoId},
-  "video_filename": "${video.name}",
-  "keywords": [{"keyword": "キーワード", "count": 5}],
-  "phrases": [{"phrase": "2語フレーズ", "count": 3}]
-}
-
-重要: 必ず有効なJSONのみを返してください。`;
-
-  const result = await callGeminiJson(prompt);
-  await saveAnalysis("keyword_frequency", "single_video", result);
-  return result;
-}
-
 export async function runCorrelationAnalysis(): Promise<any> {
   const videos = await loadVideosData();
   const withData = videos.filter((v) => Object.keys(v.conversions).length > 0);
@@ -320,6 +296,104 @@ ${customInstruction}
   const result = await callGeminiJson(prompt) as any;
   result.nlp_preanalysis = nlpPreanalysis;
   await saveAnalysis("psychological_content", "cross_video", result, "gemini");
+  return result;
+}
+
+export async function runMarketingReport(customPrompt?: string): Promise<any> {
+  const videos = await loadVideosData();
+  if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。");
+
+  // Collect NLP pre-analysis for each video
+  const nlpSummaries: string[] = [];
+  for (const v of videos) {
+    const emotions = analyzeSegmentEmotions(v.segments);
+    const volatility = calculateEmotionVolatility(emotions);
+    const persuasion = detectPersuasionTechniques(v.transcript);
+    const techList = persuasion.map((t) => `${t.technique}(${t.matches.length}件)`).join(", ") || "なし";
+    nlpSummaries.push(
+      `【${v.name}】ボラティリティ: 標準偏差${volatility.volatility_std.toFixed(2)}, 方向転換${volatility.direction_changes}回 / 説得技法: ${techList}`
+    );
+  }
+
+  const videoSections = videos.map((v) => {
+    const convStr = Object.keys(v.conversions).length > 0
+      ? Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ")
+      : "データなし";
+    return `### ${v.name}${v.ranking ? ` (ランキング${v.ranking}位)` : ""}\n書き起こし:\n${v.transcript.slice(0, 800)}\nコンバージョン: ${convStr}`;
+  }).join("\n\n---\n\n");
+
+  const customInstruction = customPrompt?.trim()
+    ? `\n追加の分析指示:\n${customPrompt.trim()}\n`
+    : "";
+
+  const prompt = `あなたはマーケティング戦略コンサルタントです。以下の動画CM分析データに基づいて、包括的なマーケティングレポートを作成してください。
+
+## 動画データ
+${videoSections}
+
+## NLP分析サマリー
+${nlpSummaries.join("\n")}
+${customInstruction}
+以下のJSON形式で返してください:
+{
+  "executive_summary": "経営層向けの要約（3-5文）",
+  "target_audience_analysis": [{"segment": "ターゲット層", "description": "特徴", "effective_videos": ["効果的な動画名"], "key_messages": ["刺さるメッセージ"]}],
+  "competitive_advantages": [{"advantage": "強み", "evidence": "根拠", "leverage_suggestion": "活用方法"}],
+  "content_performance_matrix": [{"video_name": "動画名", "strengths": ["強み"], "weaknesses": ["弱み"], "overall_score": 8.0}],
+  "improvement_priorities": [{"area": "改善領域", "current_state": "現状", "recommended_action": "推奨アクション", "expected_impact": "期待効果", "priority": "high/medium/low"}],
+  "next_video_direction": {"theme": "次回テーマ", "key_messages": ["メッセージ"], "recommended_structure": "推奨構成", "target_emotion_arc": "目標感情曲線", "estimated_effectiveness": "予想効果"}
+}
+
+重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。スコアは1.0〜10.0の範囲で。`;
+
+  const result = await callGeminiJson(prompt);
+  await saveAnalysis("marketing_report", "cross_video", result, "gemini");
+  return result;
+}
+
+export async function runContentSuggestion(customPrompt?: string): Promise<any> {
+  const videos = await loadVideosData();
+  if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。");
+
+  const ranked = [...videos].sort((a, b) => (a.ranking ?? 99) - (b.ranking ?? 99));
+  const topVideos = ranked.filter((v) => v.ranking !== null).slice(0, 5);
+  const reference = topVideos.length > 0 ? topVideos : videos.slice(0, 3);
+
+  const videoSections = reference.map((v) => {
+    const convStr = Object.keys(v.conversions).length > 0
+      ? Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ")
+      : "データなし";
+    const emotions = analyzeSegmentEmotions(v.segments);
+    const volatility = calculateEmotionVolatility(emotions);
+    const persuasion = detectPersuasionTechniques(v.transcript);
+    const techList = persuasion.map((t) => t.technique).join(", ") || "なし";
+    return `### ${v.name}${v.ranking ? ` (${v.ranking}位)` : ""}\n書き起こし:\n${v.transcript.slice(0, 600)}\nCV: ${convStr}\nボラティリティ: ${volatility.volatility_std.toFixed(2)} / 説得技法: ${techList}`;
+  }).join("\n\n---\n\n");
+
+  const customInstruction = customPrompt?.trim()
+    ? `\n追加指示:\n${customPrompt.trim()}\n`
+    : "";
+
+  const prompt = `あなたは動画CMの企画・脚本のプロフェッショナルです。
+以下の高パフォーマンス動画データを分析し、次に制作すべき動画の具体的な台本素案を生成してください。
+
+## 参考動画データ
+${videoSections}
+${customInstruction}
+以下のJSON形式で返してください:
+{
+  "script_outline": "台本の概要（300-500文字）。冒頭・展開・CTA の流れを記述",
+  "key_messages": ["メッセージ1", "メッセージ2", "メッセージ3"],
+  "recommended_structure": "推奨構成（秒数付き）。例: 0-5秒フック→5-20秒問題提起→...",
+  "timing_guide": "全体尺の目安と各パートの秒数配分",
+  "target_emotion_arc": "狙う感情曲線の説明。例: 驚き→共感→期待→行動",
+  "reference_videos": ["参考にした動画名1", "動画名2"]
+}
+
+重要: 必ず有効なJSONのみを返してください。日本語で記述してください。`;
+
+  const result = await callGeminiJson(prompt);
+  await saveAnalysis("content_suggestion", "cross_video", result, "gemini");
   return result;
 }
 

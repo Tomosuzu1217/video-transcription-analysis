@@ -20,12 +20,6 @@ export interface TestResult {
   error?: string;
 }
 
-export interface TestResponse {
-  results: TestResult[];
-  model: string;
-  message?: string;
-}
-
 async function getSettingsData(): Promise<{ apiKeys: string[]; selectedModel: string }> {
   const record = await get<SettingsRecord>(STORES.SETTINGS, "app");
   const rawKeys = record?.api_keys ?? [];
@@ -104,16 +98,6 @@ export async function getModelSetting(): Promise<ModelResponse> {
 export async function setModelSetting(model: string): Promise<{ message: string; current: string }> {
   await saveModel(model);
   return { message: "モデルを更新しました", current: model };
-}
-
-export async function testApiKeys(): Promise<TestResponse> {
-  const { apiKeys, selectedModel } = await getSettingsData();
-  const results: TestResult[] = [];
-  for (let i = 0; i < apiKeys.length; i++) {
-    const r = await testGeminiKey(apiKeys[i], selectedModel);
-    results.push({ index: i, valid: r.valid, error: r.error });
-  }
-  return { results, model: selectedModel, message: `${results.filter((r) => r.valid).length}/${results.length} 個のキーが有効です` };
 }
 
 export async function testSingleApiKey(index: number): Promise<TestResult> {

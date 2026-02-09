@@ -19,6 +19,7 @@ export default function VideosPage() {
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadFileNames, setUploadFileNames] = useState<string[]>([]);
   const { toast, showToast, clearToast } = useToast();
@@ -199,6 +200,8 @@ export default function VideosPage() {
         return { className: "bg-green-100 text-green-700", label: "書き起こし完了" };
       case "error":
         return { className: "bg-red-100 text-red-700", label: "エラー" };
+      case "archived":
+        return { className: "bg-amber-100 text-amber-700", label: "アーカイブ" };
     }
   };
 
@@ -369,27 +372,58 @@ export default function VideosPage() {
 
       {/* Search / filter */}
       {videos.length > 0 && (
-        <div className="relative">
-          <svg
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        <div className="space-y-3">
+          <div className="relative">
+            <svg
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ファイル名で検索..."
+              className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-colors"
             />
-          </svg>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ファイル名で検索..."
-            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-colors"
-          />
+          </div>
+          {/* Tag filter chips */}
+          {(() => {
+            const allTags = Array.from(new Set(videos.flatMap((v) => v.tags ?? [])));
+            if (allTags.length === 0) return null;
+            return (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-medium text-gray-500">タグ:</span>
+                <button
+                  onClick={() => setTagFilter("")}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    tagFilter === "" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  全て
+                </button>
+                {allTags.sort().map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setTagFilter(tag === tagFilter ? "" : tag)}
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                      tagFilter === tag ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -409,7 +443,8 @@ export default function VideosPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {videos
             .filter((v) =>
-              searchQuery === "" || v.filename.toLowerCase().includes(searchQuery.toLowerCase())
+              (searchQuery === "" || v.filename.toLowerCase().includes(searchQuery.toLowerCase()))
+              && (tagFilter === "" || (v.tags ?? []).includes(tagFilter))
             )
             .map((video) => {
             const badge = getStatusBadge(video.status);
@@ -460,8 +495,22 @@ export default function VideosPage() {
                 {video.ranking && (
                   <div className="mb-3 flex items-center gap-2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 border border-yellow-300 px-2.5 py-0.5 text-xs font-bold text-yellow-800">
-                      🏆 {video.ranking}位
+                      {video.ranking}位
                     </span>
+                  </div>
+                )}
+
+                {/* Tags */}
+                {(video.tags ?? []).length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-1">
+                    {(video.tags ?? []).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs text-blue-600"
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </div>
                 )}
 
@@ -479,7 +528,7 @@ export default function VideosPage() {
                   <div className="flex justify-between">
                     <span>ファイルサイズ</span>
                     <span className="font-medium text-gray-700">
-                      {formatFileSize(video.file_size)}
+                      {video.status === "archived" ? "サムネイルのみ" : formatFileSize(video.file_size)}
                     </span>
                   </div>
                   <div className="flex justify-between">
