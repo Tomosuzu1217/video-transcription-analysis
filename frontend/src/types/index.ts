@@ -12,6 +12,7 @@ export interface Video {
   error_message: string | null;
   ranking: number | null;
   ranking_notes: string | null;
+  code: string | null;
   storage_path: string;
   tags: string[];
   thumbnails: VideoThumbnail[];
@@ -312,6 +313,47 @@ export interface ContentSuggestion {
   reference_videos: string[];
 }
 
+// ---- Ad Performance Types ----
+
+export const AD_MEDIA_TYPES = [
+  "Meta広告", "Tik広告", "Go広告", "SEO", "ASP", "公式Insta",
+] as const;
+export type AdMediaType = (typeof AD_MEDIA_TYPES)[number];
+
+export interface AdPerformance {
+  id: number;
+  code: string;
+  media: string;
+  rank: number | null;
+  spend: number | null;
+  line_adds: number | null;
+  answers: number | null;
+  answer_rate: number | null;
+  answer_cpa: number | null;
+  customers: number | null;
+  contracts: number | null;
+  revenue: number | null;
+  roi: number | null;
+  score: number | null;
+  imported_at: string;
+}
+
+export interface AdPerformanceImportRow {
+  code: string;
+  media: string;
+  rank: number | null;
+  spend: number | null;
+  line_adds: number | null;
+  answers: number | null;
+  answer_rate: number | null;
+  answer_cpa: number | null;
+  customers: number | null;
+  contracts: number | null;
+  revenue: number | null;
+  roi: number | null;
+  score: number | null;
+}
+
 // ---- Ad Platform Analysis Types ----
 
 export const AD_PLATFORMS = [
@@ -364,6 +406,7 @@ export interface VideoRecord {
   error_message: string | null;
   ranking: number | null;
   ranking_notes: string | null;
+  code: string | null;
   storage_path: string;
   tags: string[];
   created_at: string;

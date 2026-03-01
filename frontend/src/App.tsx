@@ -6,6 +6,7 @@ import VideoDetailPage from "./pages/VideoDetailPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import SettingsPage from "./pages/SettingsPage";
 import MarketingDashboardPage from "./pages/MarketingDashboardPage";
+import AdDataPage from "./pages/AdDataPage";
 import HelpModal from "./components/HelpModal";
 
 function NotFoundPage() {
@@ -44,6 +45,7 @@ function App() {
                   { to: "/", label: "ダッシュボード" },
                   { to: "/videos", label: "動画一覧" },
                   { to: "/analysis", label: "分析" },
+                  { to: "/ad-data", label: "広告データ" },
                   { to: "/settings", label: "設定" },
                 ].map((link) => (
                   <NavLink
@@ -116,6 +118,7 @@ function App() {
           <Route path="/videos" element={<VideosPage />} />
           <Route path="/videos/:id" element={<VideoDetailPage />} />
           <Route path="/analysis" element={<AnalysisPage />} />
+          <Route path="/ad-data" element={<AdDataPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

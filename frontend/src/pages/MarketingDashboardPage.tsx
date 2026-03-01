@@ -10,6 +10,7 @@ import { getDashboard, runMarketingReport, getAnalysisResults, runContentSuggest
 import { getManagedTags } from "../api/settings";
 import { checkAlerts } from "../api/alerts";
 import { getStorageUsage, type StorageUsage } from "../api/storage";
+import { getAllAdPerformance } from "../api/adPerformance";
 import { generateMarketingPptx } from "../utils/pptxExport";
 import { getErrorMessage } from "../utils/errors";
 import { formatDuration } from "../utils/format";
@@ -23,7 +24,7 @@ import AlertsTab from "../components/marketing/AlertsTab";
 import PlatformTab from "../components/marketing/PlatformTab";
 import AnalysisHistoryTab from "../components/marketing/AnalysisHistoryTab";
 import RankingInsightTab from "../components/marketing/RankingInsightTab";
-import type { Video, ConversionSummary, MarketingReportResult, TriggeredAlert, ContentSuggestion, DashboardData } from "../types";
+import type { Video, ConversionSummary, MarketingReportResult, TriggeredAlert, ContentSuggestion, DashboardData, AdPerformance } from "../types";
 
 const COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
 
@@ -67,6 +68,9 @@ export default function MarketingDashboardPage() {
   // Overview: triggered alerts
   const [triggeredAlerts, setTriggeredAlerts] = useState<TriggeredAlert[]>([]);
 
+  // Ad performance data
+  const [adPerfList, setAdPerfList] = useState<AdPerformance[]>([]);
+
   // Dashboard integration
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
@@ -78,13 +82,14 @@ export default function MarketingDashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [vData, cData, tAlerts, tags, dashData, stUsage] = await Promise.all([
+      const [vData, cData, tAlerts, tags, dashData, stUsage, adPerf] = await Promise.all([
         getVideos(1, 1000),
         getConversionSummary(),
         checkAlerts().catch(() => [] as TriggeredAlert[]),
         getManagedTags().catch(() => [] as string[]),
         getDashboard().catch(() => null as DashboardData | null),
         getStorageUsage().catch(() => null as StorageUsage | null),
+        getAllAdPerformance().catch(() => [] as AdPerformance[]),
       ]);
       setVideos(vData.videos);
       setConvSummaries(cData);
@@ -92,6 +97,7 @@ export default function MarketingDashboardPage() {
       setManagedTags(tags);
       setDashboard(dashData);
       setStorageUsage(stUsage);
+      setAdPerfList(adPerf);
     } catch {
       showToast("データの取得に失敗しました", "error");
     } finally {
@@ -146,6 +152,24 @@ export default function MarketingDashboardPage() {
       }).catch(() => {});
     }
   }, [activeTab, reportLoaded]);
+
+  // Ad performance map (code → AdPerformance)
+  const adPerfMap = useMemo(() => {
+    const map = new Map<string, AdPerformance>();
+    for (const ap of adPerfList) map.set(ap.code, ap);
+    return map;
+  }, [adPerfList]);
+
+  // Top videos by 事業貢献スコア
+  const topByScore = useMemo(() => {
+    const scored = videos
+      .filter((v) => v.code && adPerfMap.has(v.code))
+      .map((v) => ({ video: v, ad: adPerfMap.get(v.code!)! }))
+      .filter((x) => x.ad.score !== null)
+      .sort((a, b) => (b.ad.score ?? 0) - (a.ad.score ?? 0))
+      .slice(0, 5);
+    return scored;
+  }, [videos, adPerfMap]);
 
   // Collect all unique metric names and tags
   const allMetrics = useMemo(() => {
@@ -512,6 +536,40 @@ export default function MarketingDashboardPage() {
               <button onClick={() => setActiveTab("alerts")} className="mt-2 text-xs font-medium text-red-600 dark:text-red-400 hover:underline">
                 アラート設定を確認 →
               </button>
+            </div>
+          )}
+
+          {/* 事業貢献スコア トップ動画 */}
+          {topByScore.length > 0 && (
+            <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+              <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-white">
+                事業貢献スコア トップ動画
+                <span className="ml-2 text-xs font-normal text-gray-400">（広告実績データより）</span>
+              </h3>
+              <div className="space-y-2">
+                {topByScore.map(({ video, ad }, i) => (
+                  <div key={video.id} className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-gray-400 w-5 text-right">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{video.filename}</span>
+                        <span className="text-xs text-gray-400 font-mono shrink-0">{video.code}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 shrink-0">{ad.media}</span>
+                      </div>
+                      <div className="mt-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 rounded-full"
+                          style={{ width: `${Math.min((ad.score ?? 0) / (topByScore[0].ad.score ?? 1) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{(ad.score ?? 0).toFixed(1)}</p>
+                      <p className="text-xs text-gray-400">ROI {ad.roi !== null ? `${ad.roi.toFixed(0)}%` : "—"}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1123,12 +1181,12 @@ export default function MarketingDashboardPage() {
 
       {/* ===== ROI Tab ===== */}
       {activeTab === "roi" && (
-        <ROITab convSummaries={filteredConvSummaries} allMetrics={allMetrics} />
+        <ROITab convSummaries={filteredConvSummaries} allMetrics={allMetrics} adPerfMap={adPerfMap} videos={videos} />
       )}
 
       {/* ===== Funnel Tab ===== */}
       {activeTab === "funnel" && (
-        <FunnelTab videos={filteredVideos} convSummaries={filteredConvSummaries} allMetrics={allMetrics} />
+        <FunnelTab videos={filteredVideos} convSummaries={filteredConvSummaries} allMetrics={allMetrics} adPerfMap={adPerfMap} />
       )}
 
       {/* ===== Competitor Tab ===== */}

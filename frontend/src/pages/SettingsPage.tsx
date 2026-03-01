@@ -369,6 +369,7 @@ export default function SettingsPage() {
           <h3 className="text-lg font-semibold text-gray-900">媒体タグ管理</h3>
           <p className="mt-1 text-sm text-gray-500">
             動画に付与するタグを管理します。ここで追加したタグが動画のタグ選択プルダウンに表示されます。
+            タグは広告媒体の分類にも使用できます（例: Meta広告, Tik広告, Go広告, SEO, ASP）。
           </p>
         </div>
 

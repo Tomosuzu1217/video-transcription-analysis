@@ -2,6 +2,7 @@ import { getAll, put, generateId, STORES } from "../services/db";
 import { callGeminiJson } from "../services/gemini";
 import { analyzeSegmentEmotions, calculateEmotionVolatility, detectPersuasionTechniques } from "../services/nlp";
 import { getManagedTags } from "./settings";
+import { getAllAdPerformance } from "./adPerformance";
 import { supabase } from "../services/supabase";
 import type {
   DashboardData,
@@ -9,6 +10,7 @@ import type {
   TranscriptionRecord,
   ConversionRecord,
   AnalysisRecord,
+  AdPerformance,
   CrossPlatformAnalysisResult,
   ABDeepComparisonResult,
   RankingPlatformInsightResult,
@@ -30,6 +32,27 @@ interface LoadedVideoData {
   conversions: Record<string, number>;
   ranking: number | null;
   ranking_notes: string | null;
+  code: string | null;
+  adPerformance: AdPerformance | null;
+}
+
+function buildAdBlock(ad: AdPerformance): string {
+  const fmt = (v: number | null, suffix = "") =>
+    v !== null ? `${v.toLocaleString("ja-JP")}${suffix}` : "不明";
+  return [
+    "広告実績:",
+    `  媒体=${ad.media}`,
+    `  消化金額=${fmt(ad.spend, "円")}`,
+    `  LINE追加=${fmt(ad.line_adds, "人")}`,
+    `  回答数=${fmt(ad.answers, "件")}`,
+    `  回答率=${fmt(ad.answer_rate, "%")}`,
+    `  回答CPA=${fmt(ad.answer_cpa, "円")}`,
+    `  顧客数=${fmt(ad.customers, "人")}`,
+    `  成約数=${fmt(ad.contracts, "件")}`,
+    `  売上=${fmt(ad.revenue, "円")}`,
+    `  ROI=${fmt(ad.roi, "%")}`,
+    `  事業貢献スコア=${fmt(ad.score)}`,
+  ].join("\n");
 }
 
 export interface KeywordAnalysisResult {
@@ -49,9 +72,12 @@ export interface CorrelationAnalysisResult {
 }
 
 async function loadVideosData(): Promise<LoadedVideoData[]> {
-  const videos = await getAll<VideoRecord>(STORES.VIDEOS);
-  const transcriptions = await getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS);
-  const conversions = await getAll<ConversionRecord>(STORES.CONVERSIONS);
+  const [videos, transcriptions, conversions, adPerfList] = await Promise.all([
+    getAll<VideoRecord>(STORES.VIDEOS),
+    getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS),
+    getAll<ConversionRecord>(STORES.CONVERSIONS),
+    getAllAdPerformance().catch(() => [] as AdPerformance[]),
+  ]);
 
   const transcriptionsByVideo = new Map<number, { full_text: string; segments: TranscriptSegment[] }>();
   for (const t of transcriptions) {
@@ -64,11 +90,15 @@ async function loadVideosData(): Promise<LoadedVideoData[]> {
     conversionsByVideo.get(c.video_id)![c.metric_name] = c.metric_value;
   }
 
+  const adPerfByCode = new Map<string, AdPerformance>();
+  for (const ap of adPerfList) adPerfByCode.set(ap.code, ap);
+
   const result: LoadedVideoData[] = [];
   for (const v of videos) {
-    if (v.status !== "transcribed") continue;
+    if (v.status !== "transcribed" && v.status !== "archived") continue;
     const t = transcriptionsByVideo.get(v.id);
     if (!t) continue;
+    const code = v.code ?? null;
     result.push({
       name: v.filename,
       videoId: v.id,
@@ -77,6 +107,8 @@ async function loadVideosData(): Promise<LoadedVideoData[]> {
       conversions: conversionsByVideo.get(v.id) ?? {},
       ranking: v.ranking ?? null,
       ranking_notes: v.ranking_notes ?? null,
+      code,
+      adPerformance: code ? (adPerfByCode.get(code) ?? null) : null,
     });
   }
   return result;
@@ -105,7 +137,10 @@ export async function runKeywordAnalysis(platformTag?: string): Promise<KeywordA
   }
   if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。先に動画を書き起こしてください。");
 
-  const videoTexts = videos.map((v) => `【${v.name}】\n${v.transcript}`).join("\n\n---\n\n");
+  const videoTexts = videos.map((v) => {
+    const adStr = v.adPerformance ? `\n\n${buildAdBlock(v.adPerformance)}` : "";
+    return `【${v.name}】\n${v.transcript}${adStr}`;
+  }).join("\n\n---\n\n");
 
   const prompt = `以下の動画CMの書き起こしテキストから、キーワード頻度分析を行ってください。
 
@@ -136,7 +171,8 @@ export async function runCorrelationAnalysis(): Promise<CorrelationAnalysisResul
 
   const videoTexts = withData.map((v) => {
     const convStr = Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ");
-    return `【${v.name}】\nコンバージョン: ${convStr}\n書き起こし: ${v.transcript.slice(0, 500)}...`;
+    const adStr = v.adPerformance ? `\n${buildAdBlock(v.adPerformance)}` : "";
+    return `【${v.name}】\nコンバージョン: ${convStr}\n書き起こし: ${v.transcript.slice(0, 500)}...${adStr}`;
   }).join("\n\n---\n\n");
 
   const prompt = `以下の動画CMのキーワードとコンバージョンデータの相関を分析してください。
@@ -167,7 +203,8 @@ export async function runAiRecommendations(customPrompt?: string): Promise<AiAna
     const convStr = Object.keys(v.conversions).length > 0
       ? Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ")
       : "データなし";
-    return `### 動画: ${v.name}\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}`;
+    const adStr = v.adPerformance ? `\n\n${buildAdBlock(v.adPerformance)}` : "";
+    return `### 動画: ${v.name}\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}${adStr}`;
   }).join("\n\n");
 
   const customInstruction = customPrompt?.trim()
@@ -208,7 +245,8 @@ export async function runRankingComparisonAnalysis(customPrompt?: string): Promi
     const convStr = Object.keys(v.conversions).length > 0
       ? Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ")
       : "データなし";
-    return `### 【ランキング${v.ranking}位】 ${v.name}\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}`;
+    const adStr = v.adPerformance ? `\n\n${buildAdBlock(v.adPerformance)}` : "";
+    return `### 【ランキング${v.ranking}位】 ${v.name}\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}${adStr}`;
   }).join("\n\n");
 
   const otherBlock = otherVideos.length > 0
@@ -217,7 +255,8 @@ export async function runRankingComparisonAnalysis(customPrompt?: string): Promi
           ? Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ")
           : "データなし";
         const rankStr = v.ranking ? `ランキング${v.ranking}位` : "ランキング未設定";
-        return `### 【${rankStr}】 ${v.name}\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}`;
+        const adStr = v.adPerformance ? `\n\n${buildAdBlock(v.adPerformance)}` : "";
+        return `### 【${rankStr}】 ${v.name}\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}${adStr}`;
       }).join("\n\n")
     : "（比較対象の動画がありません）";
 
@@ -291,8 +330,9 @@ export async function runPsychologicalContentAnalysis(customPrompt?: string): Pr
     const volStr = `標準偏差: ${volatility.volatility_std}, 方向転換: ${volatility.direction_changes}回, 最大振幅: ${volatility.max_amplitude}`;
     const techStr = persuasionTechniques.map((t) => `  - ${t.technique}: ${t.matches.join(", ")}`).join("\n") || "  検出なし";
 
+    const adStr = v.adPerformance ? `\n\n${buildAdBlock(v.adPerformance)}` : "";
     videoSections.push(
-      `### 動画: ${v.name}\n書き起こし:\n${v.transcript}\n\nコンバージョン: ${convStr}\n\n【NLP感情分析タイムライン】\n${emotionTimeline}\n\n【感情ボラティリティ指標】\n  ${volStr}\n\n【検出された説得技法】\n${techStr}`
+      `### 動画: ${v.name}\n書き起こし:\n${v.transcript}\n\nコンバージョン: ${convStr}${adStr}\n\n【NLP感情分析タイムライン】\n${emotionTimeline}\n\n【感情ボラティリティ指標】\n  ${volStr}\n\n【検出された説得技法】\n${techStr}`
     );
   }
 
@@ -363,7 +403,8 @@ export async function runMarketingReport(customPrompt?: string): Promise<Marketi
     const convStr = Object.keys(v.conversions).length > 0
       ? Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ")
       : "データなし";
-    return `### ${v.name}${v.ranking ? ` (ランキング${v.ranking}位)` : ""}\n書き起こし:\n${v.transcript.slice(0, 800)}\nコンバージョン: ${convStr}`;
+    const adStr = v.adPerformance ? `\n\n${buildAdBlock(v.adPerformance)}` : "";
+    return `### ${v.name}${v.ranking ? ` (ランキング${v.ranking}位)` : ""}\n書き起こし:\n${v.transcript.slice(0, 800)}\nコンバージョン: ${convStr}${adStr}`;
   }).join("\n\n---\n\n");
 
   const customInstruction = customPrompt?.trim()
@@ -411,7 +452,8 @@ export async function runContentSuggestion(customPrompt?: string): Promise<Conte
     const volatility = calculateEmotionVolatility(emotions);
     const persuasion = detectPersuasionTechniques(v.transcript);
     const techList = persuasion.map((t) => t.technique).join(", ") || "なし";
-    return `### ${v.name}${v.ranking ? ` (${v.ranking}位)` : ""}\n書き起こし:\n${v.transcript.slice(0, 600)}\nCV: ${convStr}\nボラティリティ: ${volatility.volatility_std.toFixed(2)} / 説得技法: ${techList}`;
+    const adStr = v.adPerformance ? `\n${buildAdBlock(v.adPerformance)}` : "";
+    return `### ${v.name}${v.ranking ? ` (${v.ranking}位)` : ""}\n書き起こし:\n${v.transcript.slice(0, 600)}\nCV: ${convStr}\nボラティリティ: ${volatility.volatility_std.toFixed(2)} / 説得技法: ${techList}${adStr}`;
   }).join("\n\n---\n\n");
 
   const customInstruction = customPrompt?.trim()
@@ -456,9 +498,13 @@ export async function runPlatformAnalysis(managedTags?: string[]): Promise<Cross
     conversionsByVideo.get(c.video_id)![c.metric_name] = c.metric_value;
   }
 
+  const adPerfList = await getAllAdPerformance().catch(() => [] as AdPerformance[]);
+  const adPerfByCode = new Map<string, AdPerformance>();
+  for (const ap of adPerfList) adPerfByCode.set(ap.code, ap);
+
   const tags = managedTags ?? await getManagedTags();
   const platformSet = new Set(tags);
-  const platformGroups = new Map<string, Array<{ name: string; transcript: string; conversions: Record<string, number>; duration: number | null }>>();
+  const platformGroups = new Map<string, Array<{ name: string; transcript: string; conversions: Record<string, number>; duration: number | null; adPerformance: AdPerformance | null }>>();
 
   for (const v of videos) {
     if (v.status !== "transcribed" && v.status !== "archived") continue;
@@ -467,6 +513,7 @@ export async function runPlatformAnalysis(managedTags?: string[]): Promise<Cross
     const tags = (v.tags ?? []) as string[];
     const platforms = tags.filter((tag) => platformSet.has(tag));
     if (platforms.length === 0) continue;
+    const adPerf = v.code ? (adPerfByCode.get(v.code) ?? null) : null;
     for (const p of platforms) {
       if (!platformGroups.has(p)) platformGroups.set(p, []);
       platformGroups.get(p)!.push({
@@ -474,6 +521,7 @@ export async function runPlatformAnalysis(managedTags?: string[]): Promise<Cross
         transcript: t.full_text.slice(0, 500),
         conversions: conversionsByVideo.get(v.id) ?? {},
         duration: v.duration_seconds ?? null,
+        adPerformance: adPerf,
       });
     }
   }
@@ -485,7 +533,8 @@ export async function runPlatformAnalysis(managedTags?: string[]): Promise<Cross
   const platformSections = Array.from(platformGroups.entries()).map(([platform, vids]) => {
     const vidDetails = vids.map((v) => {
       const convStr = Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ");
-      return `  - ${v.name}（${v.duration ? Math.round(v.duration) + "秒" : "不明"}）\n    書き起こし抜粋: ${v.transcript.slice(0, 200)}...\n    指標: ${convStr || "なし"}`;
+      const adStr = v.adPerformance ? `\n    ${buildAdBlock(v.adPerformance).replace(/\n/g, "\n    ")}` : "";
+      return `  - ${v.name}（${v.duration ? Math.round(v.duration) + "秒" : "不明"}）\n    書き起こし抜粋: ${v.transcript.slice(0, 200)}...\n    指標: ${convStr || "なし"}${adStr}`;
     }).join("\n");
     return `### ${platform}（${vids.length}本）\n${vidDetails}`;
   }).join("\n\n");
@@ -560,7 +609,8 @@ export async function runABDeepComparison(videoIdA: number, videoIdB: number): P
       ? Object.entries(v.conversions).map(([k, val]) => `${k}: ${val}`).join(", ")
       : "データなし";
     const rankStr = v.ranking ? `ランキング${v.ranking}位` : "ランキング未設定";
-    return `### 動画${label}: ${v.name}（${rankStr}）\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}\nNLP分析: ${buildNlpContext(v)}`;
+    const adStr = v.adPerformance ? `\n\n${buildAdBlock(v.adPerformance)}` : "";
+    return `### 動画${label}: ${v.name}（${rankStr}）\n書き起こし:\n${v.transcript}\nコンバージョン: ${convStr}\nNLP分析: ${buildNlpContext(v)}${adStr}`;
   };
 
   const prompt = `あなたは心理学・マーケティング・ストーリーテリングの専門家です。
@@ -658,7 +708,8 @@ export async function runRankingPlatformInsight(managedTags?: string[]): Promise
     const topBlock = top.length > 0
       ? top.map((v) => {
           const convStr = Object.entries(v.conversions).map(([k, val]) => `${k}:${val}`).join(", ") || "なし";
-          return `    [${v.ranking}位] ${v.name}\n      書き起こし: ${v.transcript.slice(0, 300)}...\n      CV: ${convStr}\n      NLP: ${nlpForVideo(v)}`;
+          const adStr = v.adPerformance ? `\n      ${buildAdBlock(v.adPerformance).replace(/\n/g, "\n      ")}` : "";
+          return `    [${v.ranking}位] ${v.name}\n      書き起こし: ${v.transcript.slice(0, 300)}...\n      CV: ${convStr}\n      NLP: ${nlpForVideo(v)}${adStr}`;
         }).join("\n")
       : "    （上位動画なし）";
 
@@ -666,7 +717,8 @@ export async function runRankingPlatformInsight(managedTags?: string[]): Promise
       ? low.slice(0, 3).map((v) => {
           const convStr = Object.entries(v.conversions).map(([k, val]) => `${k}:${val}`).join(", ") || "なし";
           const rankStr = v.ranking ? `${v.ranking}位` : "未設定";
-          return `    [${rankStr}] ${v.name}\n      書き起こし: ${v.transcript.slice(0, 300)}...\n      CV: ${convStr}\n      NLP: ${nlpForVideo(v)}`;
+          const adStr = v.adPerformance ? `\n      ${buildAdBlock(v.adPerformance).replace(/\n/g, "\n      ")}` : "";
+          return `    [${rankStr}] ${v.name}\n      書き起こし: ${v.transcript.slice(0, 300)}...\n      CV: ${convStr}\n      NLP: ${nlpForVideo(v)}${adStr}`;
         }).join("\n")
       : "    （比較対象なし）";
 

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getVideo, getVideoStreamUrl, renameVideo, updateVideoRanking, updateVideoTags, archiveVideo } from "../api/videos";
+import { getVideo, getVideoStreamUrl, renameVideo, updateVideoRanking, updateVideoTags, updateVideoCode, archiveVideo } from "../api/videos";
+import { getAdPerformanceByCode } from "../api/adPerformance";
 import { getTranscriptionStatus, retryTranscription, getQueueStatus, updateTranscriptionSegment, type QueueStatus } from "../api/transcriptions";
 import { createConversion, getConversions, updateConversion, deleteConversion } from "../api/conversions";
 import { getManagedTags } from "../api/settings";
@@ -10,7 +11,7 @@ import Toast from "../components/Toast";
 import { useToast } from "../components/useToast";
 import StoryboardView from "../components/StoryboardView";
 import TagMultiSelect from "../components/TagMultiSelect";
-import type { Video, TranscriptionStatus, TranscriptionSegment, Conversion } from "../types";
+import type { Video, TranscriptionStatus, TranscriptionSegment, Conversion, AdPerformance } from "../types";
 
 function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -122,6 +123,14 @@ export default function VideoDetailPage() {
   const [editConvMetricValue, setEditConvMetricValue] = useState("");
   const [editConvNotes, setEditConvNotes] = useState("");
 
+  // Code state
+  const [editingCode, setEditingCode] = useState(false);
+  const [codeValue, setCodeValue] = useState("");
+  const [savingCode, setSavingCode] = useState(false);
+
+  // Ad performance state
+  const [adPerformance, setAdPerformance] = useState<AdPerformance | null>(null);
+
   // Archive state
   const [archiving, setArchiving] = useState(false);
   const [archiveProgress, setArchiveProgress] = useState("");
@@ -131,6 +140,15 @@ export default function VideoDetailPage() {
 
   // Polling ref
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Fetch ad performance when video.code changes
+  useEffect(() => {
+    if (video?.code) {
+      getAdPerformanceByCode(video.code).then((ad) => setAdPerformance(ad ?? null)).catch(() => setAdPerformance(null));
+    } else {
+      setAdPerformance(null);
+    }
+  }, [video?.code]);
 
   // ----- Data fetching -----
 
@@ -287,6 +305,26 @@ export default function VideoDetailPage() {
       showToast("ランキングの更新に失敗しました", "error");
     } finally {
       setSavingRanking(false);
+    }
+  };
+
+  // Code handlers
+  const handleStartEditCode = () => {
+    setCodeValue(video?.code ?? "");
+    setEditingCode(true);
+  };
+
+  const handleSaveCode = async () => {
+    try {
+      setSavingCode(true);
+      const updated = await updateVideoCode(videoId, codeValue.trim() || null);
+      setVideo(updated);
+      setEditingCode(false);
+      showToast("コードを更新しました", "success");
+    } catch {
+      showToast("コードの更新に失敗しました", "error");
+    } finally {
+      setSavingCode(false);
     }
   };
 
@@ -768,7 +806,7 @@ export default function VideoDetailPage() {
         </div>
       </div>
 
-      {/* Bottom sections: Ranking + Conversions */}
+      {/* Bottom sections: Ranking + Code + Ad performance + Conversions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Ranking section */}
         <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-5">
@@ -855,6 +893,132 @@ export default function VideoDetailPage() {
           )}
         </div>
 
+        {/* Code section */}
+        <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-gray-900">広告コード</h3>
+            {!editingCode && (
+              <button
+                onClick={handleStartEditCode}
+                className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                編集
+              </button>
+            )}
+          </div>
+          {editingCode ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">コード</label>
+                <input
+                  type="text"
+                  value={codeValue}
+                  onChange={(e) => setCodeValue(e.target.value)}
+                  placeholder="例: shindan01a312d"
+                  autoFocus
+                  className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm font-mono text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+                <p className="mt-1 text-xs text-gray-400">Excelの「コード」列の値を入力すると広告実績データと紐付けられます</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveCode}
+                  disabled={savingCode}
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {savingCode ? "保存中..." : "保存"}
+                </button>
+                <button
+                  onClick={() => setEditingCode(false)}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  キャンセル
+                </button>
+                {video.code && (
+                  <button
+                    onClick={async () => {
+                      setSavingCode(true);
+                      try {
+                        const updated = await updateVideoCode(videoId, null);
+                        setVideo(updated);
+                        setEditingCode(false);
+                        showToast("コードを削除しました", "success");
+                      } catch { showToast("削除に失敗しました", "error"); }
+                      finally { setSavingCode(false); }
+                    }}
+                    className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    削除
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : video.code ? (
+            <div className="space-y-3">
+              <span className="inline-block rounded bg-gray-100 px-2.5 py-1 text-sm font-mono text-gray-700">
+                {video.code}
+              </span>
+              {adPerformance ? (
+                <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-blue-800">広告実績データ（{adPerformance.media}）</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {adPerformance.score !== null && (
+                      <div>
+                        <p className="text-xs text-blue-600">事業貢献スコア</p>
+                        <p className="text-lg font-bold text-blue-900">{adPerformance.score.toFixed(1)}</p>
+                      </div>
+                    )}
+                    {adPerformance.roi !== null && (
+                      <div>
+                        <p className="text-xs text-blue-600">ROI</p>
+                        <p className={`text-lg font-bold ${adPerformance.roi >= 0 ? "text-green-700" : "text-red-600"}`}>
+                          {adPerformance.roi.toFixed(1)}%
+                        </p>
+                      </div>
+                    )}
+                    {adPerformance.spend !== null && (
+                      <div>
+                        <p className="text-xs text-gray-500">消化金額</p>
+                        <p className="text-sm font-semibold text-gray-800">{adPerformance.spend.toLocaleString("ja-JP")}円</p>
+                      </div>
+                    )}
+                    {adPerformance.revenue !== null && (
+                      <div>
+                        <p className="text-xs text-gray-500">売上</p>
+                        <p className="text-sm font-semibold text-gray-800">{adPerformance.revenue.toLocaleString("ja-JP")}円</p>
+                      </div>
+                    )}
+                    {adPerformance.answers !== null && (
+                      <div>
+                        <p className="text-xs text-gray-500">回答数</p>
+                        <p className="text-sm font-semibold text-gray-800">{adPerformance.answers.toLocaleString("ja-JP")}</p>
+                      </div>
+                    )}
+                    {adPerformance.answer_rate !== null && (
+                      <div>
+                        <p className="text-xs text-gray-500">回答率</p>
+                        <p className="text-sm font-semibold text-gray-800">{adPerformance.answer_rate.toFixed(2)}%</p>
+                      </div>
+                    )}
+                  </div>
+                  {adPerformance.rank !== null && (
+                    <p className="text-xs text-blue-600 border-t border-blue-100 pt-2">
+                      媒体内順位: <span className="font-bold">{adPerformance.rank}位</span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">このコードの広告実績データは見つかりません。<br />広告データページからExcelをインポートしてください。</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">コード未設定</p>
+          )}
+        </div>
+      </div>
+
+      {/* Conversions section */}
+      <div className="grid grid-cols-1 gap-4">
         {/* Conversions section */}
         <div className="rounded-xl bg-white border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-3">

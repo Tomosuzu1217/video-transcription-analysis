@@ -1,15 +1,45 @@
 import { useState, useMemo } from "react";
-import type { ConversionSummary, Video } from "../../types";
+import type { ConversionSummary, Video, AdPerformance } from "../../types";
+
+const AD_FUNNEL_STAGES = ["LINE追加", "回答数", "顧客数", "成約数", "売上"];
 
 interface Props {
   videos: Video[];
   convSummaries: ConversionSummary[];
   allMetrics: string[];
+  adPerfMap?: Map<string, AdPerformance>;
 }
 
-export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) {
+export default function FunnelTab({ videos, convSummaries, allMetrics, adPerfMap }: Props) {
   const [stages, setStages] = useState<string[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<number | "all">("all");
+  const [adFunnelOverride, setAdFunnelOverride] = useState<Array<{ name: string; value: number; rate: number | null }> | null>(null);
+
+  const selectedVideoAd = useMemo(() => {
+    if (selectedVideoId === "all" || !adPerfMap) return null;
+    const video = videos.find((v) => v.id === selectedVideoId);
+    if (!video?.code) return null;
+    return adPerfMap.get(video.code) ?? null;
+  }, [selectedVideoId, adPerfMap, videos]);
+
+  const handleAutoFunnel = (ad: AdPerformance) => {
+    const vals: Record<string, number> = {
+      "LINE追加": ad.line_adds ?? 0,
+      "回答数": ad.answers ?? 0,
+      "顧客数": ad.customers ?? 0,
+      "成約数": ad.contracts ?? 0,
+      "売上": ad.revenue ?? 0,
+    };
+    const funnel = AD_FUNNEL_STAGES.map((name, i) => ({
+      name,
+      value: vals[name],
+      rate: i > 0 && vals[AD_FUNNEL_STAGES[i - 1]] > 0
+        ? Math.round((vals[name] / vals[AD_FUNNEL_STAGES[i - 1]]) * 10000) / 100
+        : null,
+    }));
+    setStages(AD_FUNNEL_STAGES);
+    setAdFunnelOverride(funnel);
+  };
 
   const addStage = (metric: string) => {
     if (!metric || stages.includes(metric)) return;
@@ -57,7 +87,8 @@ export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) 
     }
   }, [stages, selectedVideoId, convSummaries]);
 
-  const maxValue = Math.max(...funnelData.map((d) => d.value), 1);
+  const displayData = adFunnelOverride ?? funnelData;
+  const maxValue = Math.max(...displayData.map((d) => d.value), 1);
 
   return (
     <div className="space-y-6">
@@ -65,6 +96,30 @@ export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) 
       <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">ファネル構築</h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">指標を順番に追加してファネルを作成します。表示対象は全体集計か動画単位で切り替えできます。</p>
+
+        {/* Ad funnel auto-fill button */}
+        {selectedVideoAd && (
+          <div className="mb-3 flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex-1 text-xs text-blue-700 dark:text-blue-300">
+              広告実績データあり（LINE追加→回答数→顧客数→成約数→売上）
+            </div>
+            {adFunnelOverride ? (
+              <button
+                onClick={() => { setAdFunnelOverride(null); }}
+                className="text-xs px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                手動設定に戻す
+              </button>
+            ) : (
+              <button
+                onClick={() => handleAutoFunnel(selectedVideoAd)}
+                className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                広告ファネルを自動設定
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-2 mb-4">
           <select id="funnel-add" defaultValue=""
@@ -108,11 +163,16 @@ export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) 
       </div>
 
       {/* Funnel visualization */}
-      {funnelData.length > 0 && (
+      {displayData.length > 0 && (
         <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">ファネルチャート</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+            ファネルチャート
+            {adFunnelOverride && (
+              <span className="ml-2 text-xs font-normal text-blue-500 dark:text-blue-400">（広告実績データ）</span>
+            )}
+          </h3>
           <div className="space-y-1">
-            {funnelData.map((d, i) => {
+            {displayData.map((d, i) => {
               const widthPercent = maxValue > 0 ? (d.value / maxValue) * 100 : 0;
               const colors = ["#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#c084fc", "#d8b4fe"];
               const color = colors[i % colors.length];
@@ -145,11 +205,11 @@ export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) 
           </div>
 
           {/* Overall conversion rate */}
-          {funnelData.length >= 2 && funnelData[0].value > 0 && (
+          {displayData.length >= 2 && displayData[0].value > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">全体コンバージョン率 </span>
               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {Math.round((funnelData[funnelData.length - 1].value / funnelData[0].value) * 10000) / 100}%
+                {Math.round((displayData[displayData.length - 1].value / displayData[0].value) * 10000) / 100}%
               </span>
             </div>
           )}

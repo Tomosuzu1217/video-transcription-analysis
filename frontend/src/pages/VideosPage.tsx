@@ -51,6 +51,10 @@ export default function VideosPage() {
   const [managedTags, setManagedTags] = useState<string[]>([]);
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
 
+  // Staging state for code inputs before upload
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [pendingCodes, setPendingCodes] = useState<string[]>([]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cancelBatchRef = useRef<(() => void) | null>(null);
 
@@ -101,16 +105,22 @@ export default function VideosPage() {
     [videos],
   );
 
-  const handleUpload = async (files: FileList | File[]) => {
+  const handleFilesSelected = (files: FileList | File[]) => {
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
+    setPendingFiles(fileArray);
+    setPendingCodes(fileArray.map(() => ""));
+  };
+
+  const handleUploadStart = async () => {
+    if (!pendingFiles || pendingFiles.length === 0) return;
 
     try {
       setUploading(true);
       setUploadStatus("アップロード中...");
       setUploadProgress(0);
-      setUploadFileNames(fileArray.map((file) => file.name));
-      const result = await uploadVideos(fileArray, (percent) => setUploadProgress(percent));
+      setUploadFileNames(pendingFiles.map((file) => file.name));
+      const result = await uploadVideos(pendingFiles, (percent) => setUploadProgress(percent), pendingCodes);
       const successCount = result.successes.length;
       const errorCount = result.errors.length;
 
@@ -122,6 +132,8 @@ export default function VideosPage() {
         showToast(`${successCount}件のアップロードが完了しました`, "success");
       }
 
+      setPendingFiles(null);
+      setPendingCodes([]);
       await fetchVideos();
     } catch (uploadError) {
       showToast(getErrorMessage(uploadError, "アップロードに失敗しました。"), "error");
@@ -203,76 +215,123 @@ export default function VideosPage() {
         </div>
       )}
 
-      <div
-        onDrop={(event) => {
-          event.preventDefault();
-          setDragOver(false);
-          handleUpload(event.dataTransfer.files);
-        }}
-        onDragOver={(event) => {
-          event.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={(event) => {
-          event.preventDefault();
-          setDragOver(false);
-        }}
-        className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-          dragOver ? "border-blue-400 bg-blue-50" : "border-gray-300 bg-white"
-        }`}
-      >
-        {uploading ? (
-          <div className="mx-auto flex max-w-xl flex-col items-center gap-3">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-r-transparent" />
-            <p className="text-sm font-medium text-blue-700">{uploadStatus}</p>
-            {uploadProgress != null && (
-              <div className="w-full">
-                <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
-                  <span>進捗</span>
-                  <span>{uploadProgress}%</span>
+      {/* Drop zone (hidden during staging or upload) */}
+      {!pendingFiles && (
+        <div
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragOver(false);
+            handleFilesSelected(event.dataTransfer.files);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            setDragOver(false);
+          }}
+          className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+            dragOver ? "border-blue-400 bg-blue-50" : "border-gray-300 bg-white"
+          }`}
+        >
+          {uploading ? (
+            <div className="mx-auto flex max-w-xl flex-col items-center gap-3">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-r-transparent" />
+              <p className="text-sm font-medium text-blue-700">{uploadStatus}</p>
+              {uploadProgress != null && (
+                <div className="w-full">
+                  <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+                    <span>進捗</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                    <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+                  </div>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-gray-200">
-                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+              )}
+              {uploadFileNames.length > 0 && (
+                <div className="w-full text-left">
+                  <p className="mb-1 text-xs text-gray-500">対象ファイル</p>
+                  <ul className="space-y-1 text-xs text-gray-600">
+                    {uploadFileNames.map((name) => (
+                      <li key={name} className="truncate">
+                        {name}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-            )}
-            {uploadFileNames.length > 0 && (
-              <div className="w-full text-left">
-                <p className="mb-1 text-xs text-gray-500">対象ファイル</p>
-                <ul className="space-y-1 text-xs text-gray-600">
-                  {uploadFileNames.map((name) => (
-                    <li key={name} className="truncate">
-                      {name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-gray-600">ここに動画・音声ファイルをドラッグ＆ドロップ</p>
-            <p className="mt-1 text-xs text-gray-400">または</p>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600">ここに動画・音声ファイルをドラッグ＆ドロップ</p>
+              <p className="mt-1 text-xs text-gray-400">または</p>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                ファイルを選択
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="video/*,audio/*"
+                className="hidden"
+                onChange={(event) => {
+                  if (event.target.files) handleFilesSelected(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Staging panel: code input per file */}
+      {pendingFiles && !uploading && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-blue-900">{pendingFiles.length}件のファイルを選択中</p>
+              <p className="text-xs text-blue-600 mt-0.5">各ファイルにコード名を入力するとExcel実績データと紐付けできます（任意）</p>
+            </div>
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              onClick={() => { setPendingFiles(null); setPendingCodes([]); }}
+              className="text-xs text-gray-500 hover:text-gray-700 underline"
             >
-              ファイルを選択
+              キャンセル
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="video/*,audio/*"
-              className="hidden"
-              onChange={(event) => {
-                if (event.target.files) handleUpload(event.target.files);
-                event.target.value = "";
-              }}
-            />
-          </>
-        )}
-      </div>
+          </div>
+          <div className="space-y-2">
+            {pendingFiles.map((file, i) => (
+              <div key={file.name + i} className="flex items-center gap-3 rounded-lg bg-white border border-blue-100 px-3 py-2">
+                <span className="flex-1 truncate text-sm text-gray-700" title={file.name}>{file.name}</span>
+                <input
+                  type="text"
+                  value={pendingCodes[i] ?? ""}
+                  onChange={(e) => {
+                    const next = [...pendingCodes];
+                    next[i] = e.target.value;
+                    setPendingCodes(next);
+                  }}
+                  placeholder="コード例: shindan01a312d"
+                  className="w-52 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleUploadStart}
+              className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              アップロード開始
+            </button>
+          </div>
+        </div>
+      )}
 
       {batchProgress && (
         <BatchProgressPanel progress={batchProgress} onCancel={handleCancelBatch} />
@@ -363,10 +422,15 @@ export default function VideosPage() {
                     <h3 className="truncate text-sm font-semibold text-gray-900" title={video.filename}>
                       {video.filename}
                     </h3>
-                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
                       <span>{formatFileSize(video.file_size)}</span>
                       {video.duration_seconds != null && <span>{formatDuration(video.duration_seconds)}</span>}
                       <span>{formatDate(video.created_at)}</span>
+                      {video.code && (
+                        <span className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-gray-500">
+                          {video.code}
+                        </span>
+                      )}
                     </div>
                   </div>
 

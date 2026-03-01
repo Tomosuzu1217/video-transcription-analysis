@@ -43,6 +43,7 @@ const _signedUrlCache = new Map<number, { url: string; expiresAt: number }>();
 export async function uploadVideos(
   files: File[],
   onProgress?: (percent: number) => void,
+  codes?: string[],
 ): Promise<UploadResult> {
   const successes: Video[] = [];
   const errors: { filename: string; error: string }[] = [];
@@ -90,6 +91,7 @@ export async function uploadVideos(
         error_message: null,
         ranking: null,
         ranking_notes: null,
+        code: codes?.[i]?.trim() || null,
         storage_path: storagePath,
         tags: [],
         thumbnails: [],
@@ -182,6 +184,14 @@ export async function updateVideoRanking(
 
 export async function updateVideoTags(id: number, tags: string[]): Promise<Video> {
   await update(STORES.VIDEOS, id, { tags, updated_at: new Date().toISOString() });
+  return getVideo(id);
+}
+
+export async function updateVideoCode(id: number, code: string | null): Promise<Video> {
+  await update(STORES.VIDEOS, id, {
+    code: code?.trim() || null,
+    updated_at: new Date().toISOString(),
+  });
   return getVideo(id);
 }
 

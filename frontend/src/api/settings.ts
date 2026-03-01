@@ -100,7 +100,10 @@ export async function setModelSetting(model: string): Promise<{ message: string;
   return { message: "モデルを更新しました", current: model };
 }
 
-const DEFAULT_MANAGED_TAGS = ["YouTube", "TikTok", "Instagram", "Facebook", "LINE", "X(Twitter)"];
+const DEFAULT_MANAGED_TAGS = [
+  "YouTube", "TikTok", "Instagram", "Facebook", "LINE", "X(Twitter)",
+  "Meta広告", "Tik広告", "Go広告", "SEO", "ASP", "公式Insta",
+];
 
 export async function getManagedTags(): Promise<string[]> {
   const record = await get<SettingsRecord>(STORES.SETTINGS, "app");

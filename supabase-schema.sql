@@ -14,6 +14,7 @@ CREATE TABLE videos (
   error_message   TEXT,
   ranking         INTEGER,
   ranking_notes   TEXT,
+  code            TEXT,
   storage_path    TEXT NOT NULL DEFAULT '',
   tags            JSONB NOT NULL DEFAULT '[]'::jsonb,
   thumbnails      JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -128,6 +129,38 @@ CREATE TABLE alerts (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ad_performance テーブル（広告実績データ）
+CREATE TABLE IF NOT EXISTS ad_performance (
+  id           BIGINT PRIMARY KEY,
+  code         TEXT NOT NULL UNIQUE,
+  media        TEXT NOT NULL,
+  rank         INTEGER,
+  spend        DOUBLE PRECISION,
+  line_adds    DOUBLE PRECISION,
+  answers      DOUBLE PRECISION,
+  answer_rate  DOUBLE PRECISION,
+  answer_cpa   DOUBLE PRECISION,
+  customers    DOUBLE PRECISION,
+  contracts    DOUBLE PRECISION,
+  revenue      DOUBLE PRECISION,
+  roi          DOUBLE PRECISION,
+  score        DOUBLE PRECISION,
+  imported_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_ad_performance_code ON ad_performance(code);
+CREATE INDEX idx_ad_performance_score ON ad_performance(score DESC NULLS LAST);
+CREATE INDEX idx_ad_performance_media ON ad_performance(media);
+
+-- ============================================================
+-- 既存DBへのMigration（既にスキーマが存在する場合はこちらを実行）
+-- ============================================================
+-- ALTER TABLE videos ADD COLUMN IF NOT EXISTS code TEXT;
+-- CREATE INDEX IF NOT EXISTS idx_videos_code ON videos(code) WHERE code IS NOT NULL;
+-- (上記 CREATE TABLE IF NOT EXISTS ad_performance ... を実行)
+-- ALTER TABLE ad_performance ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Allow all for anon" ON ad_performance FOR ALL USING (true) WITH CHECK (true);
+
 -- ============================================================
 -- RLSポリシー（全テーブルでanon roleに全操作を許可）
 -- ============================================================
@@ -140,6 +173,7 @@ ALTER TABLE transcription_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ab_tests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE competitors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ad_performance ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow all for anon" ON videos FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON transcriptions FOR ALL USING (true) WITH CHECK (true);
@@ -150,6 +184,7 @@ CREATE POLICY "Allow all for anon" ON transcription_logs FOR ALL USING (true) WI
 CREATE POLICY "Allow all for anon" ON ab_tests FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON competitors FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for anon" ON alerts FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for anon" ON ad_performance FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- Realtime（videosテーブルのリアルタイム更新を有効化）
