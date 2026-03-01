@@ -9,6 +9,7 @@ import {
 } from "../api/videos";
 import { batchTranscribeVideos } from "../api/transcriptions";
 import { getManagedTags } from "../api/settings";
+import { getAllAdPerformance } from "../api/adPerformance";
 import BatchProgressPanel from "../components/BatchProgressPanel";
 import TagMultiSelect from "../components/TagMultiSelect";
 import Toast from "../components/Toast";
@@ -51,9 +52,9 @@ export default function VideosPage() {
   const [managedTags, setManagedTags] = useState<string[]>([]);
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
 
-  // Staging state for code inputs before upload
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [pendingCodes, setPendingCodes] = useState<string[]>([]);
+  const [adCodes, setAdCodes] = useState<string[]>([]); // 既存の広告実績コード一覧
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cancelBatchRef = useRef<(() => void) | null>(null);
@@ -80,10 +81,20 @@ export default function VideosPage() {
     }
   }, []);
 
+  const fetchAdCodes = useCallback(async () => {
+    try {
+      const list = await getAllAdPerformance();
+      setAdCodes(list.map((r) => r.code).filter(Boolean).sort());
+    } catch {
+      setAdCodes([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchVideos();
     fetchTags();
-  }, [fetchTags, fetchVideos]);
+    fetchAdCodes();
+  }, [fetchTags, fetchVideos, fetchAdCodes]);
 
   useRealtimeVideos(
     useCallback(() => {
@@ -231,9 +242,8 @@ export default function VideosPage() {
             event.preventDefault();
             setDragOver(false);
           }}
-          className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-            dragOver ? "border-blue-400 bg-blue-50" : "border-gray-300 bg-white"
-          }`}
+          className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${dragOver ? "border-blue-400 bg-blue-50" : "border-gray-300 bg-white"
+            }`}
         >
           {uploading ? (
             <div className="mx-auto flex max-w-xl flex-col items-center gap-3">
@@ -308,17 +318,47 @@ export default function VideosPage() {
             {pendingFiles.map((file, i) => (
               <div key={file.name + i} className="flex items-center gap-3 rounded-lg bg-white border border-blue-100 px-3 py-2">
                 <span className="flex-1 truncate text-sm text-gray-700" title={file.name}>{file.name}</span>
-                <input
-                  type="text"
-                  value={pendingCodes[i] ?? ""}
-                  onChange={(e) => {
-                    const next = [...pendingCodes];
-                    next[i] = e.target.value;
-                    setPendingCodes(next);
-                  }}
-                  placeholder="コード例: shindan01a312d"
-                  className="w-52 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
+                {adCodes.length > 0 ? (
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={pendingCodes[i] ?? ""}
+                      onChange={(e) => {
+                        const next = [...pendingCodes];
+                        next[i] = e.target.value;
+                        setPendingCodes(next);
+                      }}
+                      className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none w-48"
+                    >
+                      <option value="">コードを選択（任意）</option>
+                      {adCodes.map((code) => (
+                        <option key={code} value={code}>{code}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={pendingCodes[i] ?? ""}
+                      onChange={(e) => {
+                        const next = [...pendingCodes];
+                        next[i] = e.target.value;
+                        setPendingCodes(next);
+                      }}
+                      placeholder="または直接入力"
+                      className="w-32 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={pendingCodes[i] ?? ""}
+                    onChange={(e) => {
+                      const next = [...pendingCodes];
+                      next[i] = e.target.value;
+                      setPendingCodes(next);
+                    }}
+                    placeholder="コード例: shindan01a312d"
+                    className="w-52 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                )}
               </div>
             ))}
           </div>

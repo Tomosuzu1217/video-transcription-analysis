@@ -8,21 +8,18 @@ import { getVideos } from "../api/videos";
 import { getConversionSummary } from "../api/conversions";
 import { getDashboard, runMarketingReport, getAnalysisResults, runContentSuggestion, runKeywordAnalysis, runCorrelationAnalysis, runAiRecommendations } from "../api/analysis";
 import { getManagedTags } from "../api/settings";
-import { checkAlerts } from "../api/alerts";
-import { getStorageUsage, type StorageUsage } from "../api/storage";
 import { getAllAdPerformance } from "../api/adPerformance";
 import { generateMarketingPptx } from "../utils/pptxExport";
 import { getErrorMessage } from "../utils/errors";
 import { formatDuration } from "../utils/format";
 import Toast from "../components/Toast";
 import { useToast } from "../components/useToast";
-import StorageUsageBar from "../components/StorageUsageBar";
-import CompetitorTab from "../components/marketing/CompetitorTab";
-import AlertsTab from "../components/marketing/AlertsTab";
 import PlatformTab from "../components/marketing/PlatformTab";
 import AnalysisHistoryTab from "../components/marketing/AnalysisHistoryTab";
 import RankingInsightTab from "../components/marketing/RankingInsightTab";
-import type { Video, ConversionSummary, MarketingReportResult, TriggeredAlert, ContentSuggestion, DashboardData, AdPerformance } from "../types";
+import StrategyTab from "../components/marketing/StrategyTab";
+import KnowledgeBaseTab from "../components/marketing/KnowledgeBaseTab";
+import type { Video, ConversionSummary, MarketingReportResult, ContentSuggestion, DashboardData, AdPerformance } from "../types";
 
 const COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
 
@@ -35,7 +32,7 @@ const INITIAL_STEPS: AnalysisStep[] = [
   { label: "データ更新", status: "pending" },
 ];
 
-type Tab = "overview" | "compare" | "trend" | "report" | "competitor" | "alerts" | "platform" | "ranking_insight" | "history";
+type Tab = "overview" | "compare" | "trend" | "ranking_insight" | "strategy" | "knowledge" | "report" | "platform" | "history";
 
 export default function MarketingDashboardPage() {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -63,15 +60,11 @@ export default function MarketingDashboardPage() {
   // Managed tags
   const [managedTags, setManagedTags] = useState<string[]>([]);
 
-  // Overview: triggered alerts
-  const [triggeredAlerts, setTriggeredAlerts] = useState<TriggeredAlert[]>([]);
-
   // Ad performance data
   const [adPerfList, setAdPerfList] = useState<AdPerformance[]>([]);
 
   // Dashboard integration
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [analysisSteps, setAnalysisSteps] = useState<AnalysisStep[]>(INITIAL_STEPS);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -80,21 +73,17 @@ export default function MarketingDashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [vData, cData, tAlerts, tags, dashData, stUsage, adPerf] = await Promise.all([
+      const [vData, cData, tags, dashData, adPerf] = await Promise.all([
         getVideos(1, 1000),
         getConversionSummary(),
-        checkAlerts().catch(() => [] as TriggeredAlert[]),
         getManagedTags().catch(() => [] as string[]),
         getDashboard().catch(() => null as DashboardData | null),
-        getStorageUsage().catch(() => null as StorageUsage | null),
         getAllAdPerformance().catch(() => [] as AdPerformance[]),
       ]);
       setVideos(vData.videos);
       setConvSummaries(cData);
-      setTriggeredAlerts(tAlerts);
       setManagedTags(tags);
       setDashboard(dashData);
-      setStorageUsage(stUsage);
       setAdPerfList(adPerf);
     } catch {
       showToast("データの取得に失敗しました", "error");
@@ -147,7 +136,7 @@ export default function MarketingDashboardPage() {
       setReportLoaded(true);
       getAnalysisResults("marketing_report").then((results) => {
         if (results.length > 0) setReport(results[0].result as MarketingReportResult);
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [activeTab, reportLoaded]);
 
@@ -336,11 +325,11 @@ export default function MarketingDashboardPage() {
     { key: "overview", label: "概要" },
     { key: "compare", label: "動画比較" },
     { key: "trend", label: "推移" },
-    { key: "report", label: "レポート" },
-    { key: "competitor", label: "競合比較" },
-    { key: "alerts", label: "アラート" },
-    { key: "platform", label: "媒体分析" },
     { key: "ranking_insight", label: "ランキングインサイト" },
+    { key: "strategy", label: "戦略提案" },
+    { key: "knowledge", label: "ナレッジ" },
+    { key: "report", label: "レポート" },
+    { key: "platform", label: "媒体分析" },
     { key: "history", label: "分析履歴" },
   ];
 
@@ -398,11 +387,10 @@ export default function MarketingDashboardPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.key
-                ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-            }`}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
+              ? "border-blue-600 text-blue-600 dark:text-blue-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
           >
             {tab.label}
           </button>
@@ -464,7 +452,7 @@ export default function MarketingDashboardPage() {
           )}
 
           {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">動画総数</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{dashboard?.total_videos ?? filteredVideos.length}</p>
@@ -477,63 +465,12 @@ export default function MarketingDashboardPage() {
               </p>
             </div>
             <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">処理中 / エラー</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {dashboard ? (
-                  <>
-                    {dashboard.processing_videos > 0 && <span className="text-yellow-600">{dashboard.processing_videos}</span>}
-                    {dashboard.processing_videos > 0 && dashboard.error_videos > 0 && <span className="text-gray-400 mx-1">/</span>}
-                    {dashboard.error_videos > 0 && <span className="text-red-600">{dashboard.error_videos}</span>}
-                    {dashboard.processing_videos === 0 && dashboard.error_videos === 0 && <span className="text-gray-300">---</span>}
-                  </>
-                ) : <span className="text-gray-300">---</span>}
-              </p>
-            </div>
-            <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">平均再生時間</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {dashboard?.avg_duration_seconds != null ? formatDuration(dashboard.avg_duration_seconds) : "---"}
-              </p>
-            </div>
-            <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">CV指標登録数</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">{dashboard?.total_conversions ?? filteredConvSummaries.length}</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">広告実績データ登録数</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">{adPerfList.length}<span className="ml-1 text-sm font-normal text-gray-400">件</span></p>
             </div>
           </div>
 
-          {/* Storage usage */}
-          {storageUsage && (
-            <div className="rounded-xl bg-white dark:bg-gray-800 px-6 py-4 shadow-sm border border-gray-100 dark:border-gray-700">
-              <StorageUsageBar usedBytes={storageUsage.usedBytes} limitBytes={storageUsage.limitBytes} />
-            </div>
-          )}
 
-          {/* Triggered alerts warning */}
-          {triggeredAlerts.length > 0 && (
-            <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="h-5 w-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
-                  アラート発動中 ({triggeredAlerts.length}件)
-                </h3>
-              </div>
-              <div className="space-y-1">
-                {triggeredAlerts.slice(0, 5).map((t, i) => (
-                  <p key={`${t.id}-${i}`} className="text-xs text-red-700 dark:text-red-400">
-                    {t.video_filename}: {t.metric_name} = {t.current_value}（閾値 {t.condition === "above" ? ">" : "<"} {t.threshold}）
-                  </p>
-                ))}
-                {triggeredAlerts.length > 5 && (
-                  <p className="text-xs text-red-500 dark:text-red-400">他 {triggeredAlerts.length - 5}件...</p>
-                )}
-              </div>
-              <button onClick={() => setActiveTab("alerts")} className="mt-2 text-xs font-medium text-red-600 dark:text-red-400 hover:underline">
-                アラート設定を確認 →
-              </button>
-            </div>
-          )}
 
           {/* 事業貢献スコア トップ動画 */}
           {topByScore.length > 0 && (
@@ -689,12 +626,11 @@ export default function MarketingDashboardPage() {
                       <tr key={vs.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         <td className="px-6 py-3 font-medium text-gray-900 dark:text-white max-w-[240px] truncate">{vs.filename}</td>
                         <td className="px-6 py-3">
-                          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            vs.status === "transcribed" ? "bg-green-100 text-green-700"
+                          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${vs.status === "transcribed" ? "bg-green-100 text-green-700"
                             : vs.status === "transcribing" ? "bg-yellow-100 text-yellow-700 animate-pulse"
-                            : vs.status === "error" ? "bg-red-100 text-red-700"
-                            : "bg-gray-100 text-gray-700"
-                          }`}>
+                              : vs.status === "error" ? "bg-red-100 text-red-700"
+                                : "bg-gray-100 text-gray-700"
+                            }`}>
                             {vs.status === "uploaded" ? "アップロード済" : vs.status === "transcribing" ? "書き起こし中" : vs.status === "transcribed" ? "書き起こし完了" : vs.status === "error" ? "エラー" : vs.status}
                           </span>
                         </td>
@@ -752,11 +688,10 @@ export default function MarketingDashboardPage() {
                       <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-600 p-4">
                         <div className="mb-2 flex items-center gap-2">
                           <span className="text-sm font-medium text-gray-900 dark:text-white">{rec.category}</span>
-                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            rec.priority.toLowerCase() === "high" ? "bg-red-100 text-red-800 border border-red-200"
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${rec.priority.toLowerCase() === "high" ? "bg-red-100 text-red-800 border border-red-200"
                             : rec.priority.toLowerCase() === "medium" ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                            : "bg-green-100 text-green-800 border border-green-200"
-                          }`}>
+                              : "bg-green-100 text-green-800 border border-green-200"
+                            }`}>
                             {rec.priority.toLowerCase() === "high" ? "高" : rec.priority.toLowerCase() === "medium" ? "中" : rec.priority.toLowerCase() === "low" ? "低" : rec.priority}
                           </span>
                         </div>
@@ -788,15 +723,14 @@ export default function MarketingDashboardPage() {
                         sel
                           ? prev.filter((id) => id !== s.video_id)
                           : prev.length >= 4
-                          ? prev
-                          : [...prev, s.video_id]
+                            ? prev
+                            : [...prev, s.video_id]
                       );
                     }}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                      sel
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    }`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${sel
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      }`}
                   >
                     {s.video_filename}
                   </button>
@@ -859,11 +793,10 @@ export default function MarketingDashboardPage() {
                         {row.values.map((v) => (
                           <td
                             key={v.name}
-                            className={`text-right py-2 px-3 tabular-nums ${
-                              typeof v.value === "number" && v.value === maxVal
-                                ? "font-bold text-blue-600 dark:text-blue-400"
-                                : "text-gray-600 dark:text-gray-300"
-                            }`}
+                            className={`text-right py-2 px-3 tabular-nums ${typeof v.value === "number" && v.value === maxVal
+                              ? "font-bold text-blue-600 dark:text-blue-400"
+                              : "text-gray-600 dark:text-gray-300"
+                              }`}
                           >
                             {v.value}
                           </td>
@@ -1042,9 +975,8 @@ export default function MarketingDashboardPage() {
                       <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">{item.video_name}</span>
-                          <span className={`text-sm font-bold tabular-nums ${
-                            item.overall_score >= 7 ? "text-green-600" : item.overall_score >= 5 ? "text-yellow-600" : "text-red-600"
-                          }`}>
+                          <span className={`text-sm font-bold tabular-nums ${item.overall_score >= 7 ? "text-green-600" : item.overall_score >= 5 ? "text-yellow-600" : "text-red-600"
+                            }`}>
                             {item.overall_score}/10
                           </span>
                         </div>
@@ -1087,11 +1019,10 @@ export default function MarketingDashboardPage() {
                   <div className="space-y-2">
                     {report.improvement_priorities.map((ip, i) => (
                       <div key={i} className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
-                          ip.priority === "high" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${ip.priority === "high" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                           : ip.priority === "medium" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                          : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        }`}>
+                            : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          }`}>
                           {ip.priority === "high" ? "高" : ip.priority === "medium" ? "中" : "低"}
                         </span>
                         <div className="min-w-0">
@@ -1175,14 +1106,30 @@ export default function MarketingDashboardPage() {
         </div>
       )}
 
-      {/* ===== Competitor Tab ===== */}
-      {activeTab === "competitor" && (
-        <CompetitorTab convSummaries={filteredConvSummaries} allMetrics={allMetrics} showToast={showToast} />
+      {/* ===== Ranking Insight Tab ===== */}
+      {activeTab === "ranking_insight" && (
+        <RankingInsightTab managedTags={managedTags} showToast={showToast} />
       )}
 
-      {/* ===== Alerts Tab ===== */}
-      {activeTab === "alerts" && (
-        <AlertsTab allMetrics={allMetrics} videos={videos} showToast={showToast} />
+      {/* ===== Strategy Tab ===== */}
+      {activeTab === "strategy" && (
+        <StrategyTab
+          videos={filteredVideos}
+          adPerfList={adPerfList}
+          adPerfMap={adPerfMap}
+          managedTags={managedTags}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ===== Knowledge Base Tab ===== */}
+      {activeTab === "knowledge" && (
+        <KnowledgeBaseTab
+          videos={filteredVideos}
+          adPerfMap={adPerfMap}
+          adPerfList={adPerfList}
+          dashboard={dashboard}
+        />
       )}
 
       {/* ===== Platform Tab ===== */}
@@ -1195,11 +1142,6 @@ export default function MarketingDashboardPage() {
           showToast={showToast}
           onVideoUpdate={fetchData}
         />
-      )}
-
-      {/* ===== Ranking Insight Tab ===== */}
-      {activeTab === "ranking_insight" && (
-        <RankingInsightTab managedTags={managedTags} showToast={showToast} />
       )}
 
       {/* ===== History Tab ===== */}

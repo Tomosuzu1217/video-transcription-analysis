@@ -17,30 +17,17 @@ import {
   runKeywordAnalysis,
 } from "../api/analysis";
 import { getManagedTags } from "../api/settings";
-import { getAllTranscriptions, type FullTranscription } from "../api/transcriptions";
 import IntegratedAITab from "../components/analysis/IntegratedAITab";
 import { exportCorrelationAnalysisCSV, exportKeywordAnalysisCSV } from "../utils/csv";
 import { getErrorMessage } from "../utils/errors";
 import type { CorrelationItem, KeywordItem } from "../types";
 
-type TabKey = "keyword" | "correlation" | "ai_integrated" | "transcripts" | "history";
-
-type AnalysisHistoryRecord = {
-  id: number;
-  analysis_type: string;
-  scope: string;
-  video_id: number | null;
-  result: unknown;
-  gemini_model_used: string | null;
-  created_at: string;
-};
+type TabKey = "keyword" | "correlation" | "ai_integrated";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: "keyword", label: "キーワード分析" },
   { key: "correlation", label: "相関分析" },
   { key: "ai_integrated", label: "AI統合分析" },
-  { key: "transcripts", label: "文字起こし一覧" },
-  { key: "history", label: "履歴" },
 ];
 
 function formatTimestamp(iso: string | null): string {
@@ -52,28 +39,6 @@ function formatTimestamp(iso: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function formatDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const remaining = Math.floor(seconds % 60);
-  return `${String(minutes).padStart(2, "0")}:${String(remaining).padStart(2, "0")}`;
-}
-
-function getHistoryTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    keyword_frequency: "キーワード分析",
-    correlation: "相関分析",
-    ai_recommendation: "AI提案",
-    ranking_comparison: "ランキング比較",
-    psychological_content: "心理分析",
-    marketing_report: "レポート",
-    content_suggestion: "コンテンツ提案",
-    platform_analysis: "プラットフォーム分析",
-    ab_deep_comparison: "A/B比較",
-    ranking_platform_insight: "ランキング洞察",
-  };
-  return labels[type] ?? type;
 }
 
 function TimestampBadge({ value }: { value: string | null }) {
@@ -112,14 +77,6 @@ export default function AnalysisPage() {
   const [correlationRunning, setCorrelationRunning] = useState(false);
   const [correlationTimestamp, setCorrelationTimestamp] = useState<string | null>(null);
 
-  const [historyRecords, setHistoryRecords] = useState<AnalysisHistoryRecord[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyDetail, setHistoryDetail] = useState<AnalysisHistoryRecord | null>(null);
-
-  const [allTranscripts, setAllTranscripts] = useState<FullTranscription[]>([]);
-  const [transcriptsLoading, setTranscriptsLoading] = useState(false);
-  const [expandedVideoId, setExpandedVideoId] = useState<number | null>(null);
-
   const [managedTags, setManagedTags] = useState<string[]>([]);
   const [runningElapsed, setRunningElapsed] = useState(0);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -144,7 +101,7 @@ export default function AnalysisPage() {
   }, []);
 
   useEffect(() => {
-    getManagedTags().then(setManagedTags).catch(() => {});
+    getManagedTags().then(setManagedTags).catch(() => { });
   }, []);
 
   const fetchKeywordResults = useCallback(async () => {
@@ -181,51 +138,15 @@ export default function AnalysisPage() {
     }
   }, []);
 
-  const fetchHistory = useCallback(async () => {
-    try {
-      setHistoryLoading(true);
-      const data = await getAnalysisResults();
-      setHistoryRecords(data as AnalysisHistoryRecord[]);
-    } catch (fetchError) {
-      console.error("Failed to fetch history", fetchError);
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, []);
-
-  const fetchAllTranscripts = useCallback(async () => {
-    try {
-      setTranscriptsLoading(true);
-      const data = await getAllTranscriptions();
-      setAllTranscripts(data.transcriptions);
-    } catch (fetchError) {
-      console.error("Failed to fetch transcripts", fetchError);
-    } finally {
-      setTranscriptsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     if (loadedTabs.has(activeTab)) return;
     setLoadedTabs((prev) => new Set(prev).add(activeTab));
-
     switch (activeTab) {
-      case "keyword":
-        fetchKeywordResults();
-        break;
-      case "correlation":
-        fetchCorrelationResults();
-        break;
-      case "transcripts":
-        fetchAllTranscripts();
-        break;
-      case "history":
-        fetchHistory();
-        break;
-      default:
-        break;
+      case "keyword": fetchKeywordResults(); break;
+      case "correlation": fetchCorrelationResults(); break;
+      default: break;
     }
-  }, [activeTab, fetchAllTranscripts, fetchCorrelationResults, fetchHistory, fetchKeywordResults, loadedTabs]);
+  }, [activeTab, fetchCorrelationResults, fetchKeywordResults, loadedTabs]);
 
   const handleRunKeyword = async () => {
     try {
@@ -283,9 +204,7 @@ export default function AnalysisPage() {
           >
             <option value="">すべて</option>
             {managedTags.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
+              <option key={tag} value={tag}>{tag}</option>
             ))}
           </select>
         </div>
@@ -296,13 +215,8 @@ export default function AnalysisPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {keywordRunning ? (
-            <>
-              <Spinner />
-              実行中...{runningElapsed > 0 && ` (${runningElapsed}秒)`}
-            </>
-          ) : (
-            "キーワード分析を実行"
-          )}
+            <><Spinner />実行中...{runningElapsed > 0 && ` (${runningElapsed}秒)`}</>
+          ) : "キーワード分析を実行"}
         </button>
 
         {topKeywords.length > 0 && (
@@ -313,7 +227,6 @@ export default function AnalysisPage() {
             CSV出力
           </button>
         )}
-
         <TimestampBadge value={keywordTimestamp} />
       </div>
 
@@ -381,13 +294,8 @@ export default function AnalysisPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {correlationRunning ? (
-            <>
-              <Spinner />
-              実行中...{runningElapsed > 0 && ` (${runningElapsed}秒)`}
-            </>
-          ) : (
-            "相関分析を実行"
-          )}
+            <><Spinner />実行中...{runningElapsed > 0 && ` (${runningElapsed}秒)`}</>
+          ) : "相関分析を実行"}
         </button>
 
         {correlations.length > 0 && (
@@ -398,7 +306,6 @@ export default function AnalysisPage() {
             CSV出力
           </button>
         )}
-
         <TimestampBadge value={correlationTimestamp} />
       </div>
 
@@ -460,147 +367,6 @@ export default function AnalysisPage() {
     </div>
   );
 
-  const renderTranscriptsTab = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">文字起こし一覧</h3>
-          <p className="text-sm text-gray-500">書き起こし済み動画の内容を確認できます。</p>
-        </div>
-        <button
-          onClick={fetchAllTranscripts}
-          disabled={transcriptsLoading}
-          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-60"
-        >
-          {transcriptsLoading ? "読み込み中..." : "更新"}
-        </button>
-      </div>
-
-      {transcriptsLoading ? (
-        <PageSpinner text="文字起こし一覧を読み込み中..." />
-      ) : allTranscripts.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 text-center text-gray-500">
-          文字起こし済みの動画がありません。
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {allTranscripts.map((transcript) => {
-            const expanded = expandedVideoId === transcript.video_id;
-            return (
-              <div key={transcript.video_id} className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-                <button
-                  onClick={() => setExpandedVideoId(expanded ? null : transcript.video_id)}
-                  className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-gray-50"
-                >
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{transcript.video_filename}</h4>
-                    <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-                      <span>{transcript.segments.length} セグメント</span>
-                      {transcript.duration_seconds != null && <span>{formatDuration(transcript.duration_seconds)}</span>}
-                      <span>{transcript.language}</span>
-                    </div>
-                  </div>
-                  <span className="text-sm text-blue-600">{expanded ? "閉じる" : "詳細"}</span>
-                </button>
-
-                {expanded && (
-                  <div className="border-t border-gray-100">
-                    <div className="border-b border-gray-100 bg-gray-50 px-6 py-4">
-                      <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">全文</h5>
-                      <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
-                        {transcript.full_text}
-                      </p>
-                    </div>
-
-                    <div className="px-6 py-4">
-                      <h5 className="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-500">セグメント</h5>
-                      <div className="space-y-2">
-                        {transcript.segments.map((segment, index) => (
-                          <div key={segment.id} className="rounded-lg border border-gray-100 p-3">
-                            <div className="mb-1 flex items-center gap-2 text-xs text-gray-500">
-                              <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700">
-                                #{index + 1}
-                              </span>
-                              <span>{formatDuration(segment.start_time)} - {formatDuration(segment.end_time)}</span>
-                            </div>
-                            <p className="text-sm text-gray-700">{segment.text}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderHistoryTab = () => (
-    <div className="space-y-6">
-      {historyLoading ? (
-        <PageSpinner text="履歴を読み込み中..." />
-      ) : historyRecords.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 text-center text-gray-500">
-          分析履歴がありません。
-        </div>
-      ) : (
-        <>
-          <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 text-left">
-                    <th className="px-6 py-3 font-medium text-gray-500">ID</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">種別</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">スコープ</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">モデル</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">実行日時</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">詳細</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {historyRecords.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 text-gray-500">#{record.id}</td>
-                      <td className="px-6 py-3">{getHistoryTypeLabel(record.analysis_type)}</td>
-                      <td className="px-6 py-3 text-gray-700">{record.scope}</td>
-                      <td className="px-6 py-3 text-gray-500">{record.gemini_model_used ?? "---"}</td>
-                      <td className="px-6 py-3 text-gray-700">{formatTimestamp(record.created_at)}</td>
-                      <td className="px-6 py-3">
-                        <button
-                          onClick={() => setHistoryDetail(historyDetail?.id === record.id ? null : record)}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {historyDetail?.id === record.id ? "閉じる" : "表示"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {historyDetail && (
-            <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-              <div className="border-b border-gray-100 px-6 py-4">
-                <h4 className="text-sm font-semibold text-gray-900">履歴 #{historyDetail.id}</h4>
-              </div>
-              <div className="px-6 py-4">
-                <pre className="max-h-96 overflow-auto rounded-lg bg-gray-50 p-4 text-xs leading-relaxed text-gray-700">
-                  {JSON.stringify(historyDetail.result, null, 2)}
-                </pre>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900">分析</h2>
@@ -617,11 +383,10 @@ export default function AnalysisPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab.key
+              className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${activeTab === tab.key
                   ? "border-blue-500 text-blue-600"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -632,8 +397,6 @@ export default function AnalysisPage() {
       {activeTab === "keyword" && renderKeywordTab()}
       {activeTab === "correlation" && renderCorrelationTab()}
       {activeTab === "ai_integrated" && <IntegratedAITab />}
-      {activeTab === "transcripts" && renderTranscriptsTab()}
-      {activeTab === "history" && renderHistoryTab()}
     </div>
   );
 }
