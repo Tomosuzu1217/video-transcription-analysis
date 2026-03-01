@@ -17,8 +17,6 @@ import { formatDuration } from "../utils/format";
 import Toast from "../components/Toast";
 import { useToast } from "../components/useToast";
 import StorageUsageBar from "../components/StorageUsageBar";
-import ROITab from "../components/marketing/ROITab";
-import FunnelTab from "../components/marketing/FunnelTab";
 import CompetitorTab from "../components/marketing/CompetitorTab";
 import AlertsTab from "../components/marketing/AlertsTab";
 import PlatformTab from "../components/marketing/PlatformTab";
@@ -37,7 +35,7 @@ const INITIAL_STEPS: AnalysisStep[] = [
   { label: "データ更新", status: "pending" },
 ];
 
-type Tab = "overview" | "compare" | "trend" | "report" | "roi" | "funnel" | "competitor" | "alerts" | "platform" | "ranking_insight" | "history";
+type Tab = "overview" | "compare" | "trend" | "report" | "competitor" | "alerts" | "platform" | "ranking_insight" | "history";
 
 export default function MarketingDashboardPage() {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -339,8 +337,6 @@ export default function MarketingDashboardPage() {
     { key: "compare", label: "動画比較" },
     { key: "trend", label: "推移" },
     { key: "report", label: "レポート" },
-    { key: "roi", label: "ROI" },
-    { key: "funnel", label: "ファネル" },
     { key: "competitor", label: "競合比較" },
     { key: "alerts", label: "アラート" },
     { key: "platform", label: "媒体分析" },
@@ -1177,16 +1173,6 @@ export default function MarketingDashboardPage() {
             </div>
           )}
         </div>
-      )}
-
-      {/* ===== ROI Tab ===== */}
-      {activeTab === "roi" && (
-        <ROITab convSummaries={filteredConvSummaries} allMetrics={allMetrics} adPerfMap={adPerfMap} videos={videos} />
-      )}
-
-      {/* ===== Funnel Tab ===== */}
-      {activeTab === "funnel" && (
-        <FunnelTab videos={filteredVideos} convSummaries={filteredConvSummaries} allMetrics={allMetrics} adPerfMap={adPerfMap} />
       )}
 
       {/* ===== Competitor Tab ===== */}
