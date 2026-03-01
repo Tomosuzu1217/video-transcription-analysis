@@ -10,7 +10,8 @@ import {
   saveManagedTags,
 } from "../api/settings";
 import { getStorageUsage, type StorageUsage } from "../api/storage";
-import Toast, { useToast } from "../components/Toast";
+import Toast from "../components/Toast";
+import { useToast } from "../components/useToast";
 import StorageUsageBar from "../components/StorageUsageBar";
 import type { ApiKeysResponse, ModelResponse, TestResult } from "../api/settings";
 
@@ -45,7 +46,7 @@ export default function SettingsPage() {
     } catch {
       showToast("APIキー情報の取得に失敗しました", "error");
     }
-  }, []);
+  }, [showToast]);
 
   const fetchModel = useCallback(async () => {
     try {
@@ -54,7 +55,7 @@ export default function SettingsPage() {
     } catch {
       showToast("モデル設定の取得に失敗しました", "error");
     }
-  }, []);
+  }, [showToast]);
 
   const fetchTags = useCallback(async () => {
     try {
@@ -65,7 +66,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingTags(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     fetchKeys();

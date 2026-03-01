@@ -3,7 +3,7 @@ import { getAnalysisHistory } from "../../api/analysis";
 import type { AnalysisRecord } from "../../types";
 
 const TYPE_LABELS: Record<string, string> = {
-  keyword_frequency: "キーワード分析",
+  keyword_frequency: "キーワード頻度分析",
   correlation: "相関分析",
   ai_recommendation: "AI推奨",
   ranking_comparison: "ランキング比較",
@@ -11,8 +11,8 @@ const TYPE_LABELS: Record<string, string> = {
   marketing_report: "マーケティングレポート",
   content_suggestion: "台本提案",
   platform_analysis: "媒体分析",
-  ab_deep_comparison: "AI深掘り比較",
-  ranking_platform_insight: "ランキングインサイト",
+  ab_deep_comparison: "AI詳細比較",
+  ranking_platform_insight: "ランキング分析",
 };
 
 function formatDate(iso: string): string {
@@ -60,7 +60,7 @@ export default function AnalysisHistoryTab() {
   if (records.length === 0) {
     return (
       <div className="rounded-xl bg-white border border-gray-100 p-12 text-center shadow-sm">
-        <p className="text-sm text-gray-400">分析履歴がありません。各分析を実行すると自動的に記録されます。</p>
+        <p className="text-sm text-gray-400">分析履歴がありません。新しい分析を実行するとここに記録されます。</p>
       </div>
     );
   }

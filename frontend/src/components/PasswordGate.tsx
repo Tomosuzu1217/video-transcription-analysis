@@ -1,14 +1,9 @@
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { getAuthenticatedSession, setAuthenticatedSession } from "../services/authSession";
 
 const PASSWORD_HASH = import.meta.env.VITE_APP_PASSWORD_HASH as string;
-const SESSION_KEY = "authenticated";
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 60_000; // 1 minute
-
-export function logout() {
-  sessionStorage.removeItem(SESSION_KEY);
-  window.location.reload();
-}
+const LOCKOUT_DURATION_MS = 60_000;
 
 async function sha256(text: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -19,33 +14,17 @@ async function sha256(text: string): Promise<string> {
 }
 
 export default function PasswordGate({ children }: { children: ReactNode }) {
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authenticated, setAuthenticated] = useState(() => !PASSWORD_HASH || getAuthenticatedSession() === PASSWORD_HASH);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [lockedUntil, setLockedUntil] = useState(0);
   const attemptCount = useRef(0);
-
-  useEffect(() => {
-    // Skip gate if no password hash is configured
-    if (!PASSWORD_HASH) {
-      setAuthenticated(true);
-      setChecking(false);
-      return;
-    }
-    const stored = sessionStorage.getItem(SESSION_KEY);
-    if (stored === PASSWORD_HASH) {
-      setAuthenticated(true);
-    }
-    setChecking(false);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
 
-    // Check lockout
     const now = Date.now();
     if (now < lockedUntil) {
       const remaining = Math.ceil((lockedUntil - now) / 1000);
@@ -56,7 +35,6 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
     setSubmitting(true);
     setError("");
 
-    // Progressive delay: 1s per failed attempt
     const delay = Math.min(attemptCount.current * 1000, 5000);
     if (delay > 0) {
       await new Promise((resolve) => setTimeout(resolve, delay));
@@ -64,7 +42,7 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
 
     const hash = await sha256(password);
     if (hash === PASSWORD_HASH) {
-      sessionStorage.setItem(SESSION_KEY, PASSWORD_HASH);
+      setAuthenticatedSession(PASSWORD_HASH);
       attemptCount.current = 0;
       setAuthenticated(true);
     } else {
@@ -74,24 +52,20 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
         attemptCount.current = 0;
         setError(`試行回数が上限に達しました。${LOCKOUT_DURATION_MS / 1000}秒後に再試行してください`);
       } else {
-        setError(`パスワードが正しくありません（残り${MAX_ATTEMPTS - attemptCount.current}回）`);
+        setError(`パスワードが正しくありません。残り${MAX_ATTEMPTS - attemptCount.current}回です`);
       }
     }
+
     setSubmitting(false);
   };
 
-  if (checking) return null;
   if (authenticated) return <>{children}</>;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
       <div className="w-full max-w-sm bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-        <h1 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">
-          動画CM分析
-        </h1>
-        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">
-          アクセスにはパスワードが必要です
-        </p>
+        <h1 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">動画CM分析</h1>
+        <p className="text-sm text-center text-gray-500 dark:text-gray-400 mb-6">アクセスにはパスワードが必要です</p>
         <form onSubmit={handleSubmit}>
           <input
             type="password"
@@ -101,15 +75,13 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             autoFocus
           />
-          {error && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
-          )}
+          {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
           <button
             type="submit"
             disabled={submitting}
             className="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
           >
-            {submitting ? "確認中..." : "ログイン"}
+            {submitting ? "認証中..." : "ログイン"}
           </button>
         </form>
       </div>

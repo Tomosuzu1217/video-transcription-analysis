@@ -3,22 +3,57 @@ import { callGeminiJson } from "../services/gemini";
 import { analyzeSegmentEmotions, calculateEmotionVolatility, detectPersuasionTechniques } from "../services/nlp";
 import { getManagedTags } from "./settings";
 import { supabase } from "../services/supabase";
-import type { DashboardData, VideoRecord, TranscriptionRecord, ConversionRecord, AnalysisRecord, CrossPlatformAnalysisResult, ABDeepComparisonResult, RankingPlatformInsightResult } from "../types";
+import type {
+  DashboardData,
+  VideoRecord,
+  TranscriptionRecord,
+  ConversionRecord,
+  AnalysisRecord,
+  CrossPlatformAnalysisResult,
+  ABDeepComparisonResult,
+  RankingPlatformInsightResult,
+  MarketingReportResult,
+  ContentSuggestion,
+  KeywordItem,
+  AiAnalysisResult,
+  RankingComparisonResult,
+  PsychologicalContentResult,
+} from "../types";
 
-async function loadVideosData(): Promise<Array<{
+type TranscriptSegment = TranscriptionRecord["segments"][number];
+
+interface LoadedVideoData {
   name: string;
   videoId: number;
   transcript: string;
-  segments: { start_time: number; end_time: number; text: string }[];
+  segments: TranscriptSegment[];
   conversions: Record<string, number>;
   ranking: number | null;
   ranking_notes: string | null;
-}>> {
+}
+
+export interface KeywordAnalysisResult {
+  keywords: KeywordItem[];
+  video_count: number;
+}
+
+export interface CorrelationAnalysisResult {
+  correlations: Array<{
+    keyword: string;
+    avg_conversion_with: number;
+    avg_conversion_without: number;
+    effectiveness_score: number;
+    video_count: number;
+  }>;
+  message?: string;
+}
+
+async function loadVideosData(): Promise<LoadedVideoData[]> {
   const videos = await getAll<VideoRecord>(STORES.VIDEOS);
   const transcriptions = await getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS);
   const conversions = await getAll<ConversionRecord>(STORES.CONVERSIONS);
 
-  const transcriptionsByVideo = new Map<number, { full_text: string; segments: any[] }>();
+  const transcriptionsByVideo = new Map<number, { full_text: string; segments: TranscriptSegment[] }>();
   for (const t of transcriptions) {
     transcriptionsByVideo.set(t.video_id, { full_text: t.full_text, segments: t.segments ?? [] });
   }
@@ -29,7 +64,7 @@ async function loadVideosData(): Promise<Array<{
     conversionsByVideo.get(c.video_id)![c.metric_name] = c.metric_value;
   }
 
-  const result = [];
+  const result: LoadedVideoData[] = [];
   for (const v of videos) {
     if (v.status !== "transcribed") continue;
     const t = transcriptionsByVideo.get(v.id);
@@ -47,7 +82,7 @@ async function loadVideosData(): Promise<Array<{
   return result;
 }
 
-async function saveAnalysis(analysisType: string, scope: string, result: any, modelUsed?: string) {
+async function saveAnalysis<TResult>(analysisType: string, scope: string, result: TResult, modelUsed?: string) {
   const id = generateId();
   await put(STORES.ANALYSES, {
     id,
@@ -60,7 +95,7 @@ async function saveAnalysis(analysisType: string, scope: string, result: any, mo
   });
 }
 
-export async function runKeywordAnalysis(platformTag?: string): Promise<any> {
+export async function runKeywordAnalysis(platformTag?: string): Promise<KeywordAnalysisResult> {
   let videos = await loadVideosData();
   if (platformTag) {
     const allVideoRecords = await getAll<VideoRecord>(STORES.VIDEOS);
@@ -86,13 +121,13 @@ ${videoTexts}
 
 重要: 必ず有効なJSONのみを返してください。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<KeywordAnalysisResult>(prompt);
   const scope = platformTag ? `keyword_frequency:${platformTag}` : "keyword_frequency:all";
   await saveAnalysis("keyword_frequency", scope, result);
   return result;
 }
 
-export async function runCorrelationAnalysis(): Promise<any> {
+export async function runCorrelationAnalysis(): Promise<CorrelationAnalysisResult> {
   const videos = await loadVideosData();
   const withData = videos.filter((v) => Object.keys(v.conversions).length > 0);
   if (withData.length < 2) {
@@ -119,12 +154,12 @@ ${videoTexts}
 
 重要: 必ず有効なJSONのみを返してください。上位30個まで返してください。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<CorrelationAnalysisResult>(prompt);
   await saveAnalysis("correlation", "cross_video", result);
   return result;
 }
 
-export async function runAiRecommendations(customPrompt?: string): Promise<any> {
+export async function runAiRecommendations(customPrompt?: string): Promise<AiAnalysisResult> {
   const videos = await loadVideosData();
   if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。");
 
@@ -156,12 +191,12 @@ ${customInstruction}
 
 重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<AiAnalysisResult>(prompt);
   await saveAnalysis("ai_recommendation", "cross_video", result, "gemini");
   return result;
 }
 
-export async function runRankingComparisonAnalysis(customPrompt?: string): Promise<any> {
+export async function runRankingComparisonAnalysis(customPrompt?: string): Promise<RankingComparisonResult> {
   const videos = await loadVideosData();
   const ranked = videos.filter((v) => v.ranking !== null).sort((a, b) => (a.ranking ?? 99) - (b.ranking ?? 99));
   const topVideos = ranked.filter((v) => (v.ranking ?? 99) <= 3);
@@ -212,12 +247,12 @@ ${customInstruction}
 
 重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<RankingComparisonResult>(prompt);
   await saveAnalysis("ranking_comparison", "cross_video", result, "gemini");
   return result;
 }
 
-export async function runPsychologicalContentAnalysis(customPrompt?: string): Promise<any> {
+export async function runPsychologicalContentAnalysis(customPrompt?: string): Promise<PsychologicalContentResult & { nlp_preanalysis: unknown[] }> {
   const videos = await loadVideosData();
   if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。");
 
@@ -302,13 +337,13 @@ ${customInstruction}
 
 重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。スコアは1.0〜10.0の範囲で。`;
 
-  const result = await callGeminiJson(prompt) as any;
+  const result = await callGeminiJson<PsychologicalContentResult & { nlp_preanalysis?: unknown[] }>(prompt);
   result.nlp_preanalysis = nlpPreanalysis;
   await saveAnalysis("psychological_content", "cross_video", result, "gemini");
   return result;
 }
 
-export async function runMarketingReport(customPrompt?: string): Promise<any> {
+export async function runMarketingReport(customPrompt?: string): Promise<MarketingReportResult> {
   const videos = await loadVideosData();
   if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。");
 
@@ -355,12 +390,12 @@ ${customInstruction}
 
 重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。スコアは1.0〜10.0の範囲で。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<MarketingReportResult>(prompt);
   await saveAnalysis("marketing_report", "cross_video", result, "gemini");
   return result;
 }
 
-export async function runContentSuggestion(customPrompt?: string): Promise<any> {
+export async function runContentSuggestion(customPrompt?: string): Promise<ContentSuggestion> {
   const videos = await loadVideosData();
   if (videos.length === 0) throw new Error("書き起こし済みの動画がありません。");
 
@@ -401,7 +436,7 @@ ${customInstruction}
 
 重要: 必ず有効なJSONのみを返してください。日本語で記述してください。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<ContentSuggestion>(prompt);
   await saveAnalysis("content_suggestion", "cross_video", result, "gemini");
   return result;
 }
@@ -411,7 +446,7 @@ export async function runPlatformAnalysis(managedTags?: string[]): Promise<Cross
   const transcriptions = await getAll<TranscriptionRecord>(STORES.TRANSCRIPTIONS);
   const conversions = await getAll<ConversionRecord>(STORES.CONVERSIONS);
 
-  const transcriptionsByVideo = new Map<number, { full_text: string; segments: any[] }>();
+  const transcriptionsByVideo = new Map<number, { full_text: string; segments: TranscriptSegment[] }>();
   for (const t of transcriptions) {
     transcriptionsByVideo.set(t.video_id, { full_text: t.full_text, segments: t.segments ?? [] });
   }
@@ -500,9 +535,9 @@ ${platformSections}
 
 重要: 必ず有効なJSONのみを返してください。日本語で記述してください。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<CrossPlatformAnalysisResult>(prompt);
   await saveAnalysis("platform_analysis", "cross_platform", result, "gemini");
-  return result as CrossPlatformAnalysisResult;
+  return result;
 }
 
 export async function runABDeepComparison(videoIdA: number, videoIdB: number): Promise<ABDeepComparisonResult> {
@@ -573,9 +608,9 @@ ${buildVideoBlock(videoB, "B")}
 重要: 必ず有効なJSONのみを返してください。分析は日本語で行ってください。スコアは1.0〜10.0の範囲で。
 比較観点は最低5つ以上（冒頭の掴み、ストーリー構成、感情設計、CTA、ペルソナ適合度、言語表現など）含めてください。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<ABDeepComparisonResult>(prompt);
   await saveAnalysis("ab_deep_comparison", `${videoA.name} vs ${videoB.name}`, result, "gemini");
-  return result as ABDeepComparisonResult;
+  return result;
 }
 
 export async function runRankingPlatformInsight(managedTags?: string[]): Promise<RankingPlatformInsightResult> {
@@ -703,12 +738,20 @@ ${platformSections}
 hit_factor_analysisは最低5つ以上の要因を含めてください。
 ペルソナは具体的に（「20代女性」ではなく「22-28歳、都市在住、SNSでトレンドをチェック、美容・健康に関心が高い」のように）記述してください。`;
 
-  const result = await callGeminiJson(prompt);
+  const result = await callGeminiJson<RankingPlatformInsightResult>(prompt);
   await saveAnalysis("ranking_platform_insight", "cross_platform_ranking", result, "gemini");
-  return result as RankingPlatformInsightResult;
+  return result;
 }
 
-export async function getAnalysisResults(type?: string): Promise<any[]> {
+export async function getAnalysisResults(type?: string): Promise<Array<{
+  id: number;
+  analysis_type: string;
+  scope: string;
+  video_id: number | null;
+  result: unknown;
+  gemini_model_used: string | null;
+  created_at: string;
+}>> {
   let query = supabase
     .from("analyses")
     .select("*")
@@ -719,7 +762,7 @@ export async function getAnalysisResults(type?: string): Promise<any[]> {
   }
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []).map((d: any) => ({
+  return ((data ?? []) as AnalysisRecord[]).map((d) => ({
     id: d.id,
     analysis_type: d.analysis_type,
     scope: d.scope,
@@ -736,7 +779,7 @@ export async function getDashboard(): Promise<DashboardData> {
 
   let totalVideos = 0, transcribed = 0, processing = 0, errorCount = 0;
   const durations: number[] = [];
-  const videoSummaries: any[] = [];
+  const videoSummaries: DashboardData["video_summaries"] = [];
 
   const convByVideo = new Map<number, Record<string, number>>();
   for (const c of allConversions) {
@@ -762,7 +805,7 @@ export async function getDashboard(): Promise<DashboardData> {
   const avgDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length * 10) / 10 : null;
   const totalDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) * 10) / 10 : null;
 
-  let topKeywords: any[] = [];
+  let topKeywords: KeywordItem[] = [];
   const { data: kwData } = await supabase
     .from("analyses")
     .select("result_json")
@@ -774,7 +817,7 @@ export async function getDashboard(): Promise<DashboardData> {
     topKeywords = (kwData.result_json?.keywords ?? []).slice(0, 20);
   }
 
-  let latestAi = null;
+  let latestAi: AiAnalysisResult | null = null;
   const { data: aiData } = await supabase
     .from("analyses")
     .select("result_json")

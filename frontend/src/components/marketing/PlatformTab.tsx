@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+﻿import { useState, useEffect, useMemo, useCallback } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { updateVideoTags } from "../../api/videos";
 import { runPlatformAnalysis, getAnalysisResults } from "../../api/analysis";
+import { getErrorMessage } from "../../utils/errors";
 import type { Video, ConversionSummary, CrossPlatformAnalysisResult } from "../../types";
 
 const KNOWN_COLORS: Record<string, string> = {
@@ -87,7 +88,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, managed
     try {
       await updateVideoTags(video.id, newTags);
       onVideoUpdate?.();
-      showToast(`${platform} タグを${newTags.includes(platform) ? "追加" : "削除"}しました`, "success");
+      showToast(`${platform} タグを更新しました`, "success");
     } catch {
       showToast("タグの更新に失敗しました", "error");
     }
@@ -99,8 +100,8 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, managed
       const result = await runPlatformAnalysis(managedTags);
       setAnalysisResult(result);
       showToast("媒体分析が完了しました", "success");
-    } catch (e: any) {
-      showToast(e.message ?? "媒体分析に失敗しました", "error");
+    } catch (e) {
+      showToast(getErrorMessage(e, "媒体分析に失敗しました"), "error");
     } finally {
       setLoadingAnalysis(false);
     }
@@ -111,7 +112,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, managed
       {/* Platform tagging section */}
       <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">動画に媒体タグを設定</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">各動画がどの広告媒体で配信されるかをタグ付けしてください</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">各動画がどの媒体向けかをタグで管理できます</p>
 
         <div className="space-y-2 max-h-80 overflow-y-auto">
           {videos.filter((v) => v.status === "transcribed" || v.status === "archived").map((v) => (
@@ -142,7 +143,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, managed
             </div>
           ))}
           {videos.filter((v) => v.status === "transcribed" || v.status === "archived").length === 0 && (
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">書き起こし済みの動画がありません</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">文字起こし済みの動画がありません</p>
           )}
         </div>
       </div>
@@ -198,12 +199,12 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, managed
           </button>
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Gemini AIが各媒体の特性を考慮して、どのような動画・文章・ストーリーが効果的かを分析します。
+          Gemini AI が媒体ごとの特性や有効なフック、ストーリー傾向を分析します。
         </p>
         {loadingAnalysis && (
           <div className="flex items-center gap-2 mt-4">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-r-transparent" />
-            <span className="text-sm text-blue-600 dark:text-blue-400 animate-pulse">各媒体のコンテンツ戦略を分析中...</span>
+            <span className="text-sm text-blue-600 dark:text-blue-400 animate-pulse">各媒体のコンテンツ傾向を分析中...</span>
           </div>
         )}
       </div>
@@ -243,9 +244,9 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, managed
                   <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">コンテンツ特性</p>
                   <div className="space-y-1.5 text-sm">
                     <p><span className="font-medium text-gray-700 dark:text-gray-300">最適尺: </span><span className="text-gray-600 dark:text-gray-400">{pa.content_characteristics.optimal_duration}</span></p>
-                    <p><span className="font-medium text-gray-700 dark:text-gray-300">ストーリー構成: </span><span className="text-gray-600 dark:text-gray-400">{pa.content_characteristics.storytelling_pattern}</span></p>
+                    <p><span className="font-medium text-gray-700 dark:text-gray-300">ストーリー傾向: </span><span className="text-gray-600 dark:text-gray-400">{pa.content_characteristics.storytelling_pattern}</span></p>
                     <p><span className="font-medium text-gray-700 dark:text-gray-300">トーン: </span><span className="text-gray-600 dark:text-gray-400">{pa.content_characteristics.tone_and_style}</span></p>
-                    <p><span className="font-medium text-gray-700 dark:text-gray-300">CTA戦略: </span><span className="text-gray-600 dark:text-gray-400">{pa.content_characteristics.cta_strategy}</span></p>
+                    <p><span className="font-medium text-gray-700 dark:text-gray-300">CTA方針: </span><span className="text-gray-600 dark:text-gray-400">{pa.content_characteristics.cta_strategy}</span></p>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -260,7 +261,7 @@ export default function PlatformTab({ videos, convSummaries, allMetrics, managed
 
               {pa.platform_specific_insights?.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">媒体固有の知見</p>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">媒体固有の示唆</p>
                   <ul className="space-y-1">
                     {pa.platform_specific_insights.map((ins, i) => (
                       <li key={i} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">

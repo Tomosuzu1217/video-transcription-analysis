@@ -5,6 +5,8 @@ import { transcribeMediaWithKey, isRateLimitError } from "../services/gemini";
 import { KeyPool } from "../services/keyPool";
 import type { BatchProgress, VideoProgress, VideoTranscriptionStage, VideoRecord, TranscriptionRecord } from "../types";
 
+type TranscriptionResult = Awaited<ReturnType<typeof transcribeMediaWithKey>>;
+
 /** Strip API keys and sensitive data from error messages */
 function sanitizeError(e: unknown): string {
   let msg = String(e);
@@ -132,7 +134,7 @@ async function processVideo(
 
     // Optimistic lock: allow if not transcribing, OR if stuck transcribing (>5 min)
     const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    let lockedVideo: any = null;
+    let lockedVideo: VideoRecord | null = null;
 
     // First try: non-transcribing videos
     const { data: d1 } = await supabase
@@ -142,7 +144,7 @@ async function processVideo(
       .neq("status", "transcribing")
       .select()
       .maybeSingle();
-    lockedVideo = d1;
+    lockedVideo = (d1 as VideoRecord | null) ?? null;
 
     // Second try: stale transcribing videos (stuck for >5 min)
     if (!lockedVideo) {
@@ -154,7 +156,7 @@ async function processVideo(
         .lt("updated_at", staleThreshold)
         .select()
         .maybeSingle();
-      lockedVideo = d2;
+      lockedVideo = (d2 as VideoRecord | null) ?? null;
     }
 
     if (!lockedVideo) {
@@ -199,7 +201,7 @@ async function processVideo(
       });
     }, 2000);
 
-    let result: { full_text: string; language: string; segments: { start_time: number; end_time: number; text: string }[] };
+    let result: TranscriptionResult;
     try {
       result = await transcribeMediaWithKey(file, keyInfo.key, keyPool.getModel());
     } finally {

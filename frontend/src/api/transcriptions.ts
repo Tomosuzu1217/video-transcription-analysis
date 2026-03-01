@@ -5,6 +5,8 @@ import { transcribeMedia } from "../services/gemini";
 import { getCurrentBatchProgress, startBatchTranscription, isBatchRunning } from "./batchTranscription";
 import type { TranscriptionStatus, Transcription, TranscriptionSegment, BatchProgress, VideoRecord, TranscriptionRecord } from "../types";
 
+type StoredSegment = TranscriptionRecord["segments"][number];
+
 export interface QueueStatus {
   model_loaded: boolean;
   model_loading: boolean;
@@ -49,7 +51,7 @@ export async function getTranscriptionStatus(videoId: number): Promise<Transcrip
   let transcription: Transcription | null = null;
   if (tRecords.length > 0) {
     const tData = tRecords[0];
-    const segments: TranscriptionSegment[] = (tData.segments ?? []).map((s: any, i: number) => ({
+    const segments: TranscriptionSegment[] = (tData.segments ?? []).map((s: StoredSegment, i: number) => ({
       id: i + 1,
       start_time: s.start_time,
       end_time: s.end_time,
@@ -89,7 +91,7 @@ export async function retryTranscription(videoId: number): Promise<void> {
 
   // Optimistic lock: allow if not transcribing, OR if stuck transcribing (>5 min)
   const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  let lockedVideo: any = null;
+  let lockedVideo: VideoRecord | null = null;
 
   // First try: non-transcribing videos
   const { data: d1, error: lockError } = await supabase
@@ -100,7 +102,7 @@ export async function retryTranscription(videoId: number): Promise<void> {
     .select()
     .maybeSingle();
   if (lockError) throw lockError;
-  lockedVideo = d1;
+  lockedVideo = (d1 as VideoRecord | null) ?? null;
 
   // Second try: stale transcribing videos (stuck for >5 min)
   if (!lockedVideo) {
@@ -113,7 +115,7 @@ export async function retryTranscription(videoId: number): Promise<void> {
       .select()
       .maybeSingle();
     if (staleError) throw staleError;
-    lockedVideo = d2;
+    lockedVideo = (d2 as VideoRecord | null) ?? null;
   }
 
   if (!lockedVideo) throw new Error("別のユーザーが書き起こし中です");
@@ -249,7 +251,7 @@ export async function getAllTranscriptions(): Promise<{
     const filename = videoData?.filename ?? "unknown";
     const duration = videoData?.duration_seconds ?? null;
 
-    const segments = (tData.segments ?? []).map((s: any, i: number) => ({
+    const segments = (tData.segments ?? []).map((s: StoredSegment, i: number) => ({
       id: i + 1,
       start_time: s.start_time,
       end_time: s.end_time,

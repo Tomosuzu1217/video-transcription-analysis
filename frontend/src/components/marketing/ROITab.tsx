@@ -60,7 +60,7 @@ export default function ROITab({ convSummaries, allMetrics }: Props) {
     <div className="space-y-6">
       {/* Metric selection */}
       <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">ROI 計算設定</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">ROI 設定</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">収益指標</label>

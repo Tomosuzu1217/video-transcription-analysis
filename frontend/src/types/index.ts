@@ -399,7 +399,7 @@ export interface AnalysisRecord {
   analysis_type: string;
   scope: string;
   video_id: number | null;
-  result_json: any;
+  result_json: unknown;
   gemini_model_used: string | null;
   created_at: string;
 }

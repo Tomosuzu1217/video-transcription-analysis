@@ -34,7 +34,7 @@ export function generateId(): number {
 }
 
 export async function put<T>(storeName: StoreName, record: T): Promise<void> {
-  const { error } = await supabase.from(storeName).upsert(record as any);
+  const { error } = await supabase.from(storeName).upsert(record as Record<string, unknown>);
   if (error) throw error;
 }
 
@@ -104,7 +104,7 @@ export async function update<T>(
   const pk = PRIMARY_KEYS[storeName];
   const { data, error } = await supabase
     .from(storeName)
-    .update(changes as any)
+    .update(changes as Record<string, unknown>)
     .eq(pk, key)
     .select()
     .single();

@@ -1,7 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
 } from "recharts";
 import { createCompetitor, getCompetitors, updateCompetitor, deleteCompetitor } from "../../api/competitors";
 import type { Competitor, ConversionSummary } from "../../types";
@@ -19,93 +30,129 @@ export default function CompetitorTab({ convSummaries, allMetrics, showToast }: 
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"bar" | "radar">("bar");
 
-  // Form
   const [name, setName] = useState("");
   const [metricEntries, setMetricEntries] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
   const [notes, setNotes] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const fetchCompetitors = useCallback(async () => {
-    try { setCompetitors(await getCompetitors()); }
-    catch { showToast("競合データの取得に失敗しました", "error"); }
-    finally { setLoading(false); }
-  }, []);
+    try {
+      setCompetitors(await getCompetitors());
+    } catch {
+      showToast("競合データの取得に失敗しました", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
 
-  useEffect(() => { fetchCompetitors(); }, [fetchCompetitors]);
+  useEffect(() => {
+    fetchCompetitors();
+  }, [fetchCompetitors]);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setMetricEntries([{ key: "", value: "" }]);
+    setNotes("");
+  };
 
   const handleSubmit = async () => {
-    if (!name.trim()) { showToast("名前を入力してください", "error"); return; }
+    if (!name.trim()) {
+      showToast("名前を入力してください", "error");
+      return;
+    }
+
     const metrics: Record<string, number> = {};
-    for (const e of metricEntries) {
-      if (e.key.trim() && e.value.trim()) {
-        const val = Number(e.value);
-        if (isFinite(val)) metrics[e.key.trim()] = val;
+    for (const entry of metricEntries) {
+      if (entry.key.trim() && entry.value.trim()) {
+        const value = Number(entry.value);
+        if (isFinite(value)) {
+          metrics[entry.key.trim()] = value;
+        }
       }
     }
+
     try {
       if (editingId) {
         await updateCompetitor(editingId, { name: name.trim(), metrics, notes: notes.trim() || null });
-        setEditingId(null);
       } else {
         await createCompetitor({ name: name.trim(), metrics, notes: notes.trim() || undefined });
       }
-      setName(""); setMetricEntries([{ key: "", value: "" }]); setNotes("");
+
+      resetForm();
       await fetchCompetitors();
       showToast(editingId ? "更新しました" : "追加しました", "success");
-    } catch { showToast("保存に失敗しました", "error"); }
+    } catch {
+      showToast("保存に失敗しました", "error");
+    }
   };
 
-  const handleEdit = (c: Competitor) => {
-    setEditingId(c.id);
-    setName(c.name);
-    setNotes(c.notes ?? "");
-    const entries = Object.entries(c.metrics).map(([key, value]) => ({ key, value: String(value) }));
+  const handleEdit = (competitor: Competitor) => {
+    setEditingId(competitor.id);
+    setName(competitor.name);
+    setNotes(competitor.notes ?? "");
+    const entries = Object.entries(competitor.metrics).map(([key, value]) => ({ key, value: String(value) }));
     setMetricEntries(entries.length > 0 ? entries : [{ key: "", value: "" }]);
   };
 
   const handleDelete = async (id: number) => {
     if (!window.confirm("この競合データを削除しますか？")) return;
-    try { await deleteCompetitor(id); await fetchCompetitors(); showToast("削除しました", "success"); }
-    catch { showToast("削除に失敗しました", "error"); }
+
+    try {
+      await deleteCompetitor(id);
+      await fetchCompetitors();
+      showToast("削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
+    }
   };
 
-  // Combined data for charts
   const allNames = useMemo(() => {
-    const own = convSummaries.map((s) => ({ name: s.video_filename, metrics: s.metrics, isOwn: true }));
-    const comp = competitors.map((c) => ({ name: c.name, metrics: c.metrics, isOwn: false }));
+    const own = convSummaries.map((summary) => ({
+      name: summary.video_filename,
+      metrics: summary.metrics,
+      isOwn: true,
+    }));
+    const comp = competitors.map((competitor) => ({
+      name: competitor.name,
+      metrics: competitor.metrics,
+      isOwn: false,
+    }));
     return [...own, ...comp];
   }, [convSummaries, competitors]);
 
   const combinedMetrics = useMemo(() => {
-    const set = new Set<string>();
-    allNames.forEach((n) => Object.keys(n.metrics).forEach((k) => set.add(k)));
-    return Array.from(set);
+    const keys = new Set<string>();
+    allNames.forEach((item) => Object.keys(item.metrics).forEach((key) => keys.add(key)));
+    return Array.from(keys);
   }, [allNames]);
 
-  // Bar chart data
   const barData = useMemo(() => {
     return combinedMetrics.map((metric) => {
       const row: Record<string, string | number> = { metric };
-      allNames.forEach((n) => { row[n.name] = n.metrics[metric] ?? 0; });
+      allNames.forEach((item) => {
+        row[item.name] = item.metrics[metric] ?? 0;
+      });
       return row;
     });
   }, [allNames, combinedMetrics]);
 
-  // Radar chart data (normalized 0-100)
   const radarData = useMemo(() => {
     const mins: Record<string, number> = {};
     const maxes: Record<string, number> = {};
-    for (const m of combinedMetrics) {
-      const vals = allNames.map((n) => n.metrics[m] ?? 0);
-      mins[m] = Math.min(...vals, 0);
-      maxes[m] = Math.max(...vals, 1);
+
+    for (const metric of combinedMetrics) {
+      const values = allNames.map((item) => item.metrics[metric] ?? 0);
+      mins[metric] = Math.min(...values, 0);
+      maxes[metric] = Math.max(...values, 1);
     }
+
     return combinedMetrics.map((metric) => {
       const row: Record<string, string | number> = { metric };
-      for (const n of allNames) {
-        const raw = n.metrics[metric] ?? 0;
+      for (const item of allNames) {
+        const raw = item.metrics[metric] ?? 0;
         const range = maxes[metric] - mins[metric];
-        row[n.name] = range > 0 ? Math.round(((raw - mins[metric]) / range) * 100) : 50;
+        row[item.name] = range > 0 ? Math.round(((raw - mins[metric]) / range) * 100) : 50;
       }
       return row;
     });
@@ -113,81 +160,147 @@ export default function CompetitorTab({ convSummaries, allMetrics, showToast }: 
 
   return (
     <div className="space-y-6">
-      {/* Add/Edit form */}
       <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
           {editingId ? "競合データ編集" : "競合データ追加"}
         </h3>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="競合名"
-              className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
-            <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="メモ（任意）"
-              className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="競合名"
+              className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            />
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="メモ・補足"
+              className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            />
           </div>
-          {metricEntries.map((e, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <select value={e.key} onChange={(ev) => { const copy = [...metricEntries]; copy[i].key = ev.target.value; setMetricEntries(copy); }}
-                className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-                <option value="">指標名</option>
-                {allMetrics.map((m) => <option key={m} value={m}>{m}</option>)}
+
+          {metricEntries.map((entry, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <select
+                value={entry.key}
+                onChange={(event) => {
+                  const copy = [...metricEntries];
+                  copy[index].key = event.target.value;
+                  setMetricEntries(copy);
+                }}
+                className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="">指標</option>
+                {allMetrics.map((metric) => (
+                  <option key={metric} value={metric}>
+                    {metric}
+                  </option>
+                ))}
               </select>
-              <input type="number" value={e.value} onChange={(ev) => { const copy = [...metricEntries]; copy[i].value = ev.target.value; setMetricEntries(copy); }}
-                placeholder="値" className="w-28 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+              <input
+                type="number"
+                value={entry.value}
+                onChange={(event) => {
+                  const copy = [...metricEntries];
+                  copy[index].value = event.target.value;
+                  setMetricEntries(copy);
+                }}
+                placeholder="値"
+                className="w-28 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              />
               {metricEntries.length > 1 && (
-                <button onClick={() => setMetricEntries(metricEntries.filter((_, j) => j !== i))}
-                  className="text-red-400 hover:text-red-600 p-1">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                <button
+                  onClick={() => setMetricEntries(metricEntries.filter((_, itemIndex) => itemIndex !== index))}
+                  className="text-red-400 hover:text-red-600 p-1"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               )}
             </div>
           ))}
+
           <div className="flex items-center gap-2">
-            <button onClick={() => setMetricEntries([...metricEntries, { key: "", value: "" }])}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline">+ 指標を追加</button>
+            <button
+              onClick={() => setMetricEntries([...metricEntries, { key: "", value: "" }])}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              + 指標を追加
+            </button>
           </div>
+
           <div className="flex items-center gap-2">
-            <button onClick={handleSubmit} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+            <button
+              onClick={handleSubmit}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
               {editingId ? "更新" : "追加"}
             </button>
             {editingId && (
-              <button onClick={() => { setEditingId(null); setName(""); setMetricEntries([{ key: "", value: "" }]); setNotes(""); }}
-                className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                取消
+              <button
+                onClick={resetForm}
+                className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                キャンセル
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Competitor list */}
       {loading ? (
         <p className="text-sm text-gray-400 dark:text-gray-500">読み込み中...</p>
-      ) : competitors.length > 0 && (
+      ) : competitors.length > 0 ? (
         <div className="space-y-2">
-          {competitors.map((c) => (
-            <div key={c.id} className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm flex items-center justify-between">
+          {competitors.map((competitor) => (
+            <div
+              key={competitor.id}
+              className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm flex items-center justify-between"
+            >
               <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">{c.name}</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{competitor.name}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {Object.entries(c.metrics).map(([k, v]) => `${k}: ${v}`).join(", ")}
+                  {Object.entries(competitor.metrics).map(([key, value]) => `${key}: ${value}`).join(", ")}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleEdit(c)} className="rounded-md border border-gray-300 dark:border-gray-600 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">編集</button>
-                <button onClick={() => handleDelete(c.id)} className="rounded-md border border-red-300 dark:border-red-700 px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">削除</button>
+                <button
+                  onClick={() => handleEdit(competitor)}
+                  className="rounded-md border border-gray-300 dark:border-gray-600 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  編集
+                </button>
+                <button
+                  onClick={() => handleDelete(competitor.id)}
+                  className="rounded-md border border-red-300 dark:border-red-700 px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  削除
+                </button>
               </div>
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
-      {/* Charts */}
       {allNames.length >= 2 && combinedMetrics.length > 0 && (
         <>
           <div className="flex items-center gap-2">
-            <button onClick={() => setViewMode("bar")} className={`rounded-md px-3 py-1.5 text-xs font-medium ${viewMode === "bar" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"}`}>棒グラフ</button>
-            <button onClick={() => setViewMode("radar")} className={`rounded-md px-3 py-1.5 text-xs font-medium ${viewMode === "radar" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"}`}>レーダー</button>
+            <button
+              onClick={() => setViewMode("bar")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium ${viewMode === "bar" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"}`}
+            >
+              棒グラフ
+            </button>
+            <button
+              onClick={() => setViewMode("radar")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium ${viewMode === "radar" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"}`}
+            >
+              レーダー
+            </button>
           </div>
 
           <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
@@ -199,8 +312,8 @@ export default function CompetitorTab({ convSummaries, allMetrics, showToast }: 
                   <YAxis dataKey="metric" type="category" width={95} tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Legend />
-                  {allNames.map((n, i) => (
-                    <Bar key={n.name} dataKey={n.name} fill={COLORS[i % COLORS.length]} radius={[0, 4, 4, 0]} />
+                  {allNames.map((item, index) => (
+                    <Bar key={item.name} dataKey={item.name} fill={COLORS[index % COLORS.length]} radius={[0, 4, 4, 0]} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
@@ -210,8 +323,15 @@ export default function CompetitorTab({ convSummaries, allMetrics, showToast }: 
                   <PolarGrid />
                   <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  {allNames.map((n, i) => (
-                    <Radar key={n.name} name={n.name} dataKey={n.name} stroke={COLORS[i % COLORS.length]} fill={COLORS[i % COLORS.length]} fillOpacity={0.15} />
+                  {allNames.map((item, index) => (
+                    <Radar
+                      key={item.name}
+                      name={item.name}
+                      dataKey={item.name}
+                      stroke={COLORS[index % COLORS.length]}
+                      fill={COLORS[index % COLORS.length]}
+                      fillOpacity={0.15}
+                    />
                   ))}
                   <Legend />
                   <Tooltip />

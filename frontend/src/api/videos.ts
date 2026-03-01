@@ -162,7 +162,8 @@ export async function getVideoStreamUrl(id: number): Promise<string> {
   return url;
 }
 
-export function getVideoThumbnailUrl(_id: number): string {
+export function getVideoThumbnailUrl(id: number): string {
+  void id;
   return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60' fill='%23cbd5e1'%3E%3Crect width='100' height='60' rx='4' fill='%23f1f5f9'/%3E%3Cpolygon points='40,15 40,45 65,30' fill='%23cbd5e1'/%3E%3C/svg%3E";
 }
 
@@ -223,4 +224,3 @@ export async function archiveVideo(
 
   return getVideo(id);
 }
-

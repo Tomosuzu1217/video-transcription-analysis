@@ -3,6 +3,21 @@ import { get, STORES } from "./db";
 import { decryptApiKeys } from "./crypto";
 import type { SettingsRecord } from "../types";
 
+type InlinePromptPart = { inlineData: { mimeType: string; data: string } };
+type GeminiPrompt = string | Array<string | InlinePromptPart>;
+
+interface TranscriptionSegmentResult {
+  start_time: number;
+  end_time: number;
+  text: string;
+}
+
+interface TranscriptionResult {
+  full_text: string;
+  language: string;
+  segments: TranscriptionSegmentResult[];
+}
+
 let _cachedKeys: string[] = [];
 let _cachedModel: string = "gemini-2.5-flash";
 let _keyIndex = 0;
@@ -28,7 +43,7 @@ export function isRateLimitError(e: unknown): boolean {
   return msg.includes("429") || msg.includes("quota") || msg.includes("rate") || msg.includes("resource_exhausted");
 }
 
-function parseJsonResponse(text: string): Record<string, unknown> {
+function parseJsonResponse<T>(text: string): T {
   let cleaned = text.trim();
   if (cleaned.startsWith("```")) {
     const lines = cleaned.split("\n");
@@ -37,9 +52,9 @@ function parseJsonResponse(text: string): Record<string, unknown> {
     cleaned = lines.join("\n");
   }
   try {
-    return JSON.parse(cleaned);
+    return JSON.parse(cleaned) as T;
   } catch {
-    return { summary: cleaned };
+    return { summary: cleaned } as T;
   }
 }
 
@@ -58,7 +73,7 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 export async function callGemini(
-  prompt: string | Array<string | { inlineData: { mimeType: string; data: string } }>,
+  prompt: GeminiPrompt,
 ): Promise<string> {
   const { keys, model } = await loadSettings();
   if (keys.length === 0) {
@@ -71,7 +86,7 @@ export async function callGemini(
     try {
       const genAI = new GoogleGenerativeAI(key);
       const m = genAI.getGenerativeModel({ model });
-      const result = await m.generateContent(prompt as any);
+      const result = await m.generateContent(prompt);
       return result.response.text();
     } catch (e) {
       lastError = e;
@@ -82,16 +97,16 @@ export async function callGemini(
   throw new Error(`全てのAPIキーがレート制限に達しました: ${lastError}`);
 }
 
-export async function callGeminiJson(
-  prompt: string | Array<string | { inlineData: { mimeType: string; data: string } }>,
-): Promise<Record<string, unknown>> {
+export async function callGeminiJson<T = Record<string, unknown>>(
+  prompt: GeminiPrompt,
+): Promise<T> {
   const text = await callGemini(prompt);
-  return parseJsonResponse(text);
+  return parseJsonResponse<T>(text);
 }
 
 export async function transcribeMedia(
   file: File,
-): Promise<{ full_text: string; language: string; segments: { start_time: number; end_time: number; text: string }[] }> {
+): Promise<TranscriptionResult> {
   const base64 = await fileToBase64(file);
   const mimeType = file.type || "video/mp4";
 
@@ -116,11 +131,11 @@ export async function transcribeMedia(
 - 日本語で書き起こしてください`,
   ];
 
-  const result = await callGeminiJson(prompt as any);
+  const result = await callGeminiJson<Partial<TranscriptionResult>>(prompt);
   return {
-    full_text: (result.full_text as string) ?? "",
-    language: (result.language as string) ?? "ja",
-    segments: (result.segments as any[]) ?? [],
+    full_text: result.full_text ?? "",
+    language: result.language ?? "ja",
+    segments: result.segments ?? [],
   };
 }
 
@@ -128,7 +143,7 @@ export async function transcribeMediaWithKey(
   file: File,
   apiKey: string,
   model: string,
-): Promise<{ full_text: string; language: string; segments: { start_time: number; end_time: number; text: string }[] }> {
+): Promise<TranscriptionResult> {
   const base64 = await fileToBase64(file);
   const mimeType = file.type || "video/mp4";
 
@@ -155,14 +170,14 @@ export async function transcribeMediaWithKey(
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const m = genAI.getGenerativeModel({ model });
-  const result = await m.generateContent(prompt as any);
+  const result = await m.generateContent(prompt);
   const text = result.response.text();
-  const parsed = parseJsonResponse(text);
+  const parsed = parseJsonResponse<Partial<TranscriptionResult>>(text);
 
   return {
-    full_text: (parsed.full_text as string) ?? "",
-    language: (parsed.language as string) ?? "ja",
-    segments: (parsed.segments as any[]) ?? [],
+    full_text: parsed.full_text ?? "",
+    language: parsed.language ?? "ja",
+    segments: parsed.segments ?? [],
   };
 }
 

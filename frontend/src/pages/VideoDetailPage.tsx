@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getVideo, getVideoStreamUrl, renameVideo, updateVideoRanking, updateVideoTags, archiveVideo } from "../api/videos";
 import { getTranscriptionStatus, retryTranscription, getQueueStatus, updateTranscriptionSegment, type QueueStatus } from "../api/transcriptions";
 import { createConversion, getConversions, updateConversion, deleteConversion } from "../api/conversions";
 import { getManagedTags } from "../api/settings";
 import { exportConversionCSV } from "../utils/csv";
-import Toast, { useToast } from "../components/Toast";
+import { getErrorMessage } from "../utils/errors";
+import Toast from "../components/Toast";
+import { useToast } from "../components/useToast";
 import StoryboardView from "../components/StoryboardView";
 import TagMultiSelect from "../components/TagMultiSelect";
 import type { Video, TranscriptionStatus, TranscriptionSegment, Conversion } from "../types";
@@ -31,7 +33,7 @@ function downloadTranscriptionExport(
   format: "txt" | "srt" | "vtt" | "json",
 ) {
   let content: string;
-  let ext = format;
+  const ext = format;
   switch (format) {
     case "txt":
       content = fullText;
@@ -164,13 +166,13 @@ export default function VideoDetailPage() {
     } catch {
       pollFailCount.current += 1;
       if (pollFailCount.current >= 3) {
-        showToast("書き起こし状態の取得に失敗しています", "error");
+          showToast("文字起こし状況の取得に失敗しています", "error");
         pollFailCount.current = 0;
       }
     } finally {
       setLoadingTranscription(false);
     }
-  }, [videoId]);
+  }, [videoId, showToast]);
 
   const fetchConversions = useCallback(async () => {
     try {
@@ -222,9 +224,9 @@ export default function VideoDetailPage() {
       setRetrying(true);
       await retryTranscription(videoId);
       await fetchTranscription();
-      showToast("再書き起こしを開始しました", "success");
+      showToast("再文字起こしを開始しました", "success");
     } catch {
-      showToast("再書き起こしの開始に失敗しました", "error");
+      showToast("再文字起こしの開始に失敗しました", "error");
     } finally {
       setRetrying(false);
     }
@@ -250,8 +252,8 @@ export default function VideoDetailPage() {
       await fetchTranscription();
       setEditingSegmentIndex(null);
       showToast("セグメントを更新しました", "success");
-    } catch (e: any) {
-      showToast(e.message ?? "セグメントの更新に失敗しました", "error");
+    } catch (e) {
+      showToast(getErrorMessage(e, "セグメントの更新に失敗しました"), "error");
     } finally {
       setSavingSegment(false);
     }
@@ -274,7 +276,7 @@ export default function VideoDetailPage() {
       setSavingRanking(true);
       const val = rankingValue.trim() === "" ? null : Number(rankingValue);
       if (val !== null && (!isFinite(val) || val < 1)) {
-        showToast("順位は1以上の数値を入力してください", "error");
+        showToast("ランキングは1以上の数値を入力してください", "error");
         return;
       }
       const updated = await updateVideoRanking(videoId, val, rankingNotes);
@@ -315,8 +317,8 @@ export default function VideoDetailPage() {
       setNewMetricNotes("");
       await fetchConversions();
       showToast("コンバージョンを追加しました", "success");
-    } catch (e: any) {
-      showToast(e.message ?? "追加に失敗しました", "error");
+    } catch (e) {
+      showToast(getErrorMessage(e, "追加に失敗しました"), "error");
     } finally {
       setSavingConversion(false);
     }
@@ -365,15 +367,15 @@ export default function VideoDetailPage() {
   };
 
   const handleArchive = async () => {
-    if (!video || !window.confirm("動画ファイルを削除してサムネイルのみ保持します。この操作は元に戻せません。実行しますか？")) return;
+    if (!video || !window.confirm("動画ファイルを削除してサムネイルのみ保存します。この操作は元に戻せません。実行しますか？")) return;
     try {
       setArchiving(true);
       const updated = await archiveVideo(video.id, setArchiveProgress);
       setVideo(updated);
       setVideoSrc("");
       showToast("アーカイブが完了しました", "success");
-    } catch (e: any) {
-      showToast(e.message ?? "アーカイブに失敗しました", "error");
+    } catch (e) {
+      showToast(getErrorMessage(e, "アーカイブに失敗しました"), "error");
     } finally {
       setArchiving(false);
       setArchiveProgress("");
@@ -473,7 +475,7 @@ export default function VideoDetailPage() {
               onClick={() => setIsRenaming(false)}
               className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              取消
+              キャンセル
             </button>
           </form>
         ) : (
@@ -566,7 +568,7 @@ export default function VideoDetailPage() {
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                   </svg>
-                  {archiving ? archiveProgress || "アーカイブ中..." : "アーカイブ（動画削除+サムネイル保持）"}
+                  {archiving ? archiveProgress || "アーカイブ中..." : "アーカイブする"}
                 </button>
               )}
             </>
@@ -576,7 +578,7 @@ export default function VideoDetailPage() {
         {/* Right column: Transcription */}
         <div className="rounded-xl bg-white border border-gray-100 shadow-sm flex flex-col min-h-0">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-            <h3 className="text-base font-semibold text-gray-900">書き起こし</h3>
+            <h3 className="text-base font-semibold text-gray-900">文字起こし</h3>
             {transcriptionStatus?.status === "completed" && transcriptionStatus.transcription && (
               <div className="flex items-center gap-1.5">
                 <button
@@ -627,13 +629,13 @@ export default function VideoDetailPage() {
                     ? queueStatus?.current_step === "downloading"
                       ? "動画をダウンロード中..."
                       : queueStatus?.current_step === "preparing"
-                      ? "データ変換中..."
+                      ? "データ準備中..."
                       : queueStatus?.current_step === "transcribing"
                       ? "音声解析中..."
                       : queueStatus?.current_step === "saving"
                       ? "結果を保存中..."
                       : "処理中..."
-                    : "書き起こし待機中..."}
+                    : "文字起こし待機中..."}
                 </p>
                 {queueStatus?.current_video_id === videoId && queueStatus?.current_elapsed_seconds != null && (
                   <p className="mt-1 text-xs text-gray-400">
@@ -644,7 +646,7 @@ export default function VideoDetailPage() {
             </div>
           ) : transcriptionStatus?.status === "error" ? (
             <div className="px-4 py-8 text-center flex-1">
-              <p className="text-sm text-red-600 mb-3">書き起こしに失敗しました。</p>
+              <p className="text-sm text-red-600 mb-3">文字起こしに失敗しました。</p>
               <button
                 onClick={handleRetry}
                 disabled={retrying}
@@ -726,7 +728,7 @@ export default function VideoDetailPage() {
                                 disabled={savingSegment}
                                 className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                               >
-                                取消
+                                キャンセル
                               </button>
                               <span className="text-xs text-gray-400">Ctrl+Enter で保存</span>
                             </div>
@@ -760,7 +762,7 @@ export default function VideoDetailPage() {
             </div>
           ) : (
             <div className="px-4 py-12 text-center flex-1">
-              <p className="text-sm text-gray-400">書き起こしデータがありません。</p>
+              <p className="text-sm text-gray-400">文字起こしデータがありません。</p>
             </div>
           )}
         </div>
@@ -790,7 +792,7 @@ export default function VideoDetailPage() {
                   min={1}
                   value={rankingValue}
                   onChange={(e) => setRankingValue(e.target.value)}
-                  placeholder="例: 1"
+                  placeholder="萓・ 1"
                   className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
@@ -816,7 +818,7 @@ export default function VideoDetailPage() {
                   onClick={() => setEditingRanking(false)}
                   className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                 >
-                  取消
+                  キャンセル
                 </button>
                 {video.ranking != null && (
                   <button
@@ -849,7 +851,7 @@ export default function VideoDetailPage() {
               )}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">ランキング未設定</p>
+              <p className="text-sm text-gray-400">ランキング未設定</p>
           )}
         </div>
 
@@ -863,7 +865,7 @@ export default function VideoDetailPage() {
                   video_id: c.video_id,
                   metric_name: c.metric_name,
                   metric_value: c.metric_value,
-                  date_recorded: c.date_recorded,
+                  date_recorded: c.date_recorded ?? undefined,
                   notes: c.notes ?? undefined,
                 })))}
                 className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
@@ -955,7 +957,7 @@ export default function VideoDetailPage() {
                         onClick={() => setEditingConversionId(null)}
                         className="shrink-0 rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
                       >
-                        取消
+                        キャンセル
                       </button>
                     </>
                   ) : (
@@ -975,7 +977,7 @@ export default function VideoDetailPage() {
                       <button
                         onClick={() => handleDeleteConversion(conv.id)}
                         className="shrink-0 rounded p-1 text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 transition-all"
-                        title="削除"
+                        title="蜑企勁"
                       >
                         <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

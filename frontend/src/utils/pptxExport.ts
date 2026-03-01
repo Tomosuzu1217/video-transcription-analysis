@@ -1,5 +1,14 @@
 import type { MarketingReportResult, ConversionSummary } from "../types";
 
+type PptxTableCell = string | {
+  text: string;
+  options: {
+    bold?: boolean;
+    color?: string;
+    fill?: { color: string };
+  };
+};
+
 export async function generateMarketingPptx(
   report: MarketingReportResult,
   convSummaries: ConversionSummary[],
@@ -42,7 +51,7 @@ export async function generateMarketingPptx(
       x: 0.5, y: 0.3, w: 9, h: 0.7,
       fontSize: 24, fontFace: "Yu Gothic", color: BLUE, bold: true,
     });
-    const rows: any[][] = [
+    const rows: PptxTableCell[][] = [
       [
         { text: "動画名", options: { bold: true, color: WHITE, fill: { color: BLUE } } },
         { text: "スコア", options: { bold: true, color: WHITE, fill: { color: BLUE } } },
@@ -58,7 +67,7 @@ export async function generateMarketingPptx(
         (item.weaknesses ?? []).join(", "),
       ]);
     }
-    s3.addTable(rows, {
+    s3.addTable(rows as never, {
       x: 0.5, y: 1.2, w: 9,
       fontSize: 10, fontFace: "Yu Gothic",
       border: { type: "solid", pt: 0.5, color: "d1d5db" },
@@ -77,7 +86,7 @@ export async function generateMarketingPptx(
     convSummaries.forEach((s) => Object.keys(s.metrics).forEach((k) => metrics.add(k)));
     const metricList = Array.from(metrics);
 
-    const rows: any[][] = [
+    const rows: PptxTableCell[][] = [
       [
         { text: "動画", options: { bold: true, color: WHITE, fill: { color: BLUE } } },
         ...metricList.map((m) => ({
@@ -93,7 +102,7 @@ export async function generateMarketingPptx(
       ]);
     }
     const colCount = 1 + metricList.length;
-    s4.addTable(rows, {
+    s4.addTable(rows as never, {
       x: 0.5, y: 1.2, w: 9,
       fontSize: 10, fontFace: "Yu Gothic",
       border: { type: "solid", pt: 0.5, color: "d1d5db" },

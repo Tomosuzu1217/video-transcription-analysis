@@ -63,8 +63,8 @@ export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) 
     <div className="space-y-6">
       {/* Stage builder */}
       <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">ファネル定義</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">指標を順番に追加してファネルを構成します（例: 表示回数 → クリック数 → コンバージョン数）</p>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">ファネル構築</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">指標を順番に追加してファネルを作成します。表示対象は全体集計か動画単位で切り替えできます。</p>
 
         <div className="flex items-center gap-2 mb-4">
           <select id="funnel-add" defaultValue=""
@@ -75,7 +75,7 @@ export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) 
           </select>
           <select value={selectedVideoId} onChange={(e) => setSelectedVideoId(e.target.value === "all" ? "all" : Number(e.target.value))}
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-900 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none">
-            <option value="all">全体集計</option>
+            <option value="all">全動画集計</option>
             {videos.filter((v) => convSummaries.some((s) => s.video_id === v.id)).map((v) => (
               <option key={v.id} value={v.id}>{v.filename}</option>
             ))}
@@ -121,7 +121,7 @@ export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) 
                   {d.rate !== null && (
                     <div className="flex items-center justify-center py-1">
                       <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                        ↓ {d.rate}%
+                        CV率 {d.rate}%
                       </span>
                     </div>
                   )}
@@ -147,7 +147,7 @@ export default function FunnelTab({ videos, convSummaries, allMetrics }: Props) 
           {/* Overall conversion rate */}
           {funnelData.length >= 2 && funnelData[0].value > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">全体変換率: </span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">全体コンバージョン率 </span>
               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                 {Math.round((funnelData[funnelData.length - 1].value / funnelData[0].value) * 10000) / 100}%
               </span>

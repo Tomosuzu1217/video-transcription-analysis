@@ -11,10 +11,11 @@ import { getManagedTags } from "../api/settings";
 import { checkAlerts } from "../api/alerts";
 import { getStorageUsage, type StorageUsage } from "../api/storage";
 import { generateMarketingPptx } from "../utils/pptxExport";
+import { getErrorMessage } from "../utils/errors";
 import { formatDuration } from "../utils/format";
-import Toast, { useToast } from "../components/Toast";
+import Toast from "../components/Toast";
+import { useToast } from "../components/useToast";
 import StorageUsageBar from "../components/StorageUsageBar";
-import ABTestTab from "../components/marketing/ABTestTab";
 import ROITab from "../components/marketing/ROITab";
 import FunnelTab from "../components/marketing/FunnelTab";
 import CompetitorTab from "../components/marketing/CompetitorTab";
@@ -96,7 +97,7 @@ export default function MarketingDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -264,8 +265,8 @@ export default function MarketingDashboardPage() {
       const result = await runMarketingReport(customPrompt || undefined);
       setReport(result as MarketingReportResult);
       showToast("マーケティングレポートを生成しました", "success");
-    } catch (e: any) {
-      showToast(e.message ?? "レポート生成に失敗しました", "error");
+    } catch (e) {
+      showToast(getErrorMessage(e, "レポート生成に失敗しました"), "error");
     } finally {
       setLoadingReport(false);
     }
@@ -289,8 +290,8 @@ export default function MarketingDashboardPage() {
       setExportingPptx(true);
       await generateMarketingPptx(report, convSummaries);
       showToast("PPTXをダウンロードしました", "success");
-    } catch (e: any) {
-      showToast(e.message ?? "PPTX生成に失敗しました", "error");
+    } catch (e) {
+      showToast(getErrorMessage(e, "PPTX生成に失敗しました"), "error");
     } finally {
       setExportingPptx(false);
     }
@@ -302,8 +303,8 @@ export default function MarketingDashboardPage() {
       const result = await runContentSuggestion(customPrompt || undefined);
       setContentSuggestion(result as ContentSuggestion);
       showToast("AI台本提案を生成しました", "success");
-    } catch (e: any) {
-      showToast(e.message ?? "台本提案の生成に失敗しました", "error");
+    } catch (e) {
+      showToast(getErrorMessage(e, "台本提案の生成に失敗しました"), "error");
     } finally {
       setLoadingSuggestion(false);
     }
@@ -552,7 +553,7 @@ export default function MarketingDashboardPage() {
                       return (
                         <div className="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 px-3 py-2 shadow-lg">
                           <p className="text-xs font-bold text-gray-900 dark:text-white mb-1">{fullName}</p>
-                          {payload.map((p: any) => (
+                          {payload.map((p: { dataKey?: string | number; color?: string; value?: string | number }) => (
                             <p key={p.dataKey} className="text-xs text-gray-600 dark:text-gray-300">
                               <span style={{ color: p.color }}>{p.dataKey}: </span>
                               <span className="font-medium">{p.value}</span>
