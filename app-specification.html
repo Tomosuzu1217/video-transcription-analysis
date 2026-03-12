@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>動画CM分析アプリ - 詳細仕様書</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-light: #eff6ff;
+    --accent: #059669;
+    --accent-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    line-height: 1.7;
+    color: var(--gray-700);
+    background: #f0f2f5;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  .doc-header {
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    color: white;
+    padding: 48px 0 36px;
+    margin-bottom: 32px;
+  }
+  .doc-header h1 { font-size: 2rem; font-weight: 800; }
+  .doc-header .subtitle { font-size: 1rem; opacity: 0.85; margin-top: 8px; }
+  .doc-header .meta { margin-top: 16px; font-size: 0.85rem; opacity: 0.7; }
+
+  /* TOC */
+  .toc {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 24px 32px;
+    margin-bottom: 32px;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 12px; color: var(--gray-900); }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 4px 0; }
+  .toc a { color: var(--primary); text-decoration: none; font-size: 0.95rem; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Sections */
+  .section {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 32px;
+    margin-bottom: 24px;
+  }
+  .section h2 {
+    font-size: 1.35rem;
+    color: var(--gray-900);
+    border-bottom: 3px solid var(--primary);
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+  }
+  .section h3 {
+    font-size: 1.1rem;
+    color: var(--gray-900);
+    margin: 24px 0 12px;
+    padding-left: 12px;
+    border-left: 4px solid var(--primary);
+  }
+  .section h4 {
+    font-size: 0.95rem;
+    color: var(--gray-700);
+    margin: 16px 0 8px;
+    font-weight: 600;
+  }
+  p, li { font-size: 0.92rem; }
+  p { margin-bottom: 10px; }
+  ul, ol { padding-left: 24px; margin-bottom: 12px; }
+  li { margin: 3px 0; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 0.88rem;
+  }
+  th, td {
+    border: 1px solid var(--gray-200);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: var(--gray-50);
+    font-weight: 600;
+    color: var(--gray-900);
+    white-space: nowrap;
+  }
+  tr:hover { background: var(--gray-50); }
+
+  /* Code */
+  code {
+    background: var(--gray-100);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: "Consolas", "Monaco", monospace;
+    color: var(--danger);
+  }
+  pre {
+    background: var(--gray-900);
+    color: #e5e7eb;
+    padding: 16px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 12px 0;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .badge-get { background: #dbeafe; color: #1d4ed8; }
+  .badge-post { background: #dcfce7; color: #16a34a; }
+  .badge-put { background: #fef3c7; color: #b45309; }
+  .badge-patch { background: #fce7f3; color: #be185d; }
+  .badge-delete { background: #fee2e2; color: #dc2626; }
+  .badge-tech { background: var(--primary-light); color: var(--primary); }
+  .badge-db { background: var(--accent-light); color: var(--accent); }
+
+  /* Info boxes */
+  .info-box {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    margin: 12px 0;
+    font-size: 0.9rem;
+  }
+  .info-box.blue { background: var(--primary-light); border-left: 4px solid var(--primary); }
+  .info-box.green { background: var(--accent-light); border-left: 4px solid var(--accent); }
+  .info-box.yellow { background: var(--warning-light); border-left: 4px solid var(--warning); }
+  .info-box.red { background: var(--danger-light); border-left: 4px solid var(--danger); }
+
+  /* Architecture diagram */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .arch-card {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 16px;
+    background: var(--gray-50);
+  }
+  .arch-card h4 {
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    color: var(--primary);
+  }
+  .arch-card ul { padding-left: 16px; font-size: 0.85rem; }
+
+  /* Screen spec cards */
+  .screen-card {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin: 16px 0;
+  }
+  .screen-card h4 {
+    font-size: 1rem;
+    color: var(--primary);
+    margin: 0 0 8px;
+  }
+  .screen-card .route {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: var(--gray-500);
+    margin-bottom: 8px;
+  }
+
+  /* Endpoint list */
+  .endpoint {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin: 8px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .endpoint .path {
+    font-family: monospace;
+    font-size: 0.88rem;
+    color: var(--gray-900);
+    font-weight: 600;
+    min-width: 280px;
+  }
+  .endpoint .desc { font-size: 0.88rem; color: var(--gray-500); }
+
+  .footer {
+    text-align: center;
+    padding: 32px;
+    color: var(--gray-500);
+    font-size: 0.8rem;
+  }
+
+  @media print {
+    body { background: white; }
+    .section { break-inside: avoid; border: none; box-shadow: none; }
+    .doc-header { background: var(--gray-900) !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="doc-header">
+  <div class="container">
+    <h1>動画CM分析アプリ 詳細仕様書</h1>
+    <p class="subtitle">Video CM Analysis Application - Technical Specification</p>
+    <p class="meta">バージョン: 1.0.0 &nbsp;|&nbsp; 最終更新: 2026年3月12日 &nbsp;|&nbsp; ステータス: 運用中</p>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ===== TOC ===== -->
+<div class="toc">
+  <h2>目次</h2>
+  <ol>
+    <li><a href="#overview">アプリケーション概要</a></li>
+    <li><a href="#tech-stack">技術スタック</a></li>
+    <li><a href="#architecture">システムアーキテクチャ</a></li>
+    <li><a href="#database">データベーススキーマ</a></li>
+    <li><a href="#screens">画面仕様</a></li>
+    <li><a href="#api">API仕様</a></li>
+    <li><a href="#features">機能詳細</a></li>
+    <li><a href="#security">セキュリティ</a></li>
+    <li><a href="#deployment">デプロイ構成</a></li>
+    <li><a href="#config">設定・環境変数</a></li>
+  </ol>
+</div>
+
+<!-- ===== 1. OVERVIEW ===== -->
+<div class="section" id="overview">
+  <h2>1. アプリケーション概要</h2>
+
+  <h3>目的</h3>
+  <p>動画CM（コマーシャル）の書き起こし・分析・マーケティング最適化を一元的に行うWebアプリケーション。
+  動画/音声ファイルをアップロードし、OpenAI Whisperで自動文字起こしを行い、NLP（形態素解析）およびGoogle Gemini AIによる多角的なコンテンツ分析を実施する。広告実績データ（Excel）と動画を紐付けて、事業貢献度の可視化と改善提案を提供する。</p>
+
+  <h3>主な利用シナリオ</h3>
+  <ul>
+    <li>CM動画のアップロードと自動文字起こし（Whisper large-v3モデル使用）</li>
+    <li>文字起こし結果のセグメント単位での確認・編集・エクスポート（SRT/TXT/JSON）</li>
+    <li>キーワード頻度分析、キーワード×コンバージョン相関分析</li>
+    <li>Gemini AI による心理分析、ランキング比較分析、マーケティングレポート生成</li>
+    <li>Excel広告実績データのインポートと動画コードによる紐付け</li>
+    <li>事業貢献スコアに基づく動画ランキングと媒体別パフォーマンス可視化</li>
+    <li>マーケティングダッシュボードでのKPI概要・レポート・PPTX出力</li>
+  </ul>
+
+  <h3>対象ユーザー</h3>
+  <p>マーケティングチーム、動画制作チーム、広告運用担当者。共有パスワード認証によるチーム共有型。</p>
+</div>
+
+<!-- ===== 2. TECH STACK ===== -->
+<div class="section" id="tech-stack">
+  <h2>2. 技術スタック</h2>
+
+  <h3>フロントエンド</h3>
+  <table>
+    <thead><tr><th>技術</th><th>バージョン</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>React</td><td>19.2</td><td>UIフレームワーク</td></tr>
+      <tr><td>Vite</td><td>7.2</td><td>ビルドツール / 開発サーバー</td></tr>
+      <tr><td>TypeScript</td><td>5.9</td><td>型安全な開発</td></tr>
+      <tr><td>Tailwind CSS</td><td>4.1</td><td>ユーティリティファーストCSS</td></tr>
+      <tr><td>React Router</td><td>7.13</td><td>クライアントサイドルーティング</td></tr>
+      <tr><td>Recharts</td><td>3.7</td><td>データ可視化（グラフ・チャート）</td></tr>
+      <tr><td>@google/generative-ai</td><td>0.24</td><td>Gemini APIクライアント（フロントエンド直接利用）</td></tr>
+      <tr><td>@supabase/supabase-js</td><td>2.95</td><td>Supabaseクライアント（DB・Storage・Realtime）</td></tr>
+      <tr><td>xlsx</td><td>0.18</td><td>Excelファイルパース</td></tr>
+      <tr><td>pptxgenjs</td><td>4.0</td><td>PowerPointファイル生成</td></tr>
+      <tr><td>axios</td><td>1.13</td><td>HTTPクライアント</td></tr>
+    </tbody>
+  </table>
+
+  <h3>バックエンド</h3>
+  <table>
+    <thead><tr><th>技術</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>Python / FastAPI</td><td>REST APIサーバー</td></tr>
+      <tr><td>SQLAlchemy</td><td>ORM / データベースアクセス</td></tr>
+      <tr><td>SQLite</td><td>ローカルDB（デフォルト）</td></tr>
+      <tr><td>OpenAI Whisper (large-v3)</td><td>音声文字起こしエンジン</td></tr>
+      <tr><td>fugashi + unidic-lite</td><td>日本語形態素解析（MeCab互換）</td></tr>
+      <tr><td>Google Gemini API (google-genai)</td><td>AI分析エンジン</td></tr>
+      <tr><td>ffmpeg / ffprobe</td><td>メディア処理（音声抽出・サムネイル生成・メタデータ取得）</td></tr>
+      <tr><td>pydantic-settings</td><td>環境変数管理</td></tr>
+      <tr><td>aiofiles</td><td>非同期ファイルI/O</td></tr>
+    </tbody>
+  </table>
+
+  <h3>インフラ・外部サービス</h3>
+  <table>
+    <thead><tr><th>サービス</th><th>用途</th><th>プラン</th></tr></thead>
+    <tbody>
+      <tr><td>Firebase Hosting</td><td>フロントエンド配信</td><td>無料</td></tr>
+      <tr><td>Supabase</td><td>PostgreSQL DB + Storage + Realtime</td><td>無料（500MB DB / 1GB Storage）</td></tr>
+      <tr><td>Google Gemini API</td><td>AI分析</td><td>無料枠（ユーザー提供キー）</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 3. ARCHITECTURE ===== -->
+<div class="section" id="architecture">
+  <h2>3. システムアーキテクチャ</h2>
+
+  <h3>全体構成</h3>
+  <div class="info-box blue">
+    <strong>ハイブリッド構成:</strong> フロントエンドは Firebase Hosting + Supabase（DB/Storage/Realtime）に直接接続。バックエンドはローカルで動作し、Whisper による文字起こしとNLP処理を担当。AI分析はフロントエンド・バックエンド双方からGemini APIを呼び出す。
+  </div>
+
+  <div class="arch-grid">
+    <div class="arch-card">
+      <h4>フロントエンド (React SPA)</h4>
+      <ul>
+        <li>Firebase Hosting で配信</li>
+        <li>Supabase JS で DB/Storage 直接操作</li>
+        <li>Gemini API で AI 分析（フロント側）</li>
+        <li>Supabase Realtime で動画状態監視</li>
+        <li>PasswordGate による共有パスワード認証</li>
+      </ul>
+    </div>
+    <div class="arch-card">
+      <h4>バックエンド (FastAPI)</h4>
+      <ul>
+        <li>ローカルサーバー（開発/社内利用）</li>
+        <li>Whisper 音声文字起こし</li>
+        <li>fugashi 形態素解析 (NLP)</li>
+        <li>Gemini API AI分析</li>
+        <li>動画アップロード・ストリーミング</li>
+        <li>サムネイル自動生成 (ffmpeg)</li>
+      </ul>
+    </div>
+    <div class="arch-card">
+      <h4>データベース</h4>
+      <ul>
+        <li>Supabase PostgreSQL（本番）</li>
+        <li>SQLite（バックエンドローカル）</li>
+        <li>RLS: 全テーブル anon 許可</li>
+        <li>Realtime: videos テーブル有効</li>
+      </ul>
+    </div>
+    <div class="arch-card">
+      <h4>ストレージ</h4>
+      <ul>
+        <li>Supabase Storage: videos バケット</li>
+        <li>Signed URL（4時間有効、3.5時間キャッシュ）</li>
+        <li>ローカル: uploads/ ディレクトリ</li>
+        <li>音声のみ保存モード対応</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>データフロー</h3>
+  <pre><code>┌──────────────────────────────────────────────────────────────┐
+│                    ユーザー (ブラウザ)                        │
+│  React SPA → Firebase Hosting (https://movie-analysis-...)   │
+└──────┬──────────────────┬──────────────────┬─────────────────┘
+       │ Supabase JS      │ Gemini API       │ axios
+       ▼                  ▼                  ▼
+┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐
+│ Supabase     │  │ Google       │  │ FastAPI バックエンド   │
+│ ├ PostgreSQL │  │ Gemini API   │  │ ├ POST /api/videos/   │
+│ ├ Storage    │  │              │  │ │    upload            │
+│ └ Realtime   │  │              │  │ ├ Whisper 文字起こし   │
+└──────────────┘  └──────────────┘  │ ├ fugashi NLP         │
+                                    │ ├ Gemini AI 分析      │
+                                    │ └ ffmpeg メディア処理  │
+                                    └───────────────────────┘</code></pre>
+
+  <h3>ディレクトリ構造</h3>
+  <pre><code>動画書き起こし/
+├── frontend/
+│   ├── src/
+│   │   ├── api/           # API呼び出し関数 (8ファイル)
+│   │   ├── components/    # UIコンポーネント
+│   │   │   ├── analysis/  # IntegratedAITab
+│   │   │   └── marketing/ # StrategyTab, KnowledgeBaseTab 他
+│   │   ├── hooks/         # useRealtimeVideos
+│   │   ├── pages/         # 6ページコンポーネント
+│   │   ├── services/      # supabase, db, gemini, crypto 等
+│   │   ├── types/         # TypeScript型定義
+│   │   └── utils/         # csv, format, pptxExport, errors
+│   └── package.json
+├── backend/
+│   └── app/
+│       ├── config.py       # 環境変数・設定
+│       ├── database.py     # SQLAlchemy エンジン
+│       ├── main.py         # FastAPI アプリ定義
+│       ├── models/         # SQLAlchemy モデル (5ファイル)
+│       ├── routers/        # APIルーター (5ファイル)
+│       ├── schemas/        # Pydantic スキーマ (4ファイル)
+│       └── services/       # ビジネスロジック (4ファイル)
+├── supabase-schema.sql     # DBスキーマ定義
+├── firebase.json           # Firebase設定
+├── start.bat               # 起動スクリプト
+└── app-specification.html  # 本仕様書</code></pre>
+</div>
+
+<!-- ===== 4. DATABASE ===== -->
+<div class="section" id="database">
+  <h2>4. データベーススキーマ</h2>
+
+  <div class="info-box blue">
+    全テーブルでRow Level Security (RLS) が有効化されており、anon ロールに全操作を許可するポリシーが設定されています。
+    Supabase PostgreSQL と SQLite（バックエンドローカル）の二重構成です。
+  </div>
+
+  <h3>4.1 videos テーブル</h3>
+  <p>動画/音声ファイルの基本情報を管理するメインテーブル。</p>
+  <table>
+    <thead><tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>BIGINT</td><td>PRIMARY KEY</td><td>動画ID</td></tr>
+      <tr><td><code>filename</code></td><td>TEXT</td><td>NOT NULL</td><td>元ファイル名</td></tr>
+      <tr><td><code>file_size</code></td><td>BIGINT</td><td></td><td>ファイルサイズ（バイト）</td></tr>
+      <tr><td><code>duration_seconds</code></td><td>DOUBLE PRECISION</td><td></td><td>再生時間（秒）</td></tr>
+      <tr><td><code>status</code></td><td>TEXT</td><td>CHECK (uploaded/transcribing/transcribed/error/archived)</td><td>処理状態</td></tr>
+      <tr><td><code>error_message</code></td><td>TEXT</td><td></td><td>エラーメッセージ</td></tr>
+      <tr><td><code>ranking</code></td><td>INTEGER</td><td></td><td>ユーザー評価ランキング（1=最高）</td></tr>
+      <tr><td><code>ranking_notes</code></td><td>TEXT</td><td></td><td>ランキング備考</td></tr>
+      <tr><td><code>code</code></td><td>TEXT</td><td></td><td>広告実績コード（ad_performanceと紐付け）</td></tr>
+      <tr><td><code>storage_path</code></td><td>TEXT</td><td>NOT NULL DEFAULT ''</td><td>Supabase Storageパス</td></tr>
+      <tr><td><code>tags</code></td><td>JSONB</td><td>DEFAULT '[]'</td><td>媒体タグ配列（例: ["YouTube","TikTok"]）</td></tr>
+      <tr><td><code>thumbnails</code></td><td>JSONB</td><td>DEFAULT '[]'</td><td>サムネイル情報配列</td></tr>
+      <tr><td><code>created_at</code></td><td>TIMESTAMPTZ</td><td>DEFAULT now()</td><td>作成日時</td></tr>
+      <tr><td><code>updated_at</code></td><td>TIMESTAMPTZ</td><td>DEFAULT now()</td><td>更新日時</td></tr>
+    </tbody>
+  </table>
+  <p><strong>インデックス:</strong> status, ranking (WHERE NOT NULL), created_at DESC</p>
+  <p><strong>Realtime:</strong> supabase_realtime Publication に登録済み</p>
+
+  <h3>4.2 transcriptions テーブル</h3>
+  <p>動画の文字起こし結果を格納。動画との1:1関係。</p>
+  <table>
+    <thead><tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>BIGINT</td><td>PRIMARY KEY</td><td>書き起こしID</td></tr>
+      <tr><td><code>video_id</code></td><td>BIGINT</td><td>FK → videos(id) ON DELETE CASCADE</td><td>動画ID</td></tr>
+      <tr><td><code>full_text</code></td><td>TEXT</td><td>DEFAULT ''</td><td>全文テキスト</td></tr>
+      <tr><td><code>language</code></td><td>TEXT</td><td>DEFAULT 'ja'</td><td>言語コード</td></tr>
+      <tr><td><code>model_used</code></td><td>TEXT</td><td></td><td>使用Whisperモデル名</td></tr>
+      <tr><td><code>processing_time_seconds</code></td><td>DOUBLE PRECISION</td><td></td><td>処理時間（秒）</td></tr>
+      <tr><td><code>edited</code></td><td>BOOLEAN</td><td>DEFAULT false</td><td>手動編集フラグ</td></tr>
+      <tr><td><code>edited_at</code></td><td>TIMESTAMPTZ</td><td></td><td>最終編集日時</td></tr>
+      <tr><td><code>segments</code></td><td>JSONB</td><td>DEFAULT '[]'</td><td>セグメント配列 [{start_time, end_time, text}]</td></tr>
+      <tr><td><code>created_at</code></td><td>TIMESTAMPTZ</td><td>DEFAULT now()</td><td>作成日時</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.3 conversions テーブル</h3>
+  <p>動画ごとのコンバージョン指標を格納。動画との1:N関係。</p>
+  <table>
+    <thead><tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>BIGINT</td><td>PRIMARY KEY</td><td></td></tr>
+      <tr><td><code>video_id</code></td><td>BIGINT</td><td>FK → videos(id) ON DELETE CASCADE</td><td></td></tr>
+      <tr><td><code>metric_name</code></td><td>TEXT</td><td>NOT NULL</td><td>指標名（例: 登録数, 再生数, CTR）</td></tr>
+      <tr><td><code>metric_value</code></td><td>DOUBLE PRECISION</td><td>NOT NULL</td><td>数値</td></tr>
+      <tr><td><code>date_recorded</code></td><td>TEXT</td><td></td><td>記録日</td></tr>
+      <tr><td><code>notes</code></td><td>TEXT</td><td></td><td>備考</td></tr>
+      <tr><td><code>created_at</code></td><td>TIMESTAMPTZ</td><td>DEFAULT now()</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>TIMESTAMPTZ</td><td>DEFAULT now()</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.4 analyses テーブル</h3>
+  <p>各種分析結果をJSON形式で保存。分析履歴の永続化。</p>
+  <table>
+    <thead><tr><th>カラム</th><th>型</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>BIGINT PK</td><td></td></tr>
+      <tr><td><code>analysis_type</code></td><td>TEXT NOT NULL</td><td>keyword_frequency / correlation / ai_recommendation / ranking_comparison / psychological_content</td></tr>
+      <tr><td><code>scope</code></td><td>TEXT NOT NULL</td><td>cross_video / single_video_content_tags</td></tr>
+      <tr><td><code>video_id</code></td><td>BIGINT FK (SET NULL)</td><td>単体動画分析の場合</td></tr>
+      <tr><td><code>result_json</code></td><td>JSONB</td><td>分析結果JSON</td></tr>
+      <tr><td><code>gemini_model_used</code></td><td>TEXT</td><td>使用AIモデル名</td></tr>
+      <tr><td><code>created_at</code></td><td>TIMESTAMPTZ</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.5 settings テーブル</h3>
+  <p>アプリケーション設定のシングルトン行。</p>
+  <table>
+    <thead><tr><th>カラム</th><th>型</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>key</code></td><td>TEXT PK DEFAULT 'app'</td><td>固定キー</td></tr>
+      <tr><td><code>api_keys</code></td><td>JSONB DEFAULT '[]'</td><td>Gemini APIキー配列</td></tr>
+      <tr><td><code>selected_model</code></td><td>TEXT DEFAULT 'gemini-2.5-flash'</td><td>選択中のGeminiモデル</td></tr>
+      <tr><td><code>managed_tags</code></td><td>JSONB</td><td>管理タグ配列</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.6 ad_performance テーブル</h3>
+  <p>広告実績データ（Excelインポート）。codeカラムでvideosテーブルと紐付け。</p>
+  <table>
+    <thead><tr><th>カラム</th><th>型</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>BIGINT PK</td><td></td></tr>
+      <tr><td><code>code</code></td><td>TEXT NOT NULL UNIQUE</td><td>動画コード（videosのcodeと紐付け）</td></tr>
+      <tr><td><code>media</code></td><td>TEXT NOT NULL</td><td>媒体名（Meta広告, Tik広告, Go広告, SEO, ASP, 公式Insta）</td></tr>
+      <tr><td><code>rank</code></td><td>INTEGER</td><td>順位</td></tr>
+      <tr><td><code>spend</code></td><td>DOUBLE PRECISION</td><td>消化金額</td></tr>
+      <tr><td><code>line_adds</code></td><td>DOUBLE PRECISION</td><td>LINE追加数</td></tr>
+      <tr><td><code>answers</code></td><td>DOUBLE PRECISION</td><td>回答数</td></tr>
+      <tr><td><code>answer_rate</code></td><td>DOUBLE PRECISION</td><td>回答率 (%)</td></tr>
+      <tr><td><code>answer_cpa</code></td><td>DOUBLE PRECISION</td><td>回答CPA</td></tr>
+      <tr><td><code>customers</code></td><td>DOUBLE PRECISION</td><td>顧客数</td></tr>
+      <tr><td><code>contracts</code></td><td>DOUBLE PRECISION</td><td>成約数</td></tr>
+      <tr><td><code>revenue</code></td><td>DOUBLE PRECISION</td><td>売上</td></tr>
+      <tr><td><code>roi</code></td><td>DOUBLE PRECISION</td><td>ROI (%)</td></tr>
+      <tr><td><code>score</code></td><td>DOUBLE PRECISION</td><td>事業貢献スコア</td></tr>
+      <tr><td><code>imported_at</code></td><td>TIMESTAMPTZ</td><td>インポート日時</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.7 その他のテーブル</h3>
+  <table>
+    <thead><tr><th>テーブル</th><th>用途</th><th>主要カラム</th></tr></thead>
+    <tbody>
+      <tr><td><code>ab_tests</code></td><td>A/Bテスト管理</td><td>name, video_a_id, video_b_id, target_metric, status (draft/running/completed)</td></tr>
+      <tr><td><code>competitors</code></td><td>競合データ</td><td>name, metrics (JSONB), notes</td></tr>
+      <tr><td><code>alerts</code></td><td>アラートルール</td><td>metric_name, condition (above/below), threshold, video_id, enabled</td></tr>
+      <tr><td><code>transcription_logs</code></td><td>文字起こしログ</td><td>video_id, operation, status, details (JSONB), timestamp</td></tr>
+    </tbody>
+  </table>
+
+  <h3>ER図（主要リレーション）</h3>
+  <pre><code>videos (1) ──── (1) transcriptions     ON DELETE CASCADE
+videos (1) ──── (N) conversions        ON DELETE CASCADE
+videos (1) ──── (N) analyses           ON DELETE SET NULL
+videos         ←→   ad_performance     紐付けキー: videos.code = ad_performance.code
+videos (1) ──── (N) ab_tests           video_a_id, video_b_id  ON DELETE CASCADE
+videos (1) ──── (N) alerts             ON DELETE CASCADE</code></pre>
+</div>
+
+<!-- ===== 5. SCREENS ===== -->
+<div class="section" id="screens">
+  <h2>5. 画面仕様</h2>
+
+  <h3>ナビゲーション構成</h3>
+  <p>上部固定ナビゲーションバーに5つのメインリンク、ダークモード切替、ヘルプモーダル、ログアウトボタンを配置。</p>
+  <table>
+    <thead><tr><th>メニュー</th><th>パス</th><th>コンポーネント</th></tr></thead>
+    <tbody>
+      <tr><td>ダッシュボード</td><td><code>/</code></td><td>MarketingDashboardPage</td></tr>
+      <tr><td>動画一覧</td><td><code>/videos</code></td><td>VideosPage</td></tr>
+      <tr><td>（動画詳細）</td><td><code>/videos/:id</code></td><td>VideoDetailPage</td></tr>
+      <tr><td>分析</td><td><code>/analysis</code></td><td>AnalysisPage</td></tr>
+      <tr><td>広告データ</td><td><code>/ad-data</code></td><td>AdDataPage</td></tr>
+      <tr><td>設定</td><td><code>/settings</code></td><td>SettingsPage</td></tr>
+    </tbody>
+  </table>
+
+  <h3>共通機能</h3>
+  <ul>
+    <li><strong>PasswordGate:</strong> アプリ全体をラップする共有パスワード認証ゲート（SHA-256ハッシュ比較）</li>
+    <li><strong>ダークモード:</strong> localStorage で保持、Tailwind CSS dark variant で全画面対応</li>
+    <li><strong>ErrorBoundary:</strong> React Error Boundary でクラッシュ時のフォールバックUI表示</li>
+    <li><strong>Toast通知:</strong> 操作結果を画面下部に一時表示（success/error）</li>
+  </ul>
+
+  <!-- Screen 1: Dashboard -->
+  <div class="screen-card">
+    <h4>5.1 マーケティングダッシュボード</h4>
+    <div class="route">/ &nbsp; → &nbsp; MarketingDashboardPage.tsx</div>
+    <p>アプリのトップページ。4つのタブで構成。</p>
+
+    <h4>タブ: 概要 (overview)</h4>
+    <ul>
+      <li><strong>KPIカード:</strong> 動画数、文字起こし済み数、処理中数、エラー数、平均再生時間、合計再生時間、コンバージョン数</li>
+      <li><strong>一括分析ボタン:</strong> キーワード分析→相関分析→AIレコメンデーションを順次実行（ステップ進捗UI付き）</li>
+      <li><strong>広告実績ランキング:</strong> 事業貢献スコア上位の動画をバーチャートで表示</li>
+      <li><strong>動画別コンバージョン比較:</strong> 積み上げ棒グラフ（Recharts）</li>
+      <li><strong>頻出キーワード:</strong> 最新の分析結果から上位20キーワードを棒グラフ表示</li>
+      <li><strong>AIレコメンデーション:</strong> 最新のAI分析結果からサマリーと推奨事項を表示</li>
+    </ul>
+
+    <h4>タブ: 戦略分析 (strategy)</h4>
+    <ul>
+      <li><strong>StrategyTab コンポーネント</strong></li>
+      <li>媒体別集計（事業貢献スコア、ROI、消化金額、成約数、売上）</li>
+      <li>選択指標別のバーチャート（媒体色分け）</li>
+      <li>動画×広告実績の紐付け一覧</li>
+    </ul>
+
+    <h4>タブ: ナレッジベース (knowledge)</h4>
+    <ul>
+      <li><strong>KnowledgeBaseTab コンポーネント</strong></li>
+      <li>動画一覧＋広告実績の統合ビュー</li>
+      <li>コード/媒体/スコアによるフィルタ・ソート</li>
+      <li>トップキーワードの動画別マッピング</li>
+    </ul>
+
+    <h4>タブ: レポート (report)</h4>
+    <ul>
+      <li>マーケティングレポートのAI生成（Gemini API）</li>
+      <li>コンテンツ提案のAI生成</li>
+      <li>PPTX出力機能（pptxgenjs使用）</li>
+    </ul>
+  </div>
+
+  <!-- Screen 2: Videos List -->
+  <div class="screen-card">
+    <h4>5.2 動画一覧</h4>
+    <div class="route">/videos &nbsp; → &nbsp; VideosPage.tsx</div>
+    <ul>
+      <li><strong>アップロード:</strong> ドラッグ&ドロップ / ファイル選択で動画・音声ファイルをアップロード（最大20ファイル同時、最大2048MB/ファイル）</li>
+      <li><strong>コード入力:</strong> アップロード時に各ファイルに広告実績コードを紐付け可能（ドロップダウン or 直接入力）</li>
+      <li><strong>一括文字起こし:</strong> 未処理・エラーの動画に対してバッチ文字起こし実行（BatchProgressPanel で進捗表示）</li>
+      <li><strong>カード型一覧:</strong> サムネイル、ステータスバッジ、ファイルサイズ、再生時間、コード表示</li>
+      <li><strong>フィルタ:</strong> ファイル名検索、タグフィルタ（プルダウン）</li>
+      <li><strong>操作:</strong> タグ編集（マルチセレクト）、削除、クリックで詳細画面へ遷移</li>
+      <li><strong>CSV出力:</strong> 動画一覧をCSVファイルとしてエクスポート</li>
+      <li><strong>リアルタイム更新:</strong> Supabase Realtime で動画テーブルの変更を自動検知</li>
+    </ul>
+    <p><strong>ステータス:</strong></p>
+    <table>
+      <thead><tr><th>status値</th><th>表示ラベル</th><th>バッジ色</th></tr></thead>
+      <tbody>
+        <tr><td>uploaded</td><td>アップロード済み</td><td>グレー</td></tr>
+        <tr><td>transcribing</td><td>文字起こし中</td><td>イエロー</td></tr>
+        <tr><td>transcribed</td><td>文字起こし済み</td><td>グリーン</td></tr>
+        <tr><td>error</td><td>エラー</td><td>レッド</td></tr>
+        <tr><td>archived</td><td>アーカイブ</td><td>アンバー</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Screen 3: Video Detail -->
+  <div class="screen-card">
+    <h4>5.3 動画詳細</h4>
+    <div class="route">/videos/:id &nbsp; → &nbsp; VideoDetailPage.tsx</div>
+    <ul>
+      <li><strong>動画/音声プレーヤー:</strong> Range Requestによるストリーミング再生</li>
+      <li><strong>基本情報:</strong> ファイル名（編集可）、ファイルサイズ、再生時間、ステータス、コード（編集可）</li>
+      <li><strong>ランキング設定:</strong> 1〜N位の評価、備考入力</li>
+      <li><strong>タグ管理:</strong> マルチセレクトタグ編集</li>
+      <li><strong>アーカイブ:</strong> 動画のアーカイブ状態切替</li>
+      <li><strong>文字起こし表示:</strong>
+        <ul>
+          <li>セグメント単位のタイムスタンプ付きテキスト表示</li>
+          <li>セグメントクリックで動画再生位置ジャンプ</li>
+          <li>セグメント個別編集（インライン）</li>
+          <li>文字起こしキュー位置表示・リトライ機能</li>
+        </ul>
+      </li>
+      <li><strong>エクスポート:</strong> SRT字幕ファイル / テキストファイル / JSONファイル</li>
+      <li><strong>ストーリーボードビュー:</strong> サムネイル付きタイムラインビュー</li>
+      <li><strong>コンバージョンデータ:</strong>
+        <ul>
+          <li>指標の追加・編集・削除（metric_name + metric_value）</li>
+          <li>CSV出力</li>
+        </ul>
+      </li>
+      <li><strong>広告実績表示:</strong> 動画コードに紐付く広告実績データの表示</li>
+      <li><strong>キーワード分析:</strong> 単体動画のキーワード/フレーズ分析実行・表示</li>
+    </ul>
+  </div>
+
+  <!-- Screen 4: Analysis -->
+  <div class="screen-card">
+    <h4>5.4 分析</h4>
+    <div class="route">/analysis &nbsp; → &nbsp; AnalysisPage.tsx</div>
+    <p>3つのタブで構成:</p>
+
+    <h4>タブ: キーワード分析</h4>
+    <ul>
+      <li>全書き起こし済み動画を対象に形態素解析（fugashi）でキーワードを抽出</li>
+      <li>タグ（媒体）フィルタで対象動画を絞込可能</li>
+      <li>上位20キーワードの棒グラフ</li>
+      <li>上位50キーワードの一覧テーブル（キーワード、出現数、対象動画数）</li>
+      <li>CSV出力対応</li>
+    </ul>
+
+    <h4>タブ: 相関分析</h4>
+    <ul>
+      <li>キーワードの有無とコンバージョン値の相関を分析</li>
+      <li>最低2本の書き起こし＋コンバージョンデータが必要</li>
+      <li>効果スコアの散布図（Scatter Chart）</li>
+      <li>相関分析結果テーブル（あり平均/なし平均/効果スコア/動画数）</li>
+      <li>CSV出力対応</li>
+    </ul>
+
+    <h4>タブ: AI統合分析 (IntegratedAITab)</h4>
+    <ul>
+      <li><strong>一括分析:</strong> 3種類のGemini AI分析を並列実行</li>
+      <li><strong>カスタムプロンプト:</strong> 追加分析指示をテキストエリアで入力可能</li>
+      <li><strong>テキスト検索:</strong> 全書き起こしテキストをセグメント横断検索</li>
+      <li><strong>AI推奨分析結果:</strong> サマリー、効果的キーワード、レコメンデーション、相関インサイト</li>
+      <li><strong>ランキング比較分析結果:</strong> サマリー、上位動画 vs その他の比較テーブル、改善提案</li>
+      <li><strong>心理分析結果:</strong>
+        <ul>
+          <li>感情ボラティリティ（各動画のスコア/10、感情曲線、ピークモーメント）</li>
+          <li>ストーリーテリング（実用性・記憶残り・共有性スコア）</li>
+          <li>動画横断インサイト</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Screen 5: Ad Data -->
+  <div class="screen-card">
+    <h4>5.5 広告データ</h4>
+    <div class="route">/ad-data &nbsp; → &nbsp; AdDataPage.tsx</div>
+    <ul>
+      <li><strong>Excelインポート:</strong> .xlsx/.xls ファイルをドラッグ&ドロップまたはファイル選択</li>
+      <li><strong>シート自動検出:</strong> 「動画ランキング」シートをメインデータとして読み込み</li>
+      <li><strong>スコア定義読込:</strong> 「スコア定義」シートがあれば定義情報を表示</li>
+      <li><strong>プレビュー:</strong> インポート前に先頭10行をプレビュー表示</li>
+      <li><strong>上書き確認:</strong> 既存データがある場合はダイアログで確認</li>
+      <li><strong>媒体別サマリー:</strong> カード形式で件数と平均スコアを表示</li>
+      <li><strong>データテーブル:</strong> コード検索、媒体フィルタ、ソート（スコア/ROI/売上/消化金額）</li>
+      <li><strong>個別/全削除:</strong> 確認ダイアログ付き</li>
+    </ul>
+    <p><strong>Excelカラムマッピング:</strong></p>
+    <table>
+      <thead><tr><th>Excelヘッダー</th><th>内部フィールド</th></tr></thead>
+      <tbody>
+        <tr><td>コード</td><td>code</td></tr>
+        <tr><td>媒体</td><td>media</td></tr>
+        <tr><td>順位</td><td>rank</td></tr>
+        <tr><td>消化金額</td><td>spend</td></tr>
+        <tr><td>LINE追加</td><td>line_adds</td></tr>
+        <tr><td>回答数</td><td>answers</td></tr>
+        <tr><td>回答率_pct</td><td>answer_rate</td></tr>
+        <tr><td>回答CPA</td><td>answer_cpa</td></tr>
+        <tr><td>顧客数</td><td>customers</td></tr>
+        <tr><td>成約数</td><td>contracts</td></tr>
+        <tr><td>売上</td><td>revenue</td></tr>
+        <tr><td>ROI_pct</td><td>roi</td></tr>
+        <tr><td>事業貢献スコア</td><td>score</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Screen 6: Settings -->
+  <div class="screen-card">
+    <h4>5.6 設定</h4>
+    <div class="route">/settings &nbsp; → &nbsp; SettingsPage.tsx</div>
+    <ul>
+      <li><strong>Gemini APIキー管理:</strong>
+        <ul>
+          <li>複数キーの追加・削除（マスク表示）</li>
+          <li>全キー一括テスト（1件ずつ順次テスト、進捗バー付き）</li>
+          <li>レート制限時の自動キーローテーション</li>
+        </ul>
+      </li>
+      <li><strong>Geminiモデル選択:</strong>
+        <ul>
+          <li>プリセットモデル一覧からワンクリック選択</li>
+          <li>カスタムモデルID入力にも対応</li>
+          <li>デフォルト: gemini-2.5-flash（無料枠推奨）</li>
+        </ul>
+      </li>
+      <li><strong>媒体タグ管理:</strong>
+        <ul>
+          <li>タグの追加・削除</li>
+          <li>デフォルトタグ: YouTube, TikTok, Instagram, Facebook, LINE, X(Twitter)</li>
+          <li>動画へのタグ割り当てプルダウンに反映</li>
+        </ul>
+      </li>
+      <li><strong>ストレージ使用量:</strong> Supabase Storageの使用量/上限をプログレスバーで表示</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== 6. API ===== -->
+<div class="section" id="api">
+  <h2>6. API仕様</h2>
+
+  <div class="info-box blue">
+    バックエンドAPI: <code>http://localhost:8000/api</code> をプレフィックスとするREST API。
+    フロントエンドは Supabase JS を介してDBに直接アクセスする部分と、バックエンドAPIを呼び出す部分のハイブリッド構成。
+  </div>
+
+  <h3>6.1 動画 (Videos)</h3>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/videos/upload</span>
+    <span class="desc">動画/音声ファイルをアップロード（最大20ファイル同時、最大2048MB/ファイル）。ffprobeでメタデータ抽出、STORE_AUDIO_ONLYモードではffmpegで音声抽出。アップロード後に文字起こしキューへ自動投入。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/videos</span>
+    <span class="desc">動画一覧取得（ページネーション: page, per_page）。created_at DESC 順。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/videos/{video_id}</span>
+    <span class="desc">動画詳細取得。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-patch">PATCH</span>
+    <span class="path">/api/videos/{video_id}</span>
+    <span class="desc">動画メタデータ更新（ファイル名変更）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-delete">DELETE</span>
+    <span class="path">/api/videos/{video_id}</span>
+    <span class="desc">動画削除（ファイル＋サムネイル＋DBレコード削除、CASCADE で関連データも削除）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-put">PUT</span>
+    <span class="path">/api/videos/{video_id}/ranking</span>
+    <span class="desc">動画ランキング更新（ranking: 1以上の整数, ranking_notes: テキスト）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/videos/ranked</span>
+    <span class="desc">ランキング設定済み動画をランキング昇順で取得。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/videos/{video_id}/stream</span>
+    <span class="desc">動画/音声ストリーミング。Range Request (HTTP 206) 対応。Content-Disposition ヘッダーにUTF-8エンコードファイル名。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/videos/{video_id}/thumbnail</span>
+    <span class="desc">サムネイル画像取得（ffmpegで1秒時点のフレームを320px幅で生成、キャッシュ）。音声ファイルの場合は404。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/videos/allowed-extensions</span>
+    <span class="desc">対応ファイル拡張子一覧と最大ファイルサイズを返却。</span>
+  </div>
+
+  <h3>6.2 文字起こし (Transcriptions)</h3>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/transcriptions/{video_id}</span>
+    <span class="desc">動画の文字起こし結果取得（full_text, segments, status）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/transcriptions/{video_id}/retry</span>
+    <span class="desc">文字起こし再実行。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/transcriptions/queue-status</span>
+    <span class="desc">文字起こしキュー状態取得（キューサイズ、現在処理中のvideo_id、経過時間）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/transcriptions/search</span>
+    <span class="desc">全書き起こしテキストのセグメント横断検索。</span>
+  </div>
+
+  <h3>6.3 コンバージョン (Conversions)</h3>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/conversions/{video_id}</span>
+    <span class="desc">動画のコンバージョンデータ一覧。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/conversions/{video_id}</span>
+    <span class="desc">コンバージョン指標追加。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-put">PUT</span>
+    <span class="path">/api/conversions/{conversion_id}</span>
+    <span class="desc">コンバージョン指標更新。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-delete">DELETE</span>
+    <span class="path">/api/conversions/{conversion_id}</span>
+    <span class="desc">コンバージョン指標削除。</span>
+  </div>
+
+  <h3>6.4 分析 (Analysis)</h3>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/analysis/keywords</span>
+    <span class="desc">全動画横断キーワード頻度分析（fugashi形態素解析、上位50件）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/analysis/keywords/{video_id}</span>
+    <span class="desc">単体動画キーワード＋フレーズ分析（タイムスタンプ付きオカレンス情報）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/analysis/correlation</span>
+    <span class="desc">キーワード×コンバージョン相関分析（効果スコア = あり平均 / なし平均）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/analysis/ai-recommendations</span>
+    <span class="desc">Gemini AIによるCM効果分析（効果的キーワード/フレーズ、相関インサイト、改善提案）。カスタムプロンプト対応。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/analysis/ranking-comparison</span>
+    <span class="desc">ランキング上位(1-3位) vs その他の心理学的・ストーリーテリング比較分析。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/analysis/psychological-content</span>
+    <span class="desc">感情ボラティリティ・ストーリーテリング・コンバージョン導線の3軸心理分析。NLP前処理（感情スコア、説得技法検出）をGeminiに入力。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/analysis/results</span>
+    <span class="desc">分析結果履歴取得（analysis_type でフィルタ可能、limit パラメータ対応）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/analysis/dashboard</span>
+    <span class="desc">ダッシュボード用サマリーデータ（動画統計、上位キーワード、AI推奨、動画別コンバージョン）。</span>
+  </div>
+
+  <h3>6.5 設定 (Settings)</h3>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/settings/api-keys</span>
+    <span class="desc">登録済みAPIキー一覧（マスク表示）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-post">POST</span>
+    <span class="path">/api/settings/api-keys</span>
+    <span class="desc">APIキー追加。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-delete">DELETE</span>
+    <span class="path">/api/settings/api-keys/{index}</span>
+    <span class="desc">APIキー削除（インデックス指定）。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/settings/model</span>
+    <span class="desc">現在のGeminiモデル設定と選択可能モデル一覧。</span>
+  </div>
+  <div class="endpoint">
+    <span class="badge badge-put">PUT</span>
+    <span class="path">/api/settings/model</span>
+    <span class="desc">Geminiモデル設定変更。</span>
+  </div>
+
+  <h3>6.6 ヘルスチェック</h3>
+  <div class="endpoint">
+    <span class="badge badge-get">GET</span>
+    <span class="path">/api/health</span>
+    <span class="desc">ヘルスチェック（Whisperモデル読込状態、文字起こしキューサイズ）。</span>
+  </div>
+</div>
+
+<!-- ===== 7. FEATURES ===== -->
+<div class="section" id="features">
+  <h2>7. 機能詳細</h2>
+
+  <h3>7.1 動画アップロード・管理</h3>
+  <h4>対応フォーマット</h4>
+  <ul>
+    <li><strong>動画:</strong> .mp4, .avi, .mov, .mkv, .wmv, .flv, .webm, .m4v, .mpeg, .mpg, .3gp, .ts, .mts, .m2ts, .ogv, .vob</li>
+    <li><strong>音声:</strong> .mp3, .wav, .aac, .ogg, .flac, .wma, .m4a, .opus</li>
+    <li><strong>追加拡張子:</strong> 環境変数 <code>EXTRA_ALLOWED_EXTENSIONS</code> で追加可能</li>
+  </ul>
+
+  <h4>アップロードフロー</h4>
+  <ol>
+    <li>ユーザーがファイルを選択（ドラッグ&ドロップ or ファイルダイアログ）</li>
+    <li>各ファイルにコード名を入力（任意、広告実績紐付け用）</li>
+    <li>「アップロード開始」でサーバーへ送信（進捗バー表示）</li>
+    <li>サーバー側:
+      <ul>
+        <li>ファイル名サニタイズ（パストラバーサル防止、200文字制限）</li>
+        <li>拡張子バリデーション</li>
+        <li>ストリーミングサイズチェック（上限超過で即中断）</li>
+        <li>ffprobe でメタデータ取得（duration, has_audio, has_video）</li>
+        <li>STORE_AUDIO_ONLY=true の場合: ffmpeg で mono 16kHz mp3 に変換し、元ファイル削除</li>
+        <li>DBレコード作成 → 文字起こしキューへ投入</li>
+      </ul>
+    </li>
+  </ol>
+
+  <h3>7.2 音声文字起こし (Whisper)</h3>
+  <h4>処理アーキテクチャ</h4>
+  <ul>
+    <li><strong>モデル:</strong> OpenAI Whisper large-v3（デフォルト）</li>
+    <li><strong>言語:</strong> 日本語 (ja)（デフォルト）</li>
+    <li><strong>キューイング:</strong> Python Queue + 専用ワーカースレッド（シングルワーカー）</li>
+    <li><strong>起動時復旧:</strong> uploaded/transcribing状態の動画を自動再キューイング</li>
+    <li><strong>プリロード:</strong> 起動時にバックグラウンドスレッドでWhisperモデルとNLPタガーを事前ロード</li>
+  </ul>
+
+  <h4>処理ステージ</h4>
+  <table>
+    <thead><tr><th>ステージ</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td>queued</td><td>キューに投入済み、処理待ち</td></tr>
+      <tr><td>downloading</td><td>ファイルダウンロード中（Supabase Storage使用時）</td></tr>
+      <tr><td>preparing</td><td>音声前処理中</td></tr>
+      <tr><td>transcribing</td><td>Whisperで文字起こし実行中</td></tr>
+      <tr><td>saving</td><td>結果をDBに保存中</td></tr>
+      <tr><td>completed</td><td>完了</td></tr>
+      <tr><td>error</td><td>エラー発生</td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.3 バッチ文字起こし</h3>
+  <ul>
+    <li>フロントエンドの <code>batchTranscription.ts</code> が制御</li>
+    <li>複数APIキーを活用した並列処理（キープール管理）</li>
+    <li>レート制限検知 → 自動キーローテーション</li>
+    <li>楽観的ロック（WHERE status != 'transcribing'）</li>
+    <li>リアルタイム進捗表示（BatchProgressPanel）:
+      <ul>
+        <li>全体進捗（完了/エラー/合計）</li>
+        <li>各動画の個別ステージ表示</li>
+        <li>APIキー状態（available/working/rate_limited/error）</li>
+        <li>推定残り時間</li>
+      </ul>
+    </li>
+    <li>キャンセル機能</li>
+  </ul>
+
+  <h3>7.4 NLP分析 (形態素解析)</h3>
+  <h4>エンジン</h4>
+  <ul>
+    <li><strong>fugashi:</strong> MeCab互換の日本語形態素解析器</li>
+    <li><strong>辞書:</strong> unidic-lite</li>
+  </ul>
+
+  <h4>機能</h4>
+  <table>
+    <thead><tr><th>機能</th><th>関数</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td>キーワード抽出</td><td><code>extract_keywords()</code></td><td>名詞・動詞・形容詞・副詞を形態素解析で抽出。見出し語（レンマ）化、2文字以上フィルタ、出現頻度上位N件。</td></tr>
+      <tr><td>フレーズ抽出</td><td><code>extract_phrases()</code></td><td>N-gram ベースでフレーズを抽出（デフォルト: 2-gram）。</td></tr>
+      <tr><td>感情分析</td><td><code>analyze_segment_emotions()</code></td><td>セグメント単位でポジティブ/ネガティブ語彙を検出し、感情スコア (-1.0〜+1.0) を算出。</td></tr>
+      <tr><td>感情ボラティリティ</td><td><code>calculate_emotion_volatility()</code></td><td>標準偏差、方向転換回数、最大振幅、平均スコア、レンジを算出。</td></tr>
+      <tr><td>説得技法検出</td><td><code>detect_persuasion_techniques()</code></td><td>希少性、社会的証明、権威性、緊急性などのパターンマッチング。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.5 AI分析 (Google Gemini)</h3>
+
+  <div class="info-box yellow">
+    <strong>APIキー管理:</strong> 複数キーをラウンドロビンでローテーション。レート制限(429)エラー時に自動で次のキーにフォールバック。タイムアウト: 120秒。
+  </div>
+
+  <h4>分析タイプ一覧</h4>
+  <table>
+    <thead><tr><th>分析タイプ</th><th>analysis_type</th><th>入力データ</th><th>出力</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>AI推奨分析</strong></td>
+        <td>ai_recommendation</td>
+        <td>全動画の書き起こし＋コンバージョン</td>
+        <td>サマリー、効果的キーワード/フレーズ、相関インサイト、改善提案、ファネル提案</td>
+      </tr>
+      <tr>
+        <td><strong>ランキング比較分析</strong></td>
+        <td>ranking_comparison</td>
+        <td>ランキング上位(1-3位) vs その他（最大5本）の書き起こし＋コンバージョン</td>
+        <td>心理学的分析、ストーリーテリング分析、言語分析、上位/その他の差異、改善提案</td>
+      </tr>
+      <tr>
+        <td><strong>心理コンテンツ分析</strong></td>
+        <td>psychological_content</td>
+        <td>書き起こし + NLP前処理（感情タイムライン、ボラティリティ、説得技法）+ コンバージョン</td>
+        <td>感情ボラティリティ分析（動画別スコア/10）、ストーリーテリング分析（実用性/記憶/共有性スコア）、コンバージョン導線分析（説得スコア、CTA分析）、指標相関、横断インサイト、改善提案</td>
+      </tr>
+      <tr>
+        <td><strong>マーケティングレポート</strong></td>
+        <td>marketing_report</td>
+        <td>全動画データ＋キーワード＋コンバージョン</td>
+        <td>エグゼクティブサマリー、ターゲット分析、競合優位性、コンテンツ評価マトリクス、改善優先度、次回動画方向性</td>
+      </tr>
+      <tr>
+        <td><strong>コンテンツ提案</strong></td>
+        <td>content_suggestion</td>
+        <td>分析結果＋動画データ</td>
+        <td>スクリプト概要、キーメッセージ、推奨構成、タイミングガイド、感情曲線提案</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>プロンプト設計</h4>
+  <ul>
+    <li>ロール設定: 「日本のCM分析の専門家」「心理学・行動経済学・ストーリーテリングの専門家」</li>
+    <li>出力形式: JSON のみ（マークダウン禁止の指示）</li>
+    <li>カスタムプロンプト: ユーザー入力をプロンプト末尾に追記可能</li>
+    <li>レスポンスパース: ````json` ... ` ``` ` のマークダウンブロックも許容</li>
+  </ul>
+
+  <h3>7.6 広告実績データ管理</h3>
+  <ul>
+    <li>Excelファイル（.xlsx/.xls）からフロントエンドで直接パース（xlsx ライブラリ）</li>
+    <li>「動画ランキング」シートを自動検出しデータ読込</li>
+    <li>「スコア定義」シートから定義情報を読込・表示</li>
+    <li>パース後にSupabase DB の <code>ad_performance</code> テーブルへ upsert</li>
+    <li>動画の <code>code</code> フィールドと <code>ad_performance.code</code> で紐付け</li>
+    <li>対応媒体: Meta広告, Tik広告, Go広告, SEO, ASP, 公式Insta</li>
+  </ul>
+
+  <h3>7.7 データエクスポート</h3>
+  <table>
+    <thead><tr><th>エクスポート種別</th><th>フォーマット</th><th>対象データ</th></tr></thead>
+    <tbody>
+      <tr><td>動画一覧</td><td>CSV</td><td>ファイル名、サイズ、再生時間、ステータス、コード、タグ</td></tr>
+      <tr><td>コンバージョン</td><td>CSV</td><td>動画ごとのコンバージョン指標</td></tr>
+      <tr><td>キーワード分析</td><td>CSV</td><td>キーワード、出現数、動画数</td></tr>
+      <tr><td>相関分析</td><td>CSV</td><td>キーワード、あり/なし平均、効果スコア</td></tr>
+      <tr><td>文字起こし</td><td>SRT / TXT / JSON</td><td>セグメント付き文字起こし</td></tr>
+      <tr><td>マーケティングレポート</td><td>PPTX</td><td>AI分析結果をPowerPointスライドとして出力</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 8. SECURITY ===== -->
+<div class="section" id="security">
+  <h2>8. セキュリティ</h2>
+
+  <h3>認証</h3>
+  <ul>
+    <li><strong>共有パスワード認証:</strong> PasswordGate コンポーネントが全画面をラップ</li>
+    <li>パスワードは SHA-256 ハッシュ化して環境変数に保存</li>
+    <li>セッションは <code>authSession.ts</code> で管理</li>
+  </ul>
+
+  <h3>セキュリティヘッダー (バックエンド)</h3>
+  <p>Pure ASGIミドルウェアで以下のヘッダーを付与:</p>
+  <ul>
+    <li><code>X-Content-Type-Options: nosniff</code></li>
+    <li><code>X-Frame-Options: DENY</code></li>
+    <li><code>X-XSS-Protection: 1; mode=block</code></li>
+    <li><code>Referrer-Policy: strict-origin-when-cross-origin</code></li>
+    <li><code>Permissions-Policy: camera=(), microphone=(), geolocation=()</code></li>
+  </ul>
+  <p>※ストリーミング・サムネイルエンドポイントはスキップ</p>
+
+  <h3>CORS</h3>
+  <ul>
+    <li>許可オリジン: 環境変数 <code>CORS_ORIGINS</code>（デフォルト: <code>http://localhost:5173</code>）</li>
+    <li>許可メソッド: GET, POST, PUT, PATCH, DELETE, OPTIONS</li>
+    <li>クレデンシャル: 許可</li>
+  </ul>
+
+  <h3>入力バリデーション</h3>
+  <ul>
+    <li>ファイル名サニタイズ（パストラバーサル防止、危険文字除去、200文字制限）</li>
+    <li>ファイル拡張子ホワイトリスト検証</li>
+    <li>ファイルサイズストリーミングチェック（上限超過で即中断）</li>
+    <li>ffprobe によるメディアファイル実体検証</li>
+    <li>Pydantic スキーマによるリクエストボディ検証</li>
+  </ul>
+
+  <h3>データ保護</h3>
+  <ul>
+    <li>Supabase RLS: 全テーブルで有効（現在は anon 全許可ポリシー）</li>
+    <li>APIキー: Supabase DB にはマスク表示、フロントエンド側は暗号化保存 (<code>crypto.ts</code>)</li>
+    <li>Supabase Storage: Signed URL（4時間有効期限）でアクセス制御</li>
+  </ul>
+</div>
+
+<!-- ===== 9. DEPLOYMENT ===== -->
+<div class="section" id="deployment">
+  <h2>9. デプロイ構成</h2>
+
+  <h3>フロントエンド (Firebase Hosting)</h3>
+  <ul>
+    <li>URL: <code>https://movie-analysis-d05fb.web.app</code></li>
+    <li>ビルド: <code>cd frontend && npm run build</code> → <code>dist/</code></li>
+    <li>デプロイ: <code>firebase deploy --only hosting</code></li>
+    <li>SPA設定: 全パスを <code>index.html</code> にリライト</li>
+  </ul>
+
+  <h3>バックエンド (ローカル)</h3>
+  <ul>
+    <li>起動: <code>start.bat</code> または <code>uvicorn app.main:app --reload</code></li>
+    <li>ポート: 8000（デフォルト）</li>
+    <li>DB: SQLite (<code>cm_analysis.db</code>)</li>
+    <li>アップロードディレクトリ: <code>backend/uploads/</code></li>
+  </ul>
+
+  <h3>外部依存</h3>
+  <ul>
+    <li><strong>ffmpeg / ffprobe:</strong> システムPATHに必要（音声抽出、メタデータ取得、サムネイル生成）</li>
+    <li><strong>CUDA (任意):</strong> Whisper GPU高速化用</li>
+  </ul>
+
+  <h3>Supabase</h3>
+  <ul>
+    <li>PostgreSQL: 500MB（Free Tier）</li>
+    <li>Storage: 1GB（Free Tier、videos バケット）</li>
+    <li>Realtime: videos テーブルで有効化</li>
+    <li>環境変数: <code>VITE_SUPABASE_URL</code>, <code>VITE_SUPABASE_ANON_KEY</code></li>
+  </ul>
+</div>
+
+<!-- ===== 10. CONFIG ===== -->
+<div class="section" id="config">
+  <h2>10. 設定・環境変数</h2>
+
+  <h3>バックエンド環境変数 (.env)</h3>
+  <table>
+    <thead><tr><th>変数名</th><th>デフォルト</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>DATABASE_URL</code></td><td>sqlite:///./cm_analysis.db</td><td>SQLAlchemyデータベースURL</td></tr>
+      <tr><td><code>UPLOAD_DIR</code></td><td>backend/uploads</td><td>アップロードファイル保存ディレクトリ</td></tr>
+      <tr><td><code>MAX_FILE_SIZE_MB</code></td><td>2048</td><td>最大アップロードファイルサイズ (MB)</td></tr>
+      <tr><td><code>WHISPER_MODEL</code></td><td>large-v3</td><td>Whisperモデル名</td></tr>
+      <tr><td><code>WHISPER_LANGUAGE</code></td><td>ja</td><td>文字起こし言語</td></tr>
+      <tr><td><code>GEMINI_API_KEY</code></td><td>（空）</td><td>Gemini APIキー（単一）</td></tr>
+      <tr><td><code>GEMINI_API_KEYS</code></td><td>（空）</td><td>Gemini APIキー（カンマ区切り複数）</td></tr>
+      <tr><td><code>GEMINI_MODEL</code></td><td>gemini-2.5-flash</td><td>デフォルトGeminiモデル</td></tr>
+      <tr><td><code>CORS_ORIGINS</code></td><td>["http://localhost:5173"]</td><td>CORS許可オリジン</td></tr>
+      <tr><td><code>STORE_AUDIO_ONLY</code></td><td>true</td><td>動画から音声のみ抽出して保存</td></tr>
+      <tr><td><code>TRANSCRIPTION_AUDIO_SAMPLE_RATE</code></td><td>16000</td><td>音声変換サンプリングレート (Hz)</td></tr>
+      <tr><td><code>TRANSCRIPTION_AUDIO_BITRATE_KBPS</code></td><td>64</td><td>音声変換ビットレート (kbps)</td></tr>
+      <tr><td><code>EXTRA_ALLOWED_EXTENSIONS</code></td><td>（空）</td><td>追加許可拡張子（カンマ区切り）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>フロントエンド環境変数 (VITE_*)</h3>
+  <table>
+    <thead><tr><th>変数名</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><code>VITE_SUPABASE_URL</code></td><td>Supabase プロジェクトURL</td></tr>
+      <tr><td><code>VITE_SUPABASE_ANON_KEY</code></td><td>Supabase Anonymous Key</td></tr>
+      <tr><td><code>VITE_PASSWORD_HASH</code></td><td>共有パスワードのSHA-256ハッシュ</td></tr>
+      <tr><td><code>VITE_API_BASE_URL</code></td><td>バックエンドAPIベースURL</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <p>動画CM分析アプリ 詳細仕様書 v1.0.0 &nbsp;|&nbsp; 最終更新: 2026年3月12日</p>
+  <p>本ドキュメントはソースコードに基づき自動生成されています。</p>
+</div>
+
+</div><!-- container -->
+</body>
+</html>

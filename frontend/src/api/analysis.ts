@@ -20,6 +20,7 @@ import type {
   AiAnalysisResult,
   RankingComparisonResult,
   PsychologicalContentResult,
+  MarketingReactionCategoryResult,
 } from "../types";
 
 type TranscriptSegment = TranscriptionRecord["segments"][number];
@@ -69,6 +70,107 @@ export interface CorrelationAnalysisResult {
     video_count: number;
   }>;
   message?: string;
+}
+
+interface MarketingReactionCategoryDefinition {
+  id: string;
+  label: string;
+  description: string;
+  stage: "awareness" | "consideration" | "decision";
+  reactionHypothesis: string;
+  markers: string[];
+}
+
+const MARKETING_REACTION_CATEGORIES: MarketingReactionCategoryDefinition[] = [
+  {
+    id: "pain_empathy",
+    label: "悩み共感",
+    description: "不安や課題に寄り添い、当事者意識を起こす訴求です。",
+    stage: "awareness",
+    reactionHypothesis: "課題認知の初動反応を取りやすいカテゴリです。",
+    markers: ["悩み", "不安", "心配", "迷", "困", "つら", "しんど", "できない", "失敗", "ありませんか"],
+  },
+  {
+    id: "benefit_clarity",
+    label: "便益訴求",
+    description: "利用後に得られる変化やメリットを明確に伝える訴求です。",
+    stage: "consideration",
+    reactionHypothesis: "比較検討時の期待感を強めやすいカテゴリです。",
+    markers: ["変わる", "改善", "ラク", "簡単", "効率", "成果", "結果", "叶", "実現", "メリット", "ベネフィット"],
+  },
+  {
+    id: "trust_building",
+    label: "信頼形成",
+    description: "専門性、監修、運営実績などで安心感を作る訴求です。",
+    stage: "consideration",
+    reactionHypothesis: "意思決定前の不信感を下げるカテゴリです。",
+    markers: ["専門", "監修", "実績", "安心", "信頼", "サポート", "創業", "運営", "経験", "プロ", "認定"],
+  },
+  {
+    id: "social_proof",
+    label: "社会的証明",
+    description: "口コミ、利用者数、事例など第三者情報で後押しする訴求です。",
+    stage: "consideration",
+    reactionHypothesis: "他者の成功を見て行動しやすくなるカテゴリです。",
+    markers: ["口コミ", "評判", "利用者", "お客様", "事例", "レビュー", "ランキング", "選ばれて", "支持", "満足度"],
+  },
+  {
+    id: "specificity_evidence",
+    label: "具体根拠",
+    description: "数値、期間、比較などで説得力を高める訴求です。",
+    stage: "consideration",
+    reactionHypothesis: "曖昧さを減らし、納得反応を作るカテゴリです。",
+    markers: ["%", "円", "日", "ヶ月", "倍", "人", "件", "データ", "数字", "統計", "比較", "平均"],
+  },
+  {
+    id: "objection_relief",
+    label: "不安解消",
+    description: "費用、手間、失敗への懸念を先回りして下げる訴求です。",
+    stage: "decision",
+    reactionHypothesis: "申込直前の離脱を抑えやすいカテゴリです。",
+    markers: ["無料", "返金", "相談", "保証", "安心", "サポート", "初心者", "はじめて", "リスク", "負担", "手間"],
+  },
+  {
+    id: "urgency_offer",
+    label: "緊急性オファー",
+    description: "期限、限定性、特典で今動く理由を作る訴求です。",
+    stage: "decision",
+    reactionHypothesis: "意思決定を前倒ししやすいカテゴリです。",
+    markers: ["今だけ", "限定", "本日", "先着", "締切", "期間限定", "急いで", "特典", "キャンペーン", "ラスト"],
+  },
+  {
+    id: "action_prompt",
+    label: "行動喚起",
+    description: "登録、申込、相談など具体行動を明確に促す訴求です。",
+    stage: "decision",
+    reactionHypothesis: "視聴後の行動率に直結しやすいカテゴリです。",
+    markers: ["登録", "申込", "申し込み", "予約", "相談", "チェック", "クリック", "詳細", "問い合わせ", "応募", "始めて"],
+  },
+];
+
+function average(values: Array<number | null | undefined>): number | null {
+  const filtered = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (filtered.length === 0) return null;
+  return Math.round((filtered.reduce((sum, value) => sum + value, 0) / filtered.length) * 10) / 10;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function buildReactionSummary(result: MarketingReactionCategoryResult["category_overview"]): string {
+  if (result.length === 0) return "反応カテゴリに該当する文言が見つかりませんでした。";
+  const topMentions = result.slice(0, 2).map((item) => item.label).join("・");
+  const topPerformers = [...result]
+    .filter((item) => item.avg_ad_score !== null)
+    .sort((a, b) => (b.avg_ad_score ?? 0) - (a.avg_ad_score ?? 0))
+    .slice(0, 2)
+    .map((item) => item.label)
+    .join("・");
+  if (!topPerformers) {
+    return `出現量が多い反応カテゴリは ${topMentions} です。広告実績データとの紐付けが少ないため、まずはコード連携を増やすと判断精度が上がります。`;
+  }
+  return `出現量が多いカテゴリは ${topMentions}、実績が高い広告で相対的に強いカテゴリは ${topPerformers} です。ユーザー反応を見たい場合は、この差分を起点に訴求の強弱を比較できます。`;
 }
 
 async function loadVideosData(): Promise<LoadedVideoData[]> {
@@ -192,6 +294,131 @@ ${videoTexts}
 
   const result = await callGeminiJson<CorrelationAnalysisResult>(prompt);
   await saveAnalysis("correlation", "cross_video", result);
+  return result;
+}
+
+export async function runMarketingReactionCategoryAnalysis(): Promise<MarketingReactionCategoryResult> {
+  const videos = await loadVideosData();
+  if (videos.length === 0) {
+    throw new Error("書き起こし済みの動画がありません。先に文字起こしを完了してください。");
+  }
+
+  const videoResults: MarketingReactionCategoryResult["videos"] = videos.map((video) => {
+    const categoryDetails = MARKETING_REACTION_CATEGORIES.map((category) => {
+      const evidence = video.segments
+        .map((segment) => {
+          const markers = uniqueStrings(category.markers.filter((marker) => segment.text.includes(marker)));
+          if (markers.length === 0) return null;
+          return {
+            start_time: segment.start_time,
+            end_time: segment.end_time,
+            text: segment.text.trim(),
+            markers,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
+
+      const markerHits = evidence.reduce((sum, item) => sum + item.markers.length, 0);
+      const segmentHits = evidence.length;
+      const matchedMarkers = uniqueStrings(evidence.flatMap((item) => item.markers));
+      const score = Math.min(100, markerHits * 8 + segmentHits * 4);
+
+      return {
+        category_id: category.id,
+        label: category.label,
+        description: category.description,
+        reaction_hypothesis: category.reactionHypothesis,
+        stage: category.stage,
+        score,
+        segment_hits: segmentHits,
+        marker_hits: markerHits,
+        matched_markers: matchedMarkers,
+        evidence: evidence.slice(0, 5),
+      };
+    })
+      .filter((item) => item.marker_hits > 0)
+      .sort((a, b) => b.score - a.score);
+
+    const stageWeights = {
+      awareness: 0,
+      consideration: 0,
+      decision: 0,
+    };
+    for (const detail of categoryDetails) stageWeights[detail.stage] += detail.score;
+    const reactionStage = (Object.entries(stageWeights).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "consideration") as "awareness" | "consideration" | "decision";
+
+    return {
+      video_id: video.videoId,
+      video_name: video.name,
+      code: video.code,
+      media: video.adPerformance?.media ?? null,
+      ad_score: video.adPerformance?.score ?? null,
+      roi: video.adPerformance?.roi ?? null,
+      contracts: video.adPerformance?.contracts ?? null,
+      reaction_stage: reactionStage,
+      top_categories: categoryDetails.slice(0, 3),
+      category_details: categoryDetails,
+    };
+  });
+
+  const categoryOverview = MARKETING_REACTION_CATEGORIES.map((category) => {
+    const matchedVideos = videoResults
+      .map((video) => ({
+        video,
+        detail: video.category_details.find((detail) => detail.category_id === category.id) ?? null,
+      }))
+      .filter((item): item is { video: MarketingReactionCategoryResult["videos"][number]; detail: MarketingReactionCategoryResult["videos"][number]["category_details"][number] } => item.detail !== null);
+
+    const strongestMarkers = uniqueStrings(
+      matchedVideos.flatMap((item) => item.detail.matched_markers),
+    ).slice(0, 6);
+
+    return {
+      category_id: category.id,
+      label: category.label,
+      description: category.description,
+      reaction_hypothesis: category.reactionHypothesis,
+      stage: category.stage,
+      matched_video_count: matchedVideos.length,
+      total_marker_hits: matchedVideos.reduce((sum, item) => sum + item.detail.marker_hits, 0),
+      avg_category_score: average(matchedVideos.map((item) => item.detail.score)) ?? 0,
+      avg_ad_score: average(matchedVideos.map((item) => item.video.ad_score)),
+      avg_roi: average(matchedVideos.map((item) => item.video.roi)),
+      strongest_markers: strongestMarkers,
+      top_videos: matchedVideos
+        .sort((a, b) => {
+          const scoreDiff = b.detail.score - a.detail.score;
+          if (scoreDiff !== 0) return scoreDiff;
+          return (b.video.ad_score ?? 0) - (a.video.ad_score ?? 0);
+        })
+        .slice(0, 3)
+        .map((item) => ({
+          video_name: item.video.video_name,
+          score: item.detail.score,
+          ad_score: item.video.ad_score,
+          roi: item.video.roi,
+        })),
+    };
+  })
+    .filter((item) => item.matched_video_count > 0)
+    .sort((a, b) => {
+      const mentionDiff = b.total_marker_hits - a.total_marker_hits;
+      if (mentionDiff !== 0) return mentionDiff;
+      return b.avg_category_score - a.avg_category_score;
+    });
+
+  const result: MarketingReactionCategoryResult = {
+    summary: buildReactionSummary(categoryOverview),
+    analyzed_video_count: videoResults.length,
+    category_overview: categoryOverview,
+    videos: videoResults.sort((a, b) => {
+      const scoreDiff = (b.ad_score ?? -Infinity) - (a.ad_score ?? -Infinity);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (b.top_categories[0]?.score ?? 0) - (a.top_categories[0]?.score ?? 0);
+    }),
+  };
+
+  await saveAnalysis("marketing_reaction_category", "cross_video", result, "rule_based");
   return result;
 }
 

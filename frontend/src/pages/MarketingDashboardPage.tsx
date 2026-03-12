@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  LineChart, Line,
 } from "recharts";
 import { getVideos } from "../api/videos";
 import { getConversionSummary } from "../api/conversions";
@@ -14,9 +12,6 @@ import { getErrorMessage } from "../utils/errors";
 import { formatDuration } from "../utils/format";
 import Toast from "../components/Toast";
 import { useToast } from "../components/useToast";
-import PlatformTab from "../components/marketing/PlatformTab";
-import AnalysisHistoryTab from "../components/marketing/AnalysisHistoryTab";
-import RankingInsightTab from "../components/marketing/RankingInsightTab";
 import StrategyTab from "../components/marketing/StrategyTab";
 import KnowledgeBaseTab from "../components/marketing/KnowledgeBaseTab";
 import type { Video, ConversionSummary, MarketingReportResult, ContentSuggestion, DashboardData, AdPerformance } from "../types";
@@ -32,7 +27,7 @@ const INITIAL_STEPS: AnalysisStep[] = [
   { label: "データ更新", status: "pending" },
 ];
 
-type Tab = "overview" | "compare" | "trend" | "ranking_insight" | "strategy" | "knowledge" | "report" | "platform" | "history";
+type Tab = "overview" | "strategy" | "knowledge" | "report";
 
 export default function MarketingDashboardPage() {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -41,11 +36,7 @@ export default function MarketingDashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const { toast, showToast, clearToast } = useToast();
 
-  // Compare tab state
-  const [selectedVideoIds, setSelectedVideoIds] = useState<number[]>([]);
-
   // Trend tab state
-  const [selectedMetric, setSelectedMetric] = useState<string>("");
   const [tagFilter, setTagFilter] = useState<string>("");
 
   // Report tab state
@@ -171,10 +162,6 @@ export default function MarketingDashboardPage() {
     return Array.from(set).sort();
   }, [videos]);
 
-  // Set default selected metric
-  useEffect(() => {
-    if (!selectedMetric && allMetrics.length > 0) setSelectedMetric(allMetrics[0]);
-  }, [allMetrics, selectedMetric]);
 
   // Filter videos by tag
   const filteredVideos = useMemo(() => {
@@ -211,63 +198,6 @@ export default function MarketingDashboardPage() {
       bottom: sorted.slice(-3).reverse(),
     };
   }, [filteredConvSummaries, allMetrics]);
-
-  // ===== Compare: radar chart data =====
-  const radarData = useMemo(() => {
-    if (selectedVideoIds.length < 2 || allMetrics.length === 0) return [];
-    const selected = convSummaries.filter((s) => selectedVideoIds.includes(s.video_id));
-    // Normalize each metric to 0-100
-    const mins: Record<string, number> = {};
-    const maxes: Record<string, number> = {};
-    for (const m of allMetrics) {
-      const vals = convSummaries.map((s) => s.metrics[m]).filter((v) => v !== undefined) as number[];
-      mins[m] = Math.min(...vals, 0);
-      maxes[m] = Math.max(...vals, 1);
-    }
-    return allMetrics.map((metric) => {
-      const row: Record<string, string | number> = { metric };
-      for (const s of selected) {
-        const raw = s.metrics[metric] ?? 0;
-        const range = maxes[metric] - mins[metric];
-        row[s.video_filename] = range > 0 ? Math.round(((raw - mins[metric]) / range) * 100) : 50;
-      }
-      return row;
-    });
-  }, [selectedVideoIds, convSummaries, allMetrics]);
-
-  const radarVideoNames = useMemo(() => {
-    return convSummaries
-      .filter((s) => selectedVideoIds.includes(s.video_id))
-      .map((s) => s.video_filename);
-  }, [selectedVideoIds, convSummaries]);
-
-  // ===== Compare: comparison table =====
-  const compareTableData = useMemo(() => {
-    const selected = convSummaries.filter((s) => selectedVideoIds.includes(s.video_id));
-    return allMetrics.map((metric) => ({
-      metric,
-      values: selected.map((s) => ({ name: s.video_filename, value: s.metrics[metric] ?? "-" })),
-    }));
-  }, [selectedVideoIds, convSummaries, allMetrics]);
-
-  // ===== Trend: line chart data =====
-  const trendData = useMemo(() => {
-    if (!selectedMetric) return [];
-    const data = filteredVideos
-      .filter((v) => v.status === "transcribed")
-      .sort((a, b) => a.created_at.localeCompare(b.created_at))
-      .map((v) => {
-        const summary = convSummaries.find((s) => s.video_id === v.id);
-        return {
-          name: v.filename.length > 10 ? v.filename.slice(0, 10) + "..." : v.filename,
-          fullName: v.filename,
-          value: summary?.metrics[selectedMetric] ?? null,
-          date: v.created_at.slice(0, 10),
-        };
-      })
-      .filter((d) => d.value !== null);
-    return data;
-  }, [filteredVideos, convSummaries, selectedMetric]);
 
   // ===== Report handlers =====
   const handleGenerateReport = async () => {
@@ -323,14 +253,9 @@ export default function MarketingDashboardPage() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "overview", label: "概要" },
-    { key: "compare", label: "動画比較" },
-    { key: "trend", label: "推移" },
-    { key: "ranking_insight", label: "ランキングインサイト" },
     { key: "strategy", label: "戦略提案" },
     { key: "knowledge", label: "ナレッジ" },
     { key: "report", label: "レポート" },
-    { key: "platform", label: "媒体分析" },
-    { key: "history", label: "分析履歴" },
   ];
 
   if (loading) {
@@ -387,9 +312,9 @@ export default function MarketingDashboardPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
+            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
               ? "border-blue-600 text-blue-600 dark:text-blue-400"
-              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
               }`}
           >
             {tab.label}
@@ -706,178 +631,6 @@ export default function MarketingDashboardPage() {
         </div>
       )}
 
-      {/* ===== Compare Tab ===== */}
-      {activeTab === "compare" && (
-        <div className="space-y-6">
-          {/* Video selection */}
-          <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">比較する動画を選択（2〜4本）</h3>
-            <div className="flex flex-wrap gap-2">
-              {convSummaries.map((s) => {
-                const sel = selectedVideoIds.includes(s.video_id);
-                return (
-                  <button
-                    key={s.video_id}
-                    onClick={() => {
-                      setSelectedVideoIds((prev) =>
-                        sel
-                          ? prev.filter((id) => id !== s.video_id)
-                          : prev.length >= 4
-                            ? prev
-                            : [...prev, s.video_id]
-                      );
-                    }}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${sel
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                      }`}
-                  >
-                    {s.video_filename}
-                  </button>
-                );
-              })}
-            </div>
-            {convSummaries.length === 0 && (
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">コンバージョンデータのある動画がありません。</p>
-            )}
-          </div>
-
-          {/* Radar chart */}
-          {radarData.length > 0 && radarVideoNames.length >= 2 && (
-            <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">パフォーマンス比較（正規化 0-100）</h3>
-              <ResponsiveContainer width="100%" height={400}>
-                <RadarChart data={radarData}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
-                  {radarVideoNames.map((name, i) => (
-                    <Radar
-                      key={name}
-                      name={name}
-                      dataKey={name}
-                      stroke={COLORS[i % COLORS.length]}
-                      fill={COLORS[i % COLORS.length]}
-                      fillOpacity={0.15}
-                    />
-                  ))}
-                  <Legend />
-                  <Tooltip />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Comparison table */}
-          {compareTableData.length > 0 && selectedVideoIds.length >= 2 && (
-            <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm overflow-x-auto">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">数値比較</h3>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">指標</th>
-                    {compareTableData[0]?.values.map((v) => (
-                      <th key={v.name} className="text-right py-2 px-3 font-medium text-gray-700 dark:text-gray-200 max-w-[150px] truncate">
-                        {v.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {compareTableData.map((row) => {
-                    const numVals = row.values.filter((v) => typeof v.value === "number").map((v) => v.value as number);
-                    const maxVal = numVals.length > 0 ? Math.max(...numVals) : null;
-                    return (
-                      <tr key={row.metric} className="border-b border-gray-100 dark:border-gray-700/50">
-                        <td className="py-2 px-3 font-medium text-gray-700 dark:text-gray-300">{row.metric}</td>
-                        {row.values.map((v) => (
-                          <td
-                            key={v.name}
-                            className={`text-right py-2 px-3 tabular-nums ${typeof v.value === "number" && v.value === maxVal
-                              ? "font-bold text-blue-600 dark:text-blue-400"
-                              : "text-gray-600 dark:text-gray-300"
-                              }`}
-                          >
-                            {v.value}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ===== Trend Tab ===== */}
-      {activeTab === "trend" && (
-        <div className="space-y-6">
-          {/* Metric selector */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">指標:</span>
-              <select
-                value={selectedMetric}
-                onChange={(e) => setSelectedMetric(e.target.value)}
-                className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-              >
-                {allMetrics.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Line chart */}
-          {trendData.length > 0 ? (
-            <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
-                {selectedMetric} の推移（動画作成日順）
-              </h3>
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={trendData} margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    content={({ payload }) => {
-                      if (!payload?.length) return null;
-                      const d = payload[0]?.payload;
-                      return (
-                        <div className="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 px-3 py-2 shadow-lg">
-                          <p className="text-xs font-bold text-gray-900 dark:text-white">{d?.fullName}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{d?.date}</p>
-                          <p className="text-sm font-bold text-blue-600 dark:text-blue-400 mt-1">
-                            {selectedMetric}: {d?.value}
-                          </p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: "#3b82f6" }}
-                    activeDot={{ r: 6 }}
-                    name={selectedMetric}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-8 shadow-sm text-center">
-              <p className="text-sm text-gray-400 dark:text-gray-500">
-                {allMetrics.length === 0
-                  ? "コンバージョンデータが登録されていません。"
-                  : `「${selectedMetric}」のデータがある動画がありません。`}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ===== Report Tab ===== */}
       {activeTab === "report" && (
         <div className="space-y-6">
@@ -1106,11 +859,6 @@ export default function MarketingDashboardPage() {
         </div>
       )}
 
-      {/* ===== Ranking Insight Tab ===== */}
-      {activeTab === "ranking_insight" && (
-        <RankingInsightTab managedTags={managedTags} showToast={showToast} />
-      )}
-
       {/* ===== Strategy Tab ===== */}
       {activeTab === "strategy" && (
         <StrategyTab
@@ -1130,23 +878,6 @@ export default function MarketingDashboardPage() {
           adPerfList={adPerfList}
           dashboard={dashboard}
         />
-      )}
-
-      {/* ===== Platform Tab ===== */}
-      {activeTab === "platform" && (
-        <PlatformTab
-          videos={filteredVideos}
-          convSummaries={filteredConvSummaries}
-          allMetrics={allMetrics}
-          managedTags={managedTags}
-          showToast={showToast}
-          onVideoUpdate={fetchData}
-        />
-      )}
-
-      {/* ===== History Tab ===== */}
-      {activeTab === "history" && (
-        <AnalysisHistoryTab />
       )}
 
       <Toast toast={toast} onClose={clearToast} />

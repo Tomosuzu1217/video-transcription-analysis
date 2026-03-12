@@ -5,13 +5,16 @@ from pathlib import Path
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./cm_analysis.db"
     UPLOAD_DIR: str = str(Path(__file__).parent.parent / "uploads")
-    MAX_FILE_SIZE_MB: int = 500
+    MAX_FILE_SIZE_MB: int = 2048
     WHISPER_MODEL: str = "large-v3"
     WHISPER_LANGUAGE: str = "ja"
     GEMINI_API_KEY: str = ""
     GEMINI_API_KEYS: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    STORE_AUDIO_ONLY: bool = True
+    TRANSCRIPTION_AUDIO_SAMPLE_RATE: int = 16000
+    TRANSCRIPTION_AUDIO_BITRATE_KBPS: int = 64
     # Comma-separated extra extensions to allow (e.g. ".aif,.caf")
     EXTRA_ALLOWED_EXTENSIONS: str = ""
 

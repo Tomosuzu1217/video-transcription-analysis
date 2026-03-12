@@ -46,6 +46,110 @@ class UploadResult(BaseModel):
     errors: list[dict]
 
 
+def _is_audio_filepath(filepath: Path) -> bool:
+    return filepath.suffix.lower() in ALLOWED_AUDIO_EXTENSIONS
+
+
+def _probe_media(filepath: str) -> dict:
+    """Return basic ffprobe metadata for stream-aware media handling."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "quiet",
+                "-print_format", "json",
+                "-show_format",
+                "-show_streams",
+                filepath,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            logger.warning(f"ffprobe failed (exit {result.returncode}) for {filepath}: {result.stderr[:200]}")
+            return {}
+
+        data = json.loads(result.stdout)
+        streams = data.get("streams", [])
+        duration = None
+        try:
+            duration = float(data["format"]["duration"])
+        except (KeyError, TypeError, ValueError):
+            duration = None
+
+        return {
+            "has_audio": any(stream.get("codec_type") == "audio" for stream in streams),
+            "has_video": any(stream.get("codec_type") == "video" for stream in streams),
+            "duration": duration,
+        }
+    except subprocess.TimeoutExpired:
+        logger.warning(f"ffprobe timed out for {filepath}")
+    except FileNotFoundError:
+        logger.error("ffprobe not found on system PATH")
+    except json.JSONDecodeError as e:
+        logger.warning(f"ffprobe output parse error for {filepath}: {e}")
+    except Exception as e:
+        logger.warning(f"Unexpected ffprobe error for {filepath}: {e}")
+    return {}
+
+
+def _prepare_transcription_media(filepath: Path) -> tuple[Path, float | None]:
+    """
+    Normalize uploads into a speech-friendly audio file.
+
+    When STORE_AUDIO_ONLY is enabled, the original upload is removed after
+    a mono 16k mp3 file is created so only the transcription source audio remains.
+    """
+    probe = _probe_media(str(filepath))
+    duration = probe.get("duration")
+    has_audio = bool(probe.get("has_audio"))
+
+    if not has_audio:
+        raise RuntimeError("音声トラックを検出できませんでした。音声付きの動画または音声ファイルをアップロードしてください。")
+
+    if not settings.STORE_AUDIO_ONLY:
+        return filepath, duration
+
+    prepared_path = filepath.with_suffix(".mp3")
+    if prepared_path == filepath:
+        prepared_path = filepath.with_name(f"{filepath.stem}_normalized.mp3")
+    timeout_seconds = min(7200, max(300, int(duration // 2) if duration else 300))
+
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i", str(filepath),
+                "-vn",
+                "-ac", "1",
+                "-ar", str(settings.TRANSCRIPTION_AUDIO_SAMPLE_RATE),
+                "-c:a", "libmp3lame",
+                "-b:a", f"{settings.TRANSCRIPTION_AUDIO_BITRATE_KBPS}k",
+                str(prepared_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError("音声抽出がタイムアウトしました。より短いファイルで再試行してください。") from e
+    except FileNotFoundError as e:
+        raise RuntimeError("ffmpeg が見つかりません。音声のみ保持モードには ffmpeg が必要です。") from e
+
+    if result.returncode != 0 or not prepared_path.exists() or prepared_path.stat().st_size == 0:
+        if prepared_path.exists():
+            prepared_path.unlink(missing_ok=True)
+        stderr = (result.stderr or "")[:300]
+        raise RuntimeError(f"音声抽出に失敗しました: {stderr}")
+
+    filepath.unlink(missing_ok=True)
+    prepared_probe = _probe_media(str(prepared_path))
+    prepared_duration = prepared_probe.get("duration")
+    return prepared_path, prepared_duration or duration
+
+
 @router.post("/videos/upload", response_model=UploadResult)
 async def upload_videos(files: list[UploadFile] = File(...), db: Session = Depends(get_db)):
     if len(files) > 20:
@@ -62,6 +166,7 @@ async def upload_videos(files: list[UploadFile] = File(...), db: Session = Depen
     for file in files:
         safe_name = _sanitize_filename(file.filename or "video")
         filepath = None
+        prepared_filepath = None
         try:
             # Validate file extension
             ext = Path(safe_name).suffix.lower()
@@ -94,13 +199,16 @@ async def upload_videos(files: list[UploadFile] = File(...), db: Session = Depen
                 })
                 continue
 
-            file_size = filepath.stat().st_size
 
             # Validate file content with ffprobe (checks if it's a real media file)
             duration = _get_media_duration(str(filepath))
             if duration is None:
                 # ffprobe couldn't parse it — likely not a valid media file
                 logger.warning(f"ffprobe could not read file: {safe_name}")
+
+            prepared_filepath, duration = _prepare_transcription_media(filepath)
+            filepath = prepared_filepath
+            file_size = filepath.stat().st_size
 
             video = Video(
                 filename=safe_name,
@@ -121,6 +229,8 @@ async def upload_videos(files: list[UploadFile] = File(...), db: Session = Depen
             logger.exception(f"Upload failed for {safe_name}")
             if filepath and filepath.exists():
                 filepath.unlink()
+            if prepared_filepath and prepared_filepath.exists():
+                prepared_filepath.unlink()
             errors.append({
                 "filename": safe_name,
                 "error": str(e)[:200],
@@ -189,6 +299,9 @@ def delete_video(video_id: int, db: Session = Depends(get_db)):
     filepath = Path(video.filepath)
     if filepath.exists():
         filepath.unlink()
+    thumb_path = Path(settings.UPLOAD_DIR) / "thumbnails" / f"{video.id}.jpg"
+    if thumb_path.exists():
+        thumb_path.unlink()
 
     db.delete(video)
     db.commit()
@@ -237,9 +350,9 @@ def stream_video(video_id: int, request: Request, db: Session = Depends(get_db))
     if not filepath.exists():
         raise HTTPException(status_code=404, detail="動画ファイルが見つかりません")
 
-    content_type, _ = mimetypes.guess_type(video.filename)
+    content_type, _ = mimetypes.guess_type(str(filepath))
     if not content_type or not (content_type.startswith("video/") or content_type.startswith("audio/")):
-        ext = Path(video.filename).suffix.lower()
+        ext = filepath.suffix.lower()
         content_type = "audio/mpeg" if ext in ALLOWED_AUDIO_EXTENSIONS else "video/mp4"
 
     file_size = filepath.stat().st_size
@@ -303,8 +416,7 @@ def get_thumbnail(video_id: int, db: Session = Depends(get_db)):
     thumb_path = thumb_dir / f"{video.id}.jpg"
 
     # Audio-only files have no video stream for thumbnails
-    ext = Path(video.filename).suffix.lower()
-    if ext in ALLOWED_AUDIO_EXTENSIONS:
+    if _is_audio_filepath(filepath):
         raise HTTPException(status_code=404, detail="音声ファイルにはサムネイルがありません")
 
     if not thumb_path.exists():
@@ -339,6 +451,8 @@ def get_thumbnail(video_id: int, db: Session = Depends(get_db)):
 
 def _get_media_duration(filepath: str) -> float | None:
     """Extract duration from any media file using ffprobe."""
+    return _probe_media(filepath).get("duration")
+
     try:
         result = subprocess.run(
             ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", filepath],

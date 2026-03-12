@@ -216,6 +216,66 @@ export interface PsychologicalContentResult {
   }>;
 }
 
+export interface MarketingReactionCategoryEvidence {
+  start_time: number;
+  end_time: number;
+  text: string;
+  markers: string[];
+}
+
+export interface MarketingReactionCategoryDetail {
+  category_id: string;
+  label: string;
+  description: string;
+  reaction_hypothesis: string;
+  stage: "awareness" | "consideration" | "decision";
+  score: number;
+  segment_hits: number;
+  marker_hits: number;
+  matched_markers: string[];
+  evidence: MarketingReactionCategoryEvidence[];
+}
+
+export interface MarketingReactionCategoryVideo {
+  video_id: number;
+  video_name: string;
+  code: string | null;
+  media: string | null;
+  ad_score: number | null;
+  roi: number | null;
+  contracts: number | null;
+  reaction_stage: "awareness" | "consideration" | "decision";
+  top_categories: MarketingReactionCategoryDetail[];
+  category_details: MarketingReactionCategoryDetail[];
+}
+
+export interface MarketingReactionCategoryAggregate {
+  category_id: string;
+  label: string;
+  description: string;
+  reaction_hypothesis: string;
+  stage: "awareness" | "consideration" | "decision";
+  matched_video_count: number;
+  total_marker_hits: number;
+  avg_category_score: number;
+  avg_ad_score: number | null;
+  avg_roi: number | null;
+  strongest_markers: string[];
+  top_videos: Array<{
+    video_name: string;
+    score: number;
+    ad_score: number | null;
+    roi: number | null;
+  }>;
+}
+
+export interface MarketingReactionCategoryResult {
+  summary: string;
+  analyzed_video_count: number;
+  category_overview: MarketingReactionCategoryAggregate[];
+  videos: MarketingReactionCategoryVideo[];
+}
+
 export interface MarketingReportResult {
   executive_summary: string;
   target_audience_analysis: Array<{

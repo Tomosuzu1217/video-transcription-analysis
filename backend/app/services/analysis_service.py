@@ -9,6 +9,64 @@ from app.services import nlp_service, gemini_service
 logger = logging.getLogger(__name__)
 
 
+def _build_occurrence_summary(
+    segments: list,
+    items: list[dict],
+    term_field: str,
+    max_occurrences: int = 8,
+) -> list[dict]:
+    enriched: list[dict] = []
+    ordered_segments = sorted(segments, key=lambda seg: seg.start_time)
+
+    for item in items:
+        term = item.get(term_field)
+        if not term:
+            continue
+
+        occurrences = []
+        total_matches = 0
+        for seg in ordered_segments:
+            match_count = seg.text.count(term)
+            if match_count <= 0:
+                continue
+            total_matches += match_count
+            occurrences.append({
+                "start_time": seg.start_time,
+                "end_time": seg.end_time,
+                "count": match_count,
+                "excerpt": seg.text.strip()[:120],
+            })
+
+        enriched_item = dict(item)
+        enriched_item["match_count"] = total_matches
+        enriched_item["segment_hits"] = len(occurrences)
+        enriched_item["first_seen_at"] = occurrences[0]["start_time"] if occurrences else None
+        enriched_item["occurrences"] = occurrences[:max_occurrences]
+        enriched.append(enriched_item)
+
+    return enriched
+
+
+def _build_content_tags(keywords: list[dict], phrases: list[dict]) -> list[dict]:
+    tags = []
+    for item in keywords:
+        tags.append({
+            "tag": item["keyword"],
+            "type": "keyword",
+            "count": item["count"],
+            "first_seen_at": item.get("first_seen_at"),
+        })
+    for item in phrases:
+        tags.append({
+            "tag": item["phrase"],
+            "type": "phrase",
+            "count": item["count"],
+            "first_seen_at": item.get("first_seen_at"),
+        })
+    tags.sort(key=lambda tag: (tag["count"], -(tag["first_seen_at"] or 0)), reverse=True)
+    return tags[:20]
+
+
 def run_keyword_analysis(db: Session) -> dict:
     """Run keyword frequency analysis across all transcribed videos."""
     videos = db.query(Video).options(joinedload(Video.transcription)).filter(Video.status == "transcribed").all()
@@ -57,19 +115,31 @@ def run_video_keyword_analysis(db: Session, video_id: int) -> dict:
         raise HTTPException(status_code=400, detail="書き起こしが完了していません")
 
     text = video.transcription.full_text
-    keywords = nlp_service.extract_keywords(text, top_n=30)
-    phrases = nlp_service.extract_phrases(text, n=2, top_n=20)
+    segments = list(video.transcription.segments or [])
+    keywords = _build_occurrence_summary(
+        segments,
+        nlp_service.extract_keywords(text, top_n=30),
+        "keyword",
+    )
+    phrases = _build_occurrence_summary(
+        segments,
+        nlp_service.extract_phrases(text, n=2, top_n=20),
+        "phrase",
+    )
 
     result = {
         "video_id": video_id,
         "video_filename": video.filename,
+        "duration_seconds": video.duration_seconds,
+        "segment_count": len(segments),
+        "content_tags": _build_content_tags(keywords, phrases),
         "keywords": keywords,
         "phrases": phrases,
     }
 
     analysis = Analysis(
         analysis_type="keyword_frequency",
-        scope="single_video",
+        scope="single_video_content_tags",
         video_id=video_id,
         result_json=json.dumps(result, ensure_ascii=False),
     )

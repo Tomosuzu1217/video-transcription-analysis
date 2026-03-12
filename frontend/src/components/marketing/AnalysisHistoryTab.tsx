@@ -13,6 +13,7 @@ const TYPE_LABELS: Record<string, string> = {
   platform_analysis: "媒体分析",
   ab_deep_comparison: "AI詳細比較",
   ranking_platform_insight: "ランキング分析",
+  marketing_reaction_category: "反応カテゴリ分析",
 };
 
 function formatDate(iso: string): string {

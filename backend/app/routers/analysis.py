@@ -41,6 +41,17 @@ def run_video_keyword_analysis(video_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"キーワード分析に失敗しました: {e}")
 
 
+@router.post("/analysis/tags/{video_id}")
+def run_video_tag_analysis(video_id: int, db: Session = Depends(get_db)):
+    try:
+        return analysis_service.run_video_keyword_analysis(db, video_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Video tag analysis failed")
+        raise HTTPException(status_code=500, detail=f"Tag analysis failed: {e}")
+
+
 @router.post("/analysis/correlation")
 def run_correlation_analysis(db: Session = Depends(get_db)):
     try:
