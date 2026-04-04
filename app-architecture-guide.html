@@ -1,0 +1,1766 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>動画CM分析ツール アプリケーション設計書 — K.K.kurokawa&co.</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700;900&family=Noto+Sans+JP:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--white:#fff;--off-white:#fafafa;--gray-50:#f7f7f7;--gray-100:#efefef;--gray-200:#e0e0e0;--gray-300:#c8c8c8;--gray-400:#a0a0a0;--gray-500:#787878;--gray-600:#555;--gray-700:#383838;--gray-800:#252525;--gray-900:#141414;--black:#0a0a0a;--red:#c0392b;--red-bg:#fdf2f0;--amber:#8a6d0b;--amber-bg:#fdf8ec;--green:#1a7349;--green-bg:#eef7f1;--blue:#2a5a85;--blue-bg:#edf3f9;--purple:#6b21a8;--purple-bg:#f5f3ff}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--white);color:var(--gray-800);line-height:1.95;font-size:14.5px;-webkit-font-smoothing:antialiased}
+@media print{body{font-size:9pt;line-height:1.6}.page{max-width:100%;padding:0 10mm}section{page-break-inside:avoid}}
+.page{max-width:880px;margin:0 auto;padding:0 clamp(20px,5vw,48px)}
+.cover{padding:72px 0 48px;border-bottom:3px solid var(--black)}
+.cover-label{font-size:10px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--gray-400);margin-bottom:20px;display:block}
+.cover h1{font-family:'Noto Serif JP',serif;font-size:clamp(24px,3.5vw,36px);font-weight:900;line-height:1.35;color:var(--black);margin-bottom:16px;letter-spacing:-.02em}
+.cover-sub{font-size:15px;color:var(--gray-600);line-height:2;max-width:720px;margin-bottom:32px;font-weight:300}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;padding-top:20px;border-top:1px solid var(--gray-200)}
+.meta-item dt{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-400);font-weight:600;margin-bottom:2px}
+.meta-item dd{font-size:13px;color:var(--gray-700);font-weight:500}
+.toc{padding:36px 0;border-bottom:1px solid var(--gray-200)}
+.toc-title{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gray-400);font-weight:600;margin-bottom:16px}
+.toc-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 32px}
+.toc-group-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-400);font-weight:600;margin:16px 0 6px;padding-top:10px;border-top:1px dashed var(--gray-200)}
+.toc-group-label:first-child{margin-top:0;padding-top:0;border-top:none}
+.toc ol{list-style:none;counter-reset:toc-counter}
+.toc li{counter-increment:toc-counter}
+.toc li a{display:flex;align-items:baseline;gap:10px;padding:4px 0;text-decoration:none;color:var(--gray-600);font-size:12.5px;border-bottom:1px solid var(--gray-100);transition:color .15s}
+.toc li a:hover{color:var(--black)}
+.toc li a::before{content:counter(toc-counter,decimal-leading-zero);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gray-400);min-width:20px;text-align:right}
+.part-divider{padding:28px 0;text-align:center;border-bottom:3px solid var(--black)}
+.part-divider span{font-family:'Noto Serif JP',serif;font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gray-500);font-weight:600}
+section{padding:40px 0;border-bottom:1px solid var(--gray-200)}
+.section-number{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gray-400);letter-spacing:1px;margin-bottom:6px;display:block}
+h2{font-family:'Noto Serif JP',serif;font-size:clamp(18px,2.5vw,24px);font-weight:700;line-height:1.4;color:var(--black);margin-bottom:18px;letter-spacing:-.01em}
+h3{font-size:14.5px;font-weight:700;color:var(--gray-800);margin:28px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--gray-100)}
+h4{font-size:13px;font-weight:600;color:var(--gray-700);margin:18px 0 6px}
+p{margin-bottom:12px;color:var(--gray-700);font-size:14px}
+strong{color:var(--gray-900);font-weight:600}
+.callout{border-radius:4px;padding:16px 20px;margin:16px 0;border:1px solid;font-size:13px;line-height:1.8}
+.callout h4{margin:0 0 4px;font-size:12.5px;font-weight:700;padding-bottom:0;border-bottom:none}
+.callout p{font-size:13px;margin-bottom:0}
+.callout-danger{background:var(--red-bg);border-color:#e6c5bd}.callout-danger h4{color:var(--red)}
+.callout-warn{background:var(--amber-bg);border-color:#e2d5a8}.callout-warn h4{color:var(--amber)}
+.callout-ok{background:var(--green-bg);border-color:#b8dcc8}.callout-ok h4{color:var(--green)}
+.callout-info{background:var(--blue-bg);border-color:#b5cde3}.callout-info h4{color:var(--blue)}
+.table-wrap{overflow-x:auto;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:12px;background:var(--white);border:1px solid var(--gray-200)}
+th{background:var(--gray-50);padding:9px 12px;text-align:left;font-weight:600;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--gray-500);border-bottom:2px solid var(--gray-200)}
+td{padding:9px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;line-height:1.7}
+tr:last-child td{border-bottom:none}
+.tag{display:inline-block;padding:2px 10px;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:.3px}
+.tag-high{background:var(--red-bg);color:var(--red);border:1px solid #e6c5bd}
+.tag-mid{background:var(--amber-bg);color:var(--amber);border:1px solid #e2d5a8}
+.tag-low{background:var(--green-bg);color:var(--green);border:1px solid #b8dcc8}
+.tag-info{background:var(--blue-bg);color:var(--blue);border:1px solid #b5cde3}
+.tag-purple{background:var(--purple-bg);color:var(--purple);border:1px solid #c4b5fd}
+.phase{margin:20px 0;padding:20px 24px;background:var(--gray-50);border-left:3px solid var(--gray-300);border-radius:0 4px 4px 0}
+.phase-header{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.phase-num{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--white);background:var(--gray-800);padding:2px 8px;border-radius:3px;letter-spacing:1px}
+.phase-title{font-size:14px;font-weight:700;color:var(--gray-800)}
+.phase p{font-size:13px;margin-bottom:6px}
+.phase-active{border-left-color:var(--black)}.phase-active .phase-num{background:var(--black)}
+.analogy{margin:14px 0;padding:14px 20px;background:var(--gray-50);border-left:3px solid var(--gray-300);border-radius:0 4px 4px 0;font-size:13px;line-height:1.8;color:var(--gray-600)}
+.analogy strong{color:var(--gray-800)}
+.flow-diagram{margin:16px 0;padding:20px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:4px;text-align:center;font-size:13px;line-height:2.2}
+.flow-arrow{color:var(--gray-400);font-size:16px;display:block}
+.code-block{margin:12px 0;padding:14px 18px;background:var(--gray-900);color:#e0e0e0;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.7;overflow-x:auto;white-space:pre}
+.code-block .comment{color:var(--gray-500)}
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:16px 0}
+.arch-card{padding:16px 20px;border-radius:4px;border:1px solid var(--gray-200);background:var(--off-white)}
+.arch-card h4{margin:0 0 6px;font-size:12.5px;font-weight:700;color:var(--gray-800);padding-bottom:0;border-bottom:none}
+.arch-card p{font-size:12.5px;margin-bottom:0;line-height:1.7}
+.feature-card{margin:12px 0;padding:16px 20px;border:1px solid var(--gray-200);border-radius:4px;background:var(--white)}
+.feature-card h4{margin:0 0 6px;font-size:13px;font-weight:700;padding-bottom:0;border-bottom:none}
+.feature-card p{font-size:13px;margin-bottom:6px}
+.feature-card ul{margin:4px 0 0 18px;font-size:12.5px;color:var(--gray-700);line-height:1.8}
+ul.checklist{list-style:none;margin:8px 0}
+ul.checklist li{padding:3px 0 3px 20px;position:relative;font-size:13px;color:var(--gray-700)}
+ul.checklist li::before{content:'';position:absolute;left:0;top:10px;width:8px;height:8px;border:2px solid var(--gray-300);border-radius:2px}
+.glossary-term{display:grid;grid-template-columns:120px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px}
+.glossary-term dt{font-weight:700;color:var(--gray-800)}
+.glossary-term dd{color:var(--gray-600);line-height:1.7}
+.scenario{margin:12px 0;padding:16px 20px;border-radius:4px;background:var(--blue-bg);border:1px solid #b5cde3}
+.scenario h4{margin:0 0 4px;font-size:12.5px;font-weight:700;color:var(--blue);padding-bottom:0;border-bottom:none}
+.scenario p{font-size:13px;color:var(--gray-700);margin-bottom:4px}
+.vs-block{display:grid;grid-template-columns:1fr 40px 1fr;gap:0;align-items:start;margin:16px 0}
+.vs-block>div:first-child,.vs-block>div:last-child{padding:16px 20px;border-radius:4px;font-size:13px;line-height:1.8}
+.vs-before{background:var(--red-bg);border:1px solid #e6c5bd}
+.vs-after{background:var(--green-bg);border:1px solid #b8dcc8}
+.vs-center{display:flex;align-items:center;justify-content:center;font-family:'Noto Serif JP',serif;font-weight:700;color:var(--gray-400);font-size:16px}
+footer{padding:40px 0;text-align:center;font-size:11px;color:var(--gray-400);line-height:2;border-top:3px solid var(--black)}
+.text-sm{font-size:12.5px}.text-muted{color:var(--gray-500)}.mono{font-family:'IBM Plex Mono',monospace}
+@media(max-width:640px){.cover{padding:40px 0 32px}section{padding:28px 0}.toc-columns{grid-template-columns:1fr}.arch-grid{grid-template-columns:1fr}.vs-block{grid-template-columns:1fr;gap:8px}.vs-center{padding:4px 0}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ============================================================ -->
+<!-- COVER -->
+<!-- ============================================================ -->
+<header class="cover">
+  <span class="cover-label">Application Architecture Report / Internal Use</span>
+  <h1>動画CM分析ツール<br>アプリケーション設計書</h1>
+  <p class="cover-sub">
+    本レポートは、動画CM分析ツールの仕組みをエンジニアでない方にも理解していただけるよう、身近な例え話を交えながら詳細に解説する。どのような技術が使われ、なぜその技術を選んだのか、そして別のアプリを作るときにどう応用できるかまでを網羅する。
+  </p>
+  <div class="meta-grid">
+    <dl class="meta-item"><dt>対象企業</dt><dd>K.K.kurokawa&co.</dd></dl>
+    <dl class="meta-item"><dt>作成日</dt><dd>2026年4月3日</dd></dl>
+    <dl class="meta-item"><dt>対象サービス</dt><dd>動画CM分析ツール</dd></dl>
+    <dl class="meta-item"><dt>公開URL</dt><dd>movie-analysis-d05fb.web.app</dd></dl>
+    <dl class="meta-item"><dt>月額運用コスト</dt><dd>実質0円（無料枠内）</dd></dl>
+    <dl class="meta-item"><dt>技術基盤</dt><dd>React + Supabase + Gemini AI</dd></dl>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<!-- EXECUTIVE SUMMARY -->
+<!-- ============================================================ -->
+<div style="padding:36px 0;border-bottom:3px solid var(--black);">
+  <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gray-400);font-weight:600;margin-bottom:16px;">Executive Summary</div>
+  <h2 style="font-family:'Noto Serif JP',serif;font-size:clamp(16px,2.2vw,20px);font-weight:700;color:var(--black);margin-bottom:16px;letter-spacing:-.01em;">30秒で分かる：このアプリは何をするものか</h2>
+
+  <p style="font-size:14.5px;line-height:2;color:var(--gray-700);margin-bottom:16px;"><strong style="color:var(--gray-900);">一言で言うと、「動画CMをアップロードするだけで、AIが自動で書き起こし・分析・改善提案まで全部やってくれるツール」</strong>である。</p>
+
+  <p style="font-size:14.5px;line-height:2;color:var(--gray-700);margin-bottom:16px;">例えるなら、このアプリは<strong style="color:var(--gray-900);">「CM動画の専属アナリスト」</strong>のようなもの。動画を見せるだけで、「この動画は何を言っているか（書き起こし）」「どの言葉が効いているか（分析）」「次はこういうCMを作るべき（提案）」まで全自動で行う。人間がやることは、最終的な意思決定だけである。</p>
+
+  <p style="font-size:14.5px;line-height:2;color:var(--gray-700);margin-bottom:20px;">さらに、広告実績データ（いくら使って、何件の契約が取れたか）ともつなげられるので、<strong style="color:var(--gray-900);">「どの動画のどのメッセージが、実際のお金になったか」</strong>がデータで分かる。</p>
+
+  <div class="vs-block">
+    <div class="vs-before">
+      <strong style="color:var(--red);">Before（このアプリがない場合）</strong><br>
+      ・担当者が動画を見てメモ → 2時間<br>
+      ・Excelで効果を比較 → 1時間<br>
+      ・企画書をPowerPointで作成 → 3時間<br>
+      ・属人化で担当者不在なら進まない<br>
+      <strong style="color:var(--red);">合計：6時間以上 / 1本あたり</strong>
+    </div>
+    <div class="vs-center">→</div>
+    <div class="vs-after">
+      <strong style="color:var(--green);">After（このアプリがある場合）</strong><br>
+      ・動画をアップロード → 30秒<br>
+      ・AIが自動で書き起こし → 2分<br>
+      ・「分析を実行」ボタン → 1分<br>
+      ・レポート自動生成 → 30秒<br>
+      <strong style="color:var(--green);">合計：5分以下 / 何本でも</strong>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:20px 0;">
+    <div style="padding:16px 20px;background:var(--blue-bg);border:1px solid #b5cde3;border-radius:4px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--blue);font-weight:600;margin-bottom:4px;">このアプリに入れるもの（入力）</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--gray-700);margin:0;"><strong>動画ファイル</strong>（MP4やMOV）<br><strong>広告実績データ</strong>（Excelファイル）<br><strong>AIの利用キー</strong>（Google Gemini APIキー）</p>
+    </div>
+    <div style="padding:16px 20px;background:var(--purple-bg);border:1px solid #c4b5fd;border-radius:4px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--purple);font-weight:600;margin-bottom:4px;">AIがやってくれること（処理）</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--gray-700);margin:0;">音声をテキストに変換<br>重要キーワードを抽出<br>成功/失敗パターンを発見<br>次のCMの戦略を提案</p>
+    </div>
+    <div style="padding:16px 20px;background:var(--green-bg);border:1px solid #b8dcc8;border-radius:4px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--green);font-weight:600;margin-bottom:4px;">手に入るもの（出力）</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--gray-700);margin:0;">書き起こしテキスト（字幕のようなもの）<br>分析グラフ付きダッシュボード<br>PowerPointレポート<br>次のCMの台本案</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:16px 20px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:4px;">
+    <div>
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);font-weight:600;">画面の技術</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--gray-800);margin-top:2px;">React 19 + Vite</div>
+      <div style="font-size:11px;color:var(--gray-500);">ブラウザで動く画面を作る技術</div>
+    </div>
+    <div>
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);font-weight:600;">データ保管庫</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--gray-800);margin-top:2px;">Supabase</div>
+      <div style="font-size:11px;color:var(--gray-500);">データと動画ファイルを保管するクラウド倉庫</div>
+    </div>
+    <div>
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);font-weight:600;">AI頭脳</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--gray-800);margin-top:2px;">Google Gemini</div>
+      <div style="font-size:11px;color:var(--gray-500);">書き起こし・分析・レポート生成を行うAI</div>
+    </div>
+    <div>
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);font-weight:600;">配信基盤</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--gray-800);margin-top:2px;">Firebase Hosting</div>
+      <div style="font-size:11px;color:var(--gray-500);">アプリをインターネットに公開する仕組み</div>
+    </div>
+  </div>
+
+  <div style="padding:14px 20px;background:var(--gray-50);border-left:3px solid var(--gray-300);border-radius:0 4px 4px 0;font-size:13px;line-height:1.8;color:var(--gray-600);margin-top:16px;">
+    <strong style="color:var(--gray-800);">こ��文書の読み方��</strong>「全体像だけ知りたい」場合は第1章と第2章を読めば十分。「画面ごとの詳細が知りたい」場合は第二部（第4〜9章）を参照。「技術に興味がある」場合は第三部・第四部を読むと、別のアプリ開発にそのまま応用できる知見が得られる。
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TOC -->
+<!-- ============================================================ -->
+<nav class="toc">
+  <div class="toc-title">目次</div>
+  <div class="toc-columns">
+    <div>
+      <div class="toc-group-label">全体設計</div>
+      <ol>
+        <li><a href="#s01">このアプリが解決する課題</a></li>
+        <li><a href="#s02">アプリの全体構成を「建物」で理解する</a></li>
+        <li><a href="#s03">用語集 — 技術用語をやさしく翻訳</a></li>
+      </ol>
+      <div class="toc-group-label">画面と機能（何ができるか）</div>
+      <ol start="4">
+        <li><a href="#s04">動画管理 — アップロードから整理まで</a></li>
+        <li><a href="#s05">AI書き起こし — 音声を文字にする仕組み</a></li>
+        <li><a href="#s06">マーケティング分析 — AIが読み解く成功の法則</a></li>
+        <li><a href="#s07">ダッシュボード — 数字を「見える化」する</a></li>
+        <li><a href="#s08">広告実績データ連携 — 動画と売上をつなげる</a></li>
+        <li><a href="#s09">レポート・エクスポート — 成果物を取り出す</a></li>
+        <li><a href="#s10">設定・セキュリティ</a></li>
+      </ol>
+    </div>
+    <div>
+      <div class="toc-group-label">データの流れ（どう動いているか）</div>
+      <ol start="11">
+        <li><a href="#s11">データの旅 — 入力から出力まで</a></li>
+        <li><a href="#s12">データベース — 情報の保管庫の設計</a></li>
+      </ol>
+      <div class="toc-group-label">技術選定（なぜこの技術か）</div>
+      <ol start="13">
+        <li><a href="#s13">使われている全技術と選定理由</a></li>
+        <li><a href="#s14">別アプリへの応用パターン集</a></li>
+        <li><a href="#s15">コスト構造 — なぜ月額0円で運用できるのか</a></li>
+        <li><a href="#s16">開発環境のセットアップ手順</a></li>
+      </ol>
+      <div class="toc-group-label">STT技術の深掘り</div>
+      <ol start="17">
+        <li><a href="#s17">書き起こしAPIの技術詳細</a></li>
+        <li><a href="#s18">Gemini以外の最新STTツール比較</a></li>
+        <li><a href="#s19">テキスト分析ツール連携ガイド</a></li>
+      </ol>
+      <div class="toc-group-label">社内MTGナレッジ化</div>
+      <ol start="20">
+        <li><a href="#s20">MTG議事録→ナレッジ化の全体設計</a></li>
+        <li><a href="#s21">Notionでできること vs 自作アプリが必要なこと</a></li>
+      </ol>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第一部 ― 全体設計</span></div>
+<!-- ============================================================ -->
+
+<section id="s01">
+  <span class="section-number">01</span>
+  <h2>このアプリが解決する課題</h2>
+
+  <h3>CM動画分析の「今まで」と「これから」</h3>
+  <p>動画CMの分析は、これまで多くの手作業と経験に頼っていた。このアプリは、その一つひとつの工程をAIで自動化する。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>工程</th><th>今までの方法</th><th>このアプリの方法</th><th>時間短縮</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>動画の中身を確認する</strong></td>
+        <td>担当者が動画を最初から最後まで見て、メモをとる。30秒のCMでも、聞き直しや書き起こしで15〜30分かかることも</td>
+        <td>AIが動画の音声を聞き、全文テキスト化。さらに「0:00〜0:05は○○と言っている」のようにタイムスタンプ付きで出力</td>
+        <td>30分 → 2分</td>
+      </tr>
+      <tr>
+        <td><strong>どの表現が効果的か調べる</strong></td>
+        <td>「なんとなく、この表現がウケた気がする」という経験と勘。根拠を示せない</td>
+        <td>AIが全動画を横断的に分析し、「"安心"というキーワードを含む動画は、含まない動画よりコンバージョン率が23%高い」のように定量的に提示</td>
+        <td>主観 → データ</td>
+      </tr>
+      <tr>
+        <td><strong>広告費と成果を突き合わせる</strong></td>
+        <td>Excelを開き、動画ファイル名と広告デー��を手作業で照合。コピペミスの温床</td>
+        <td>動画に「コード」を設定するだけで、広告データと自動連携。ROI（投資対効果）が自動算出</td>
+        <td>1時間 → 自動</td>
+      </tr>
+      <tr>
+        <td><strong>次のCMを企画する</strong></td>
+        <td>過去の経験に基づいて企画会議。新人には難しく、ベテランに依存</td>
+        <td>AIが過去の成功パターンを学習し、「次はこういう構成・このキーメッセージで作るべき」と台本案まで提案</td>
+        <td>属人化 → 標準化</td>
+      </tr>
+      <tr>
+        <td><strong>報告用レポートを作る</strong></td>
+        <td>PowerPointを一から手作業で作成。毎回3時間以上</td>
+        <td>「レポート生成」ボタン1つで、分析結果入りのPowerPointが自動生成されダウンロード</td>
+        <td>3時間 → 30秒</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <div class="scenario">
+    <h4>具体的な利用シーン</h4>
+    <p><strong>月曜の朝、あなたはこう使う：</strong></p>
+    <p>① 先週撮影した新CMの動画ファイルを3本まとめてアップロード（30秒）</p>
+    <p>② 「一括書き起こし」ボタンを押して放置（AIが自動で3本を処理）</p>
+    <p>③ ダッシュボードの「分析を実行」をクリック（1分待つ）</p>
+    <p>④ 結果を確認：「動画Bが最もコンバージョン率が高い。理由：冒頭5秒の"お悩みありませんか？"が効いている」</p>
+    <p>⑤ レポートタブで「PowerPointエクスポート」→ そのまま午後の会議に提出</p>
+    <p><strong>所要時間：5分。従来なら丸一日かかっていた作業が、コーヒーを入れている間に完了する。</strong></p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s02">
+  <span class="section-number">02</span>
+  <h2>アプリの全体構成を「建物」で理解する</h2>
+
+  <p>このアプリの仕組みを、<strong>3階建��のオフィスビル</strong>に例えて説明する。</p>
+
+  <div class="arch-grid">
+    <div class="arch-card" style="border-left:3px solid var(--blue);">
+      <h4 style="color:var(--blue);">1階：受付フロア（フロントエンド）</h4>
+      <p><strong>お客様が直接触れる場所。</strong>来客（ユーザー）がブラウザでアクセスし、ボタンを押し、結果を見る。見た目のデザイン、ボタンの動き、グラフの表示はすべてここが担当。<br><br>
+      <strong>身近な例え：</strong>銀行のATM画面のようなもの。お客様が操作するイ���ターフェース。<br>
+      <strong>使っている技術：</strong>React（画面の骨組み）、Tailwind CSS（見た目の装飾）、Recharts（グラフ描画）</p>
+    </div>
+    <div class="arch-card" style="border-left:3px solid var(--green);">
+      <h4 style="color:var(--green);">2階：書庫・倉庫（データベース）</h4>
+      <p><strong>すべての情報を保管する場所。</strong>動画ファイル、書き起こしたテキスト、分析結果、設定情報などを安全に保管する。1階が「表の顔」なら、2階は「裏方の倉庫」。<br><br>
+      <strong>身近な例え：</strong>会社の書庫棚。書類（データ）が整理されて並んでおり、必要な時に取り出せる。<br>
+      <strong>使っている技術：</strong>Supabase（データの保管）、PostgreSQL（データの整理方法）</p>
+    </div>
+    <div class="arch-card" style="border-left:3px solid var(--purple);">
+      <h4 style="color:var(--purple);">3階：頭脳フロア（AI）</h4>
+      <p><strong>考える仕事を担当する場所。</strong>動画の音声を聞き取ってテキストにする、テキストを読んで分析する、改善案を考える――すべてGoogleのAI（Gemini）が担当する。<br><br>
+      <strong>身近な例え：</strong>外部のコンサルタント会社。分析依頼を出すと、レポートが返ってくる。<br>
+      <strong>使っている技術：</strong>Google Gemini API（AIの頭脳そのもの）</p>
+    </div>
+  </div>
+
+  <h3>3つの階がどう連携するか</h3>
+  <p>ユーザーが「書き起こし」ボタンを��したとき、裏側で起きることを時系列で見てみよう。</p>
+
+  <div class="flow-diagram" style="text-align:left;padding:24px;">
+    <strong>【ユーザーの操作】</strong>「書き起こし」ボタンをクリック<br><br>
+
+    <span style="color:var(--blue);font-weight:600;">1階（フロントエンド）が動く：</span><br>
+    &nbsp;&nbsp;→ 2階の倉庫から動画ファイルを取り出す<br>
+    &nbsp;&nbsp;→ 動画をAIが読める形式に変換する<br><br>
+
+    <span style="color:var(--purple);font-weight:600;">3階（AI）に依頼する：</span><br>
+    &nbsp;&nbsp;→ 「この動画を日本語で書き起こしてください」とGemini AIに送信<br>
+    &nbsp;&nbsp;→ AIが音声を解析し、テキスト＋タイムスタンプを返す<br><br>
+
+    <span style="color:var(--green);font-weight:600;">2階（倉庫）に保存する：</span><br>
+    &nbsp;&nbsp;→ 受け取ったテキストをデータベースに保存<br>
+    &nbsp;&nbsp;→ 動画のステータスを「書き起こし完了」に更新<br><br>
+
+    <span style="color:var(--blue);font-weight:600;">1階（フロントエンド）が表示する：</span><br>
+    &nbsp;&nbsp;→ 画面に書き起こし結果を表示<br>
+    &nbsp;&nbsp;→ 「完了しまし��」とユーザーに通知
+  </div>
+
+  <div class="callout callout-info">
+    <h4>最大の特徴：「自社サーバーが不要」</h4>
+    <p>一般的なWebアプリは「自社のコンピュータ（サーバー）」を用意し、そこでプログラムを動かす必要がある。サーバーの維持にはお金（月額数千〜数万円）と管理の手間がかかる。<br><br>
+    このアプリは、<strong>自社サーバーを一切使わない設計</strong>になっている。データの保管はSupabase（クラウドサービス）に、AI処理はGoogle Geminiに、Webサイトの配信はFirebaseに任せている。これを<strong>「サーバーレス」</strong>と呼ぶ。サーバー代がゼロで、管理の手間もゼロ。これは少人数チームにとって非常に大きなメリット。</p>
+  </div>
+
+  <h3>ファイル構成（建物の部屋割り）</h3>
+  <p>アプリの中身は「フォルダ」と「ファイル」で整理されている。それぞれの役割を部屋に例えて解説する。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>フォルダ</th><th>部屋の例え</th><th>中身の説明</th></tr></thead>
+    <tbody>
+      <tr><td><strong>frontend/src/pages/</strong></td><td>各窓口カウンター</td><td>「動画一覧」「動画詳細」「ダッシュボード」「設定」など、画面ごとに1つのファイルがある。お客様が見る画面そのもの</td></tr>
+      <tr><td><strong>frontend/src/components/</strong></td><td>共有の備品庫</td><td>ボタン、グラフ、通知バー��モーダル（ポップアップ）など、複数の画面で共通して使うUI部品が入っている</td></tr>
+      <tr><td><strong>frontend/src/api/</strong></td><td>電話交換台</td><td>フロントエンド（1階）がデータベース（2階）と通信するための処理。「動画の一覧をください」「この分析結果を保存してください」といったやりとりを行う</td></tr>
+      <tr><td><strong>frontend/src/services/</strong></td><td>専門業者の窓口</td><td>Gemini AI との通信、パスワードの暗号化、APIキーの管理など、専門的な処理を担当</td></tr>
+      <tr><td><strong>frontend/src/utils/</strong></td><td>文具棚</td><td>「日付を"2026年4月3日"形式に変換」「再生時間を"1:30"形式に変換」など、ちょっとした便利機能の詰め合わせ</td></tr>
+      <tr><td><strong>frontend/src/types/</strong></td><td>書式テンプレート集</td><td>「動画データにはこの項目がある」「分析結果はこの形式」など、データの形を定義した設計書（TypeScript型定義）</td></tr>
+      <tr><td><strong>backend/</strong></td><td>別館（オプション）</td><td>ローカルPCでAI書き起こしを行うためのPythonサーバー。メインの運用では使わない</td></tr>
+      <tr><td><strong>supabase-schema.sql</strong></td><td>書庫の棚割図面</td><td>データベースの設計図。「どんなデータをどのテーブルに保存するか」が書かれている</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s03">
+  <span class="section-number">03</span>
+  <h2>用語集 — 技術用語をやさしく翻訳</h2>
+
+  <p>本レポートで登場する技術用語を、身近な言葉に翻訳する。分からない言葉が出てきたら、ここに戻って確認してほしい。</p>
+
+  <h3>アプリの基本用語</h3>
+  <dl>
+    <div class="glossary-term"><dt>フロントエンド</dt><dd>ユーザーが見る画面そのもの。ブラウザ上で��く。銀行のATM画面にあたる部分</dd></div>
+    <div class="glossary-term"><dt>バックエンド</dt><dd>ユーザーからは見えない裏側の処理。ATMの裏で動いている銀行システムにあたる部分。このアプリでは「オプション」で、メイン機能では使わない</dd></div>
+    <div class="glossary-term"><dt>データベース（DB）</dt><dd>データを整理して保管する仕組み。Excelの超高機能版と考えるとよい。行と列でデータが整理されている</dd></div>
+    <div class="glossary-term"><dt>API（エーピーアイ）</dt><dd>「あるサービス��仕事を依頼するための窓口」。例えば、Gemini APIは「GoogleのAIに仕事を頼むための窓口」。レストランでいう注文カウンターのようなもの</dd></div>
+    <div class="glossary-term"><dt>APIキー</dt><dd>APIを利用するための「入場パス」。APIキーがないとAIを使えない。遊園地の入場チケットのようなもの</dd></div>
+  </dl>
+
+  <h3>このアプリ固有の用語</h3>
+  <dl>
+    <div class="glossary-term"><dt>書き起こし</dt><dd>動画の音声をテキスト（文字）に変換すること。テレビ番組の字幕を作る作業と同じ</dd></div>
+    <div class="glossary-term"><dt>セグメント</dt><dd>書き起こしの区切り単位。「0:00〜0:05 → こんにちは」「0:05〜0:12 → お悩みありませんか」のように、時間ごとに区切ったテキスト</dd></div>
+    <div class="glossary-term"><dt>コンバージョン</dt><dd>「成果」を意味するマーケティング用語。具体的には「商品の購入」「資料請求」「LINE友だち追加」など、目標とする行動をユーザーが取ること</dd></div>
+    <div class="glossary-term"><dt>ROI（アールオーアイ）</dt><dd>Return On Investment＝投資対効果。「100万円の広告費で300万円の売上 → ROI 200%」のように使う。高いほど効率がよい</dd></div>
+    <div class="glossary-term"><dt>タグ</dt><dd>動画につける「ラベル」。例：「YouTube用」「30秒」「春キャンペーン」など。タグをつけると、後でフィルタリング（絞り込み）できる</dd></div>
+    <div class="glossary-term"><dt>コード</dt><dd>動画と広告実績データを紐付けるための識別番号。例：「CM-2026-A01」。同じコードを持つ動画と広告データが自動的に連携される</dd></div>
+    <div class="glossary-term"><dt>バッチ処理</dt><dd>「まとめて一括処理」のこと。1本ずつ書き起こすのではなく、10本をまとめて処理する機能</dd></div>
+  </dl>
+
+  <h3>技術基盤の用語</h3>
+  <dl>
+    <div class="glossary-term"><dt>React（リアクト）</dt><dd>Meta社（旧Facebook）が作った、Webアプリの画面を作るための道具��世界で最も使われている。レゴブロックのように「部品」を組み合わせて画面を作る</dd></div>
+    <div class="glossary-term"><dt>TypeScript</dt><dd>JavaScriptに「型」をつけたもの。例えば「このデータは必ず数字」と宣言しておくと、間違えて文字を入れようとした時にエラーが出る。ミスを事前に防ぐ安全装置</dd></div>
+    <div class="glossary-term"><dt>Supabase（スーパーベース）</dt><dd>データベース＋ファイル保管庫＋ユーザー認証をセットで提供するクラウドサービス。「Webアプリの裏方を全部まるごと任せられるサービス」</dd></div>
+    <div class="glossary-term"><dt>Firebase Hosting</dt><dd>Googleが提供するWebサイト配信サービス。アプリを世界中のサーバーに配置して、高速にアクセスできるようにする。家でいう「表札を出して住所を世界に公開する」サービス</dd></div>
+    <div class="glossary-term"><dt>Google Gemini（ジェミニ）</dt><dd>Googleが開発した大規模AI。テキスト生成だけでなく、動画・画像・音声��理解できる「マルチモーダルAI」。このアプリではCMの音声を聞いてテキスト化し、内容を分析するのに使っている</dd></div>
+    <div class="glossary-term"><dt>サーバーレス</dt><dd>自社のコンピュータ（サーバー）を持たず、クラウドサービスに処理を任せる設計方式。サーバー管理の手間とコストがゼロになる</dd></div>
+    <div class="glossary-term"><dt>SPA（シングルページアプリケーション）</dt><dd>1つのHTMLページの中で画面を切り替えるWebアプリの作り方。ページ遷移のたびに画面全体を読み込み直す必要がなく、サクサク動く</dd></div>
+    <div class="glossary-term"><dt>JSONB</dt><dd>データベー��に「構造が自由なデータ」を保存する仕組み。Excelだとセルに1つの値しか入れられないが、JSONBは1つのセルに「入れ子構造のデータ」を丸ごと入れられる</dd></div>
+    <div class="glossary-term"><dt>SHA-256</dt><dd>パスワードなどを「元に戻せない暗号」に変換する技術。「password123」→「ef92b778...」のように変換し、万が一データが漏洩してもパスワード原文は分からない</dd></div>
+  </dl>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第二部 ― 画面と機能（何ができるか）</span></div>
+<!-- ============================================================ -->
+
+<section id="s04">
+  <span class="section-number">04</span>
+  <h2>動画管理 — アップロードから整理まで</h2>
+
+  <p>このアプリを使う第一歩は、分析したい動画CMのファイルをアップロードすること。ここでは、動画に関わるすべての操作を説明する。</p>
+
+  <h3>画面の構成</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>画面名</th><th>何ができるか</th><th>いつ使うか</th></tr></thead>
+    <tbody>
+      <tr><td><strong>動画一覧画面</strong></td><td>アップロードした全動画を一覧で見る。タグ付け、ランキング設定、バッチ書き起こしもここから</td><td>最初に開く画面。日常的に使う</td></tr>
+      <tr><td><strong>動画詳細画面</strong></td><td>1本の動画を掘り下げて見る。書き起こし結果の確認・編集、コンバージョンデータの入力、エクスポート</td><td>特定の動画を詳しく分析したいとき</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>動画のアップロード（操作の詳細）</h3>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">手順 1</span><span class="phase-title">ファイルを選択する</span></div>
+    <p>動画一覧画面の「アップロード」ボタンをクリックするか、ファイルを画面上にドラッグ＆ドロップする。<strong>複数ファイルを一度にアップロードできる。</strong></p>
+  </div>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">手順 2</span><span class="phase-title">自動チェック���行われる</span></div>
+    <p>アプリが自動で以下をチェックする。問題があればエラーメッセージが出る。</p>
+    <p>• <strong>ファイ��形式のチェック：</strong>対応している形式か？（MP4, MOV, WebM, AVI, MKV, MP3, WAV, M4A）<br>
+    • <strong>ファイルサイズのチェック：</strong>50MB以下か？（超えている場合はアップロードできない）<br>
+    • <strong>再生時間の自動取得：</strong>ブラウザが動画を読み込み、「30秒」「1分15秒」などの再生時間を自動で記録する</p>
+  </div>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">手順 3</span><span class="phase-title">クラウド倉庫に保存される</span></div>
+    <p>動画ファイルがSupabase Storage（クラウド上のファイル倉庫）にアップロードされ、動画の情報（ファイル名、サイズ、再生時間）がデータベースに記録される。ステータスは「アップロード済」になる。</p>
+  </div>
+
+  <div class="callout callout-warn">
+    <h4>ストレージ容量について</h4>
+    <p>Supabase Storageの無料枠は<strong>1GB</strong>。30秒のCM動画（約5MB）であれば約200本保存できる。容量が足りなくなった場合は、不要な動画を削除するか、Supabaseの有料プラン（月額$25で100GB）にアップグレードする。現在の使用量は「設定」画面で確認できる。</p>
+  </div>
+
+  <h3>動画の管理操作一覧</h3>
+  <p>アップロ��ド後、以下の操作で動画を整理・管理できる。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>操作</th><th>何をするか</th><th>具体例</th><th>身近な例え</th></tr></thead>
+    <tbody>
+      <tr><td><strong>タグ付け</strong></td><td>動画にラベルを貼る。複数可</td><td>「YouTube用」「30秒」「春キャンペーン」</td><td>書類にふせんを貼るのと同じ。後で「YouTube用だけ」と絞り込める</td></tr>
+      <tr><td><strong>ランキング</strong></td><td>1〜10点で手動評価をつける</td><td>最も効果が高かったCMに「10」、いまいちだったものに「3」</td><td>テストの点数をつけるイメージ。AIがランキング上位の特徴を自動分析する</td></tr>
+      <tr><td><strong>コード割当</strong></td><td>広告データとの連携用コードを設定</td><td>「CM-2026-A01」</td><td>商品にバーコードを貼るようなもの。同じコードの広告データと自動で紐付く</td></tr>
+      <tr><td><strong>リネーム</strong></td><td>ファイル名を変更</td><td>「MOV_0312.mp4」→「春CM_30秒版.mp4」</td><td>書類のファイル名を分かりやすく変えるのと同じ</td></tr>
+      <tr><td><strong>アーカイブ</strong></td><td>一覧から非表示にしつつサムネイル保管</td><td>古いCMを一覧から消すが、サムネイル一覧では確認できる</td><td>書庫に移すが、表紙の写真だけ手元に残すイメージ</td></tr>
+      <tr><td><strong>削除</strong></td><td>動画と全関連データを完全削除</td><td>不要なテスト動画を消す</td><td>シュレッダーにかけるイメージ。関連する書き起こし・分析結果もすべて消える</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-ok">
+    <h4>削除時の安全設計（カスケード削除）</h4>
+    <p>動画を削除すると��その動画に紐づくデータ（書き起こし・コンバージョン・分析結果）もデータベース側で<strong>自動的に</strong>削除される。「動画を消したのに、書き起こしデータだけ残ってしまった」というゴミデータは発生しない。これはデータベースの「カスケード削除」という仕組みで実現している。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s05">
+  <span class="section-number">05</span>
+  <h2>AI書き起こし — 音声を文字にする仕組み</h2>
+
+  <h3>書き起こしとは何か</h3>
+  <p>動画の中で人が話している言葉を、AIが聞き取り、テキスト（文字データ）に変換する機能。テレビ番組の字幕を自動生成するのと同じ原理。</p>
+
+  <div class="analogy"><strong>身近な例え：</strong>会議の議事録作成を思い浮かべてほしい。今まで人が聞いてメモしていた作業を、AIがリアルタイムで自動的にやってくれる。しかも「0分10秒〜0分25秒：○○さんの発言」のように、時間と紐づけて記録してくれる。</div>
+
+  <h3>1本の動画が書き起こされるまでの流れ</h3>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 1</span><span class="phase-title">動画ファイルの準備</span></div>
+    <p>Supabase Storage（クラウド倉庫）から動画ファイルをダウンロードし、<strong>Base64</strong>（ベースロクヨン）と��う形式に変換する。</p>
+    <p style="font-size:12px;color:var(--gray-500);">※ Base64とは：ファイルを「文字の羅列」に変換する方式。メールに画像を添付するときに使われるのと同じ技術。AIにファイルを送るための「梱包」のようなもの。</p>
+  </div>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 2</span><span class="phase-title">AIに書き起こしを依頼</span></div>
+    <p>Google Gemini APIに、梱包した動画データと一緒に「この動画を日本語で書き起こしてください。タイムスタンプ付きで、セグメントごとに区切ってください��という指示（プロンプト）を送信する。</p>
+    <p style="font-size:12px;color:var(--gray-500);">※ プロンプトとは：AIへの指示文のこと。「○○してください」という依頼書のようなもの。</p>
+  </div>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 3</span><span class="phase-title">AIが音声を解析</span></div>
+    <p>Geminiが動画の音声を解析し、以下の形式で結果を返す。</p>
+    <p><strong>全文テキスト：</strong>「こんにちは。○○でお悩みのあなたへ。当社の△△なら、たった3日で解決できます。今すぐお電話ください。」</p>
+    <p><strong>セグメント（時間区切り）：</strong></p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>開始</th><th>終了</th><th>テキスト</th></tr></thead>
+      <tbody>
+        <tr><td>0:00</td><td>0:03</td><td>こんにちは。</td></tr>
+        <tr><td>0:03</td><td>0:08</td><td>○○でお悩みのあなたへ。</td></tr>
+        <tr><td>0:08</td><td>0:18</td><td>当社の△△なら、たった3日で解決できます。</td></tr>
+        <tr><td>0:18</td><td>0:22</td><td>今すぐお電話ください。</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 4</span><span class="phase-title">結果を保存・表示</span></div>
+    <p>受け取ったテキストとセグメントをデータベースに保存し、画面に表示する。動画のステータスが「アップロード済」→「書き起こし完了」に変わる。</p>
+  </div>
+
+  <div class="callout callout-info">
+    <h4>重要な設計判断：書き起こしは「ブラウザ上」で直接行われる</h4>
+    <p>通常、AIを使う処理は自社サーバー経由で行う。しかしこのアプリでは、<strong>ユーザーのブラウザから直接Gemini APIにアクセスする</strong>設計にしている。<br><br>
+    <strong>メリット：</strong>自社サーバーが不要。運用コストがゼロ。同時に何人がアクセスしても遅くならない。<br>
+    <strong>デメリット：</strong>AIの「利用パス」（APIキー）がブラウザに存在するため、暗号化して保管する仕組みを導入している。<br><br>
+    <strong>別アプリへの応用：</strong>この「ブラウザから直接APIを呼ぶ」パターンは、少人数のチームツールや社内ツールで非常に有効。ただし、不特定多数が使う一般公開アプリでは、APIキーの安全性のためサーバー経由にすべき。</p>
+  </div>
+
+  <h3>バッチ書き起こし（一括処理）の仕組み</h3>
+  <p>10本の動画を一度に書き起こしたい場合に使う機能。以下の3つの工夫で効率的に処理する。</p>
+
+  <div class="feature-card">
+    <h4>工夫①：APIキープール（翻訳者のチーム制）</h4>
+    <p>Gemini APIキーには「1分間に○回まで」��いう利用制限がある。1つのキーだけでは、10本の動画を連続処理するとすぐに制限にかかる。</p>
+    <p><strong>解決策：</strong>複数��APIキーを登録し、1つのキーが制限にかかったら自動的に次のキーに切り替える。</p>
+    <p style="font-size:12px;color:var(--gray-500);">身近な例え：3人の翻訳者がいるオフィスで、1人が手一杯になったら、空いている翻訳者に次の書類を渡す仕組み。</p>
+  </div>
+  <div class="feature-card">
+    <h4>工夫②：リアルタイム進捗表示</h4>
+    <p>「10本中3本完了（30%）」「キーワード分析を実行中... 15秒経過」のように、���理の進み具合がリアルタイムで画面���表示される。長時間の処理でも安心して待てる。</p>
+  </div>
+  <div class="feature-card">
+    <h4>工夫③：エラーからの自動回復</h4>
+    <p>10本中1本が失敗しても、残りの9本はそのまま処理が続行される。失敗した動画は後から個別にリトライ（再実行）できる。</p>
+    <p style="font-size:12px;color:var(--gray-500);">身近な例え：郵便配達で1件不在だった場合、残りの配達はそのまま続け、不在の家は後で再配達するのと同じ。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s06">
+  <span class="section-number">06</span>
+  <h2>マーケティング分析 — AIが読み解く成功の法則</h2>
+
+  <p>書き起こしが終わった動画に対して、AIが自動で「なぜこのCMは効果があったのか（またはなかったのか）」を分析する。<strong>分析はダッシュボードの「分析を実行」ボタン1つで、すべて自動的に実行される。</strong></p>
+
+  <h3>基本分析の4ステップ</h3>
+  <p>「分析を実行」を押すと、以下の4ステップが順番に自動実行される。各ステップの進捗はプログレスバー（進捗バー）でリアルタイム表示される。</p>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 1</span><span class="phase-title">キーワード分析（約10秒）</span></div>
+    <p><strong>やっていること：</strong>全動画の書き起こしテキストを読み込み、よく���われている言葉を頻度順にランキング化する。</p>
+    <p><strong>出力例：</strong></p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>順位</th><th>キーワード</th><th>出現回数</th><th>出現動画</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>安心</td><td>52回</td><td>動画A, 動画C, 動画F</td></tr>
+        <tr><td>2</td><td>実績</td><td>38回</td><td>動画B, 動画D</td></tr>
+        <tr><td>3</td><td>サポート</td><td>31回</td><td>動画A, 動画E</td></tr>
+      </tbody>
+    </table></div>
+    <p style="font-size:12px;color:var(--gray-500);">身近な例え：新聞記事をすべて読んで、「どの言葉が一番多く登場しているか」を数えるのと同じ。ただし人間がやると何時間もかかる作業を、AIは数秒で行う。</p>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 2</span><span class="phase-title">相関分析（約10秒）</span></div>
+    <p><strong>やっていること：</strong>キーワードと「成果（コンバージョン）」の関係を計算する。「この言葉を含む動画は、含まない動画より成果が何%高いか」を定量化する。</p>
+    <p><strong>出力例：</strong></p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>キーワード</th><th>含む動画の平均コンバージョン</th><th>含まない動画の平均</th><th>効果スコア</th></tr></thead>
+      <tbody>
+        <tr><td>安心</td><td>4.8件</td><td>2.1件</td><td><span class="tag tag-high">+128%</span></td></tr>
+        <tr><td>無料</td><td>3.9件</td><td>2.5件</td><td><span class="tag tag-mid">+56%</span></td></tr>
+        <tr><td>最新</td><td>2.3件</td><td>2.4件</td><td><span class="tag tag-low">-4%</span></td></tr>
+      </tbody>
+    </table></div>
+    <p style="font-size:12px;color:var(--gray-500);">身近な例え：「傘を持っている人と持っていない人で、濡れる割合に差があるか」を調べるようなもの。「安心」という言葉は「傘」のように、成果を守る効果がある、ということがデータで分かる。</p>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 3</span><span class="phase-title">AIレコメ��デーション（約30秒）</span></div>
+    <p><strong>やっていること：</strong>STEP 1・2の結果と書き起こし全文をGemini AIに渡し、「総合的に見て、何が効いていて、何を改善すべきか」を判断させる。</p>
+    <p><strong>AIが生成する内容：</strong></p>
+    <ul style="margin:4px 0 0 18px;font-size:13px;line-height:1.8;">
+      <li><strong>効果的なキーワード：</strong>「安心」→ 理由：視聴者の不安を解消し、信頼感を醸成している</li>
+      <li><strong>効果的なフレーズ：</strong>「たった3日で」→ 理由：具体的な数字が説得力を生んでいる</li>
+      <li><strong>改善提案：</strong>「動画Dは冒頭にフック（掴み）がない。最初の3秒で問題提起をすべき」</li>
+      <li><strong>成功パターン：</strong>「上位動画に共通��るのは"問題提起→解決策→実績→CTA"の4段構成」</li>
+    </ul>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 4</span><span class="phase-title">データ更新（約5秒）</span></div>
+    <p>全分析結果をデータベースに保存し、ダッシュボードのグラフやカードに反映する。次回アプリを開いたときも、最新の分析結果がそのまま表示される。</p>
+  </div>
+
+  <h3>高度な分析モジュール一覧（全7種類）</h3>
+  <p>基本の4ステップ以外にも、さらに深い分析機能がある。それぞれ「何を調べて、何が分かるか」を具体例付きで説明する。</p>
+
+  <div class="feature-card" style="border-left:3px solid var(--purple);">
+    <h4 style="color:var(--purple);">① マーケティングリアクション分析</h4>
+    <p><strong>何を調べるか：</strong>動画の内容を「お客様の購買プロセス」の3段階に分類する。</p>
+    <p><strong>3つの段階：</strong></p>
+    <ul>
+      <li><strong>認知段階（気づき）：</strong>「こんなお悩みありませんか？」→ まだ商品を知らない人に問題を意識させる</li>
+      <li><strong>検討段階（��較）：</strong>「当社の○○は△△だ���ら安心」→ 商品の良さを伝え、検討させる</li>
+      <li><strong>決定段階（行動）：</strong>「今すぐお電話ください」→ 実際の行動（購入・申込）を促す</li>
+    </ul>
+    <p><strong>出力例：</strong>「動画Aは認知段階の訴求が強い。LINE友だち追加には向いているが、直接契約には弱い」</p>
+    <p style="font-size:12px;color:var(--gray-500);">15以上のカテゴリ（悩み共感、便益訴求、実績訴求、CTA訴求など）で細かく評価される。</p>
+  </div>
+
+  <div class="feature-card" style="border-left:3px solid var(--blue);">
+    <h4 style="color:var(--blue);">② ランキング比較分析</h4>
+    <p><strong>何を調べるか：</strong>手動でランキングをつけた上位動画と下位動画を比較し、「なぜ上位は成功したのか」を3つの軸で分析する。</p>
+    <ul>
+      <li><strong>心理学的分析：</strong>使われている感情表現、認知バイアス（人間の思考の癖）、説得テクニック</li>
+      <li><strong>ストーリー構造分析：</strong>起承転結の構成、フック（掴み）の有無、キャラクターの使い方</li>
+      <li><strong>言語学的分析：</strong>記憶に残るフレーズ、修辞技法、リズムの良さ</li>
+    </ul>
+    <p><strong>出力例：</strong>「1位の動画は冒頭3秒で"損失回避バイアス"を利用している（『このまま放置すると○○になります』）。5位の動画はこれがない」</p>
+  </div>
+
+  <div class="feature-card" style="border-left:3px solid var(--green);">
+    <h4 style="color:var(--green);">③ 心理コンテンツ分析</h4>
+    <p><strong>何を調べるか：</strong>動画内の「感情の起伏」を数値化し、視聴者を引きつける力を測定する。</p>
+    <ul>
+      <li><strong>感情ボラティリティ（感情の山谷）：</strong>「穏やか→不安→希望→感動」のように感情が動く動画ほど、視聴者が最後まで見る</li>
+      <li><strong>説得技法の検出：</strong>「社会的証明（○万人が利用）」「希少性��限定○名）」などのテクニックを自動検出</li>
+      <li><strong>CTA効果度：</strong>「今すぐ」「無料」「限定」などの行動促進ワードの強度を測定</li>
+    </ul>
+    <p><strong>出力例：</strong>「動画Bは感情ボラティリティが8.5/10で、全動画中最も"感情を動かす"構成になっている」</p>
+  </div>
+
+  <div class="feature-card" style="border-left:3px solid var(--amber);">
+    <h4 style="color:var(--amber);">④ クロスプラットフォーム分析</h4>
+    <p><strong>何を調べるか：</strong>同じCMをYouTube、TikTok、Instagram、LINEなど異なるプラットフォームに出す場合、それぞれに最適化するためのアドバイスを生成する。</p>
+    <p><strong>出力例：</strong></p>
+    <ul>
+      <li>YouTube用：「冒頭5秒にフック → 本編 → 最後にチャンネル登録CTA」</li>
+      <li>TikTok用：「15秒に凝縮。冒頭1秒で画面を止める"thumb-stopper"が必須」</li>
+      <li>Instagram用：「字幕テキストを大きく。音なしでも内容が伝わる構成に」</li>
+    </ul>
+  </div>
+
+  <div class="feature-card">
+    <h4>⑤ A/B比較分析</h4>
+    <p>2つの動画を並べて「どちらが効果的で、なぜか」をAIが詳細に比較する。</p>
+  </div>
+  <div class="feature-card">
+    <h4>⑥ マーケティングレポー��生成</h4>
+    <p>全分析を統合した包括レポートを自動生成。ターゲット分析・競合優位性・改善優先度・次回動画の方向性を含む。</p>
+  </div>
+  <div class="feature-card">
+    <h4>⑦ コンテンツ提案（台本案）</h4>
+    <p>過去の成功パターンに基��き、「次に作るべきCMの台本案」を生成。構成・キーメッセージ・タイミングガイド・感情曲線を含む。</p>
+  </div>
+
+  <div class="callout callout-info">
+    <h4>別アプリへの応用ポイント</h4>
+    <p>この「テキスト抽出 → 定量分析 → AI総合判断」のパイプラインは、CM以外にも応用できる。<br>
+    <strong>例①</strong> カスタマーサポートの通話録音を分析 →「どの説明が顧客満足度を上げるか」<br>
+    <strong>例②</strong> 採用面接の録画を分析 →「どの質問で候補者の本音が出るか」<br>
+    <strong>例③</strong> 教育動画を分析 →「どの部分で受講者の理解度が下がるか」<br>
+    Gemini APIへの指示文（プロンプト）を変えるだけで、分析対象を切り替えられる設計になっている。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s07">
+  <span class="section-number">07</span>
+  <h2>ダッシュボード — 数字を「見える化」する</h2>
+
+  <p>分析結果を一つの画面にまとめて表示する「司令塔」の画面。4つのタブで構成される。</p>
+
+  <h3>タブ①：概要タブ（ホーム画面）</h3>
+  <p>アプリを開いたときに最初に見る画面。すべてのデータを俯瞰できる。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>表示項目</th><th>何が分かるか</th><th>見方のコツ</th></tr></thead>
+    <tbody>
+      <tr><td><strong>KPIカード（3枚）</strong></td><td>「動画総数」「書き起こし完了数」「広告データ登録数」</td><td>一目で全体の規模感を把握する。書き起こし完了数が少なければ、まず書き起こしを実行する</td></tr>
+      <tr><td><strong>事業貢献スコアランキング</strong></td><td>広告実績と連携した動画を「スコア順」で表示。ROIも併記</td><td>スコアが高い=ビジネスに貢献した動画。その動画の特徴を深掘りすべき</td></tr>
+      <tr><td><strong>トップキーワードチャート</strong></td><td>頻出キーワードを横棒グラフで表示</td><td>どの言葉がCM全体でよく使われているか一目で分かる。意外なキーワードが上位にあれば注目</td></tr>
+      <tr><td><strong>動画別コンバージョン比較</strong></td><td>動画ごとの成果を横棒グラフで比較</td><td>成果の差が一目瞭然。突出して高い/低い動画の原因を調べるきっかけに</td></tr>
+      <tr><td><strong>Topパフォーマー / 要改善</strong></td><td>成果上位3本と下位3本を色分けで対比</td><td>緑（上位）の共通点と赤（下位）の共通点を見比べると、成功法則が見えてくる</td></tr>
+      <tr><td><strong>動画一覧テーブル</strong></td><td>全動画のステータス・再生時間・コンバージョンを一覧表示</td><td>「書き起こし中」の動画がないか、エラーがないか確認する</td></tr>
+      <tr><td><strong>AIレコメンデーション</strong></td><td>AIの総合分析：概要・効果的キーワード・改善提案</td><td>最も重要なセクション。AIが「結局何をすべきか」をまとめてくれている</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>タブ②：���略提案タブ</h3>
+  <p>AIが「次に作るべきCMの方向性」を提案する画面。成功動画の共通パターンを分析し、具体的なコンテンツ提案（企画案、ターゲット、フックポイント���とキーメッセージを表示する。</p>
+
+  <h3>タブ③：ナレッジタブ</h3>
+  <p>過去の分析から蓄積された「知見・パターン」をアーカイブする画面。分析を実行するたびに知見が自動で蓄積される。「成功パターンの辞書」のようなもの。</p>
+
+  <h3>タブ④：��ポートタブ</h3>
+  <p>詳細は次章（第9章）で解説。</p>
+
+  <h3>タグフィルター機能</h3>
+  <p>画面上部のタグフィルターで、<strong>特定のタグがついた動画だけを対象にした分析結果を表示できる</strong>。</p>
+  <div class="scenario">
+    <h4>利用例</h4>
+    <p>「YouTube」タグだけを選択 → YouTube向けCMだけのKPI・キーワード・成果比較が表示される</p>
+    <p>「TikTok」タグに切り替え → TikTok向けCMだけの分析結果に切り替わる</p>
+    <p>「全て」を選択 → 全動画を対象にした分析に戻る</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s08">
+  <span class="section-number">08</span>
+  <h2>広告実績データ連携 — 動画と売上をつなげる</h2>
+
+  <h3>なぜ連携が必要か</h3>
+  <p>動画CMの「中身（何を言っているか）」と「成績（いくら使って何件取れたか）」は、通常は別々のデータとして管理されている。この2つをつなげることで、<strong>「どの言葉が実際にお金になったか」</strong>がデータで���かるようになる。</p>
+
+  <div class="analogy"><strong>身近な例え：</strong>テストの「答案用紙（動画の中身）」と「成績表（広告の成果）」を突き合わせるようなもの。答案と成績を別��に見ても「なぜこの点数なのか」は分からないが、突き合わせると「この問題ができたから高得点」のように原因が特定できる。</div>
+
+  <h3>連携の手順</h3>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">手順 1</span><span class="phase-title">広告データをExcelで用意する</span></div>
+    <p>広告代理店や社内の広告運用チームから受け取ったExcelファイルを用意する。必要な列は「コード」「媒体」「費用」「成果数」「ROI」など。</p>
+  </div>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">手順 2</span><span class="phase-title">広告データ画面でインポートする</span></div>
+    <p>「広告データ」ページでExcelファイルをアップロードすると���各行がデータベースに保存される。同じコードのデータ��すでにあれば、上書き更新さ��る。</p>
+  </div>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">手順 3</span><span class="phase-title">動画にコードを割り当てる</span></div>
+    <p>動画一覧の「コード」列をクリックし、広告データと同じコード（例：「CM-2026-A01」）を入力する。</p>
+  </div>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">手順 4</span><span class="phase-title">自動で連携される</span></div>
+    <p>コードが一致する動画と広告データが自動で紐付く。ダッシュボードに「事業貢献スコア」「ROI」が表示される。AIがこのデータも使って分析を行う。</p>
+  </div>
+
+  <h3>インポートされるデータ項目</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>項目</th><th>日本語</th><th>具体例</th><th>何に使われるか</th></tr></thead>
+    <tbody>
+      <tr><td><strong>code</strong></td><td>識別コード</td><td>CM-2026-A01</td><td>動画との紐付け（これが一致する動画と自動連携）</td></tr>
+      <tr><td><strong>media</strong></td><td>掲載媒体</td><td>YouTube, LINE, TikTok</td><td>媒体別の効果比較</td></tr>
+      <tr><td><strong>spend</strong></td><td>広告費</td><td>500,000円</td><td>費用対効果の計算</td></tr>
+      <tr><td><strong>line_adds</strong></td><td>LINE友だち追加数</td><td>1,200人</td><td>認知効果の測定</td></tr>
+      <tr><td><strong>answers</strong></td><td>回答・問い合わせ数</td><td>350件</td><td>興味を持った人の数</td></tr>
+      <tr><td><strong>answer_rate</strong></td><td>回答率</td><td>29.2%</td><td>広告を見た人のうち、行動した割合</td></tr>
+      <tr><td><strong>answer_cpa</strong></td><td>回答単価</td><td>1,429円</td><td>1件の問い合わせを得るのにかかった費用</td></tr>
+      <tr><td><strong>customers</strong></td><td>顧客数</td><td>85人</td><td>実際にお客様になった人数</td></tr>
+      <tr><td><strong>contracts</strong></td><td>契約数</td><td>42件</td><td>最終的な成約数</td></tr>
+      <tr><td><strong>revenue</strong></td><td>売上</td><td>2,100,000円</td><td>直接的な収益</td></tr>
+      <tr><td><strong>roi</strong></td><td>投資対効果</td><td>320%</td><td>「広告費に対して何倍の売上が出たか」。100%=トントン、200%=2倍</td></tr>
+      <tr><td><strong>score</strong></td><td>事業貢献スコア</td><td>8.5</td><td>上記を総合した動画の「偏差値」のようなもの</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s09">
+  <span class="section-number">09</span>
+  <h2>レポート・エクスポート — 成果物を取り出す</h2>
+
+  <p>分析結果を「社内で共有できる形」で取り出す機能。</p>
+
+  <h3>レポー��生成（ダッシュボード → レポートタブ）</h3>
+
+  <div class="feature-card">
+    <h4>マーケティング総合レポート</h4>
+    <p><strong>何が生成されるか：</strong>Gemini AIが全データを統合分析し、以下のセクションを含む包括レポートを自動生成する。</p>
+    <ul>
+      <li><strong>エグゼクティブサマリー：</strong>要約。忙しい上司はここだけ読めばOK</li>
+      <li><strong>ターゲット分析：</strong>「どの層にどの動画が響くか」をセグメント別に分析</li>
+      <li><strong>コンテンツ評価マトリクス：</strong>各動画��10点満点で評価。強み・弱みを一覧化</li>
+      <li><strong>競合優位性：</strong>自社CMの差別化ポイントをAIが指摘</li>
+      <li><strong>改善優先度：</strong>「何を最初に直すべきか」を高/中/低で整理</li>
+      <li><strong>次回動画の方向性：</strong>テーマ・構成・感情曲線・キーメッセージの提案</li>
+    </ul>
+    <p><strong>カスタム指示も可能：</strong>「20代女性をターゲットにした場合の分析を重視してください」のように追加指示を入力できる。</p>
+  </div>
+
+  <h3>エクスポート形式一覧</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>形式</th><th>用途</th><th>操作方法</th></tr></thead>
+    <tbody>
+      <tr><td><strong>PowerPoint（.pptx）</strong></td><td>会議やプレゼンでそのまま使える</td><td>レポートタブ→「PPTXエクスポート」ボ��ン</td></tr>
+      <tr><td><strong>HTML</strong></td><td>ブラウザで開ける美しいレポート</td><td>レポートタブ→「HTMLエクスポート」ボタン</td></tr>
+      <tr><td><strong>CSV（動画一覧）</strong></td><td>Excelで開けるデータ一覧</td><td>動画一覧画面→「CSVエクスポート」</td></tr>
+      <tr><td><strong>TXT / SRT / VTT / JSON</strong></td><td>書き起こしテキストの各種形式</td><td>動画詳細画面→「エクスポート」ドロップダウン</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-ok">
+    <h4>サーバー不要のファイル生成</h4>
+    <p>PowerPointもHTMLもCSVも、すべ��<strong>ユーザ���のブラウザ上で生成</strong>される。サーバーにファイルを送る必要がないため、高速でセキュア。pptxgenjsというライブラリがブラウザ上でPowerPointの中身を���み立て、そのままダウンロードされる。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s10">
+  <span class="section-number">10</span>
+  <h2>設定・セキュリティ</h2>
+
+  <h3>設定画面でできること</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>設定項目</th><th>何をするか</th><th>いつ設定するか</th><th>身近な例え</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Gemini APIキー管理</strong></td><td>Google AI StudioでAPIキーを発行し登録する。複数登録可能</td><td>初回セットアップ時</td><td>遊園地の入場チケットを購入して登録するイメージ</td></tr>
+      <tr><td><strong>AIモデル選択</strong></td><td>gemini-2.5-flash（高速・安価）やgemini-2.5-pro（高精度）を切り替え</td><td>精度を上げたい時</td><td>「特急券」と「普通券」の��り替え。特急は速いが高い</td></tr>
+      <tr><td><strong>APIキーテスト</strong></td><td>登録したキーが正しく動くか1クリックで検証</td><td>キー登録後</td><td>チケットが有効か入口で確認するようなもの</td></tr>
+      <tr><td><strong>タグ管理</strong></td><td>動画につけるタグを一括管理</td><td>必要に応じて</td><td>付箋の種類を整理する</td></tr>
+      <tr><td><strong>ストレージ使用量</strong></td><td>動画の保管容量（無料枠1GB中の使用率）を確認</td><td>容量が心配な時</td><td>倉庫の空きスペースの確認</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>セキュリティの仕組み（4層の防御）</h3>
+
+  <div class="feature-card" style="border-left:3px solid var(--red);">
+    <h4 style="color:var(--red);">第1層：パスワード認証（入口の鍵）</h4>
+    <p>アプリにアクセスすると最初にパスワード入力画面が表示される。チーム全員が同じパスワードを使う「共有鍵」方式。</p>
+    <ul>
+      <li><strong>パスワードは暗号化して保管：</strong>SHA-256というアルゴリズムで、パスワードを「元に戻せない文字列」に変換して環境変数に保存。万が一コードが漏洩しても、パスワード原文は分からない</li>
+      <li><strong>連続失敗でロックアウト：</strong>5回間違えると60秒間入力できなくなる。総当たり攻撃を防止</li>
+      <li><strong>タブを閉じるとリセット：</strong>ブラウザタブを閉じると認証がリセットされ、次回開いたときは再度パスワードが必要</li>
+    </ul>
+  </div>
+  <div class="feature-card" style="border-left:3px solid var(--amber);">
+    <h4 style="color:var(--amber);">第2層：APIキーの暗号化（金庫の中の金庫）</h4>
+    <p>Gemini APIキーはブラウザのlocalStorage（ブラウザ内の保管庫）に保存されるが、<strong>暗号化された状態</strong>で保管。ブラウザの開発者ツールで覗いても、暗号文しか見えない。</p>
+  </div>
+  <div class="feature-card" style="border-left:3px solid var(--blue);">
+    <h4 style="color:var(--blue);">第3層：データベースアクセス制御（書庫の入館証）</h4>
+    <p>SupabaseのRLS（行レベルセキュリティ）で、データベースへのアクセスを制御。匿名キー（anon key）でのアクセスに限定し、不正なデータ操作を防止。</p>
+  </div>
+  <div class="feature-card" style="border-left:3px solid var(--green);">
+    <h4 style="color:var(--green);">第4層：署名付きURL（一時的な入場証）</h4>
+    <p>動画ファイルの再生URLに<strong>4時間の有効期限</strong>を設定。URLが外部に漏洩しても、4時間後に自動で無効化される。3.5時間でキャッシュが切れ、新しいURLが自動発行される。</p>
+  </div>
+
+  <div class="callout callout-warn">
+    <h4>注意：このアプリは「社内ツール」向けの設計</h4>
+    <p>パスワード認証はシンプ��な共有パスワード方式であり、不特定多数が使うサービスには不向き。外部公開する場合は、Supabase AuthやFirebase Authenticationなどの「ユーザー個別アカウント型」認証への移行が必要。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第三部 ― データの流れ（どう動いているか）</span></div>
+<!-- ============================================================ -->
+
+<section id="s11">
+  <span class="section-number">11</span>
+  <h2>データの旅 — 入力から出力まで</h2>
+
+  <p>ユーザーが操作したとき、裏側���データがどう動くかを「荷物の配送」に例えて説明する。</p>
+
+  <h3>旅①：動画がアップロードされてから書き起こされるまで</h3>
+
+  <div class="flow-diagram" style="text-align:left;padding:24px;">
+    <strong style="color:var(--blue);">【出発】</strong> ユーザーが動画ファイルを選択してアップロード<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong>【チェックゲート】</strong> ファイル形式OK？ サイズ50MB以下？ → 問題なけれ���通過<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--green);">【倉庫に搬入】</strong> Supabase Storageに動画ファイルを保管。データベースに情報カード（ファイル名、サイズ、再生時間）を登録<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong>【待機中】</strong> ステータス＝「アップロード済」。書き起こしボタンが押される��を待つ<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong>【書き起こし開始】</strong> ユーザーが「書き起こし」ボタンを押す<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--green);">【倉庫から取出】</strong> Supabase Storageから動画ファイルをダウンロード<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong>【梱包】</strong> 動画をBase64形式（AIが読める形式）に変換<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--purple);">【AI部門に送付】</strong> Google Gemini APIに「この動画を日本語で書き起こ���て」と送信<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--purple);">【AI処理中】</strong> Geminiが音声を解析（数十秒〜数分）<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--purple);">【返送】</strong> AIが「全文テキスト＋タイムスタンプ付きセグメント」を返す<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--green);">【倉庫に格納】</strong> データベー���のtranscriptionsテーブルにテキストを保存<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--blue);">【到着】</strong> 画面に書き起こし結果が表示。ステータス＝「書き起こし完了」
+  </div>
+
+  <h3>旅②：分析が実行されてからレポートが出力されるまで</h3>
+
+  <div class="flow-diagram" style="text-align:left;padding:24px;">
+    <strong style="color:var(--blue);">【出発】</strong> ユーザーがダッシュボードの「分析を実行」を押す<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong>【STEP 1 / 4】</strong> 全動画の���き起こしテキストを収集 → 頻出キーワードをランキング化<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong>【STEP 2 / 4】</strong> キーワードとコンバージョンの相関��計算（「安心」を含む動画 → CV +23%）<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--purple);">【STEP 3 / 4】</strong> 全データをGemini AIに送信 → AIが改善提案・成功パターンを生成<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--green);">【STEP 4 / 4】</strong> 全結果をデータベースに保存 → ダッシュボードに反映<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--blue);">【レポート出力】</strong> レポートタブで「PPTXエクスポート」→ ブラウザ上でPowerPointを生成 → ダウンロード
+  </div>
+
+  <h3>旅③：広告データが連携されるまで</h3>
+
+  <div class="flow-diagram" style="text-align:left;padding:24px;">
+    <strong style="color:var(--blue);">【出発】</strong> Excelファイル（広告実績データ）をアップロード<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong>【解析】</strong> xlsxライブラリがブラウザ上でExcelファイルを読み取り、各行をデータに変換<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--green);">【格納】</strong> ad_performanceテーブルに保存（codeが同じなら上書き更新）<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong>【紐付け】</strong> 動画のcode列とad_performanceのcode列が自動マッチング<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓</span>
+    <strong style="color:var(--blue);">【到着】</strong> ダッシュボードに「事業貢献スコア」「ROI」として表示
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s12">
+  <span class="section-number">12</span>
+  <h2>データベース — 情報の保管庫の設計</h2>
+
+  <p>このアプリのすべてのデータは、Supabase上の<strong>PostgreSQL</strong>（ポストグレスキューエル）というデータベースに保存されている。ここでは「どんなテーブル（表��があり、何が保存されているか」を解説する。</p>
+
+  <div class="analogy"><strong>身近な例え：</strong>データベースは「超高機能なExcelファイル」だと思えばよい。Excelには複数のシートがあるように、データベースにも複数の「テーブル」がある。各テーブルは行（レコード）と列（カラム）で構成されている。ただし、Excelと違って数万件のデータでも瞬時に検索でき、���数のテーブルを自動で関連付けできる。</p>
+
+  <h3>テーブル一覧（全体マップ）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>テーブル名</th><th>Excelに例えると</th><th>保存しているデータ</th><th>件数の目安</th></tr></thead>
+    <tbody>
+      <tr><td><strong>videos</strong></td><td>「動画台帳」シート</td><td>動画のファイル名、サイズ、再生時間、ステータ��、タグ、コード、ランキング</td><td>アップロードした動画の本数分</td></tr>
+      <tr><td><strong>transcriptions</strong></td><td>「書き起こし結果」シート</td><td>全文テキスト、タイムスタンプ付きセグメント、使用AIモデル名、編集済フラグ</td><td>動画1本につき1件</td></tr>
+      <tr><td><strong>conversions</strong></td><td>「成果データ」シート</td><td>指標名（クリック数等）、数値、日付、メモ</td><td>動画1本に複数件</td></tr>
+      <tr><td><strong>analyses</strong></td><td>「分析結果保管庫」シート</td><td>分析の種類、結果（JSON形式）、使用AIモデル</td><td>分析を実行するたびに増える</td></tr>
+      <tr><td><strong>ad_performance</strong></td><td>「広告実績」シート</td><td>コー��、媒体、費用、ROI、契約数、スコアなど</td><td>広告コードの数だけ</td></tr>
+      <tr><td><strong>settings</strong></td><td>「設定」シート</td><td>APIキー（暗号化）、AIモデル名、管理タグ</td><td>常に1件のみ</td></tr>
+      <tr><td><strong>transcription_logs</strong></td><td>「操作ログ」シート</td><td>いつ誰が何の書き起こしを実行したかの記録</td><td>操作のたびに増える</td></tr>
+      <tr><td><strong>ab_tests</strong></td><td>「A/Bテスト定義」シート</td><td>比較する2つの動画、評価指標、ステータス</td><td>テストの数だけ</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>テーブル間のつながり（リレーション）</h3>
+  <p>テーブルは独立しているのではなく、互いにつながっている。</p>
+
+  <div class="flow-diagram" style="text-align:left;padding:24px;">
+    <strong>videos テーブル</strong>（動画台帳）<br>
+    &nbsp;&nbsp;├── <span style="color:var(--blue);">1対1</span> ──→ <strong>transcriptions</strong>（1つの動画に1つの書き起こし結果）<br>
+    &nbsp;&nbsp;├── <span style="color:var(--green);">1対多</span> ──→ <strong>conversions</strong>（1つの動画に複数の成果指標）<br>
+    &nbsp;&nbsp;├── <span style="color:var(--green);">1対多</span> ──→ <strong>analyses</strong>（1つの動画に複数の分析結果）<br>
+    &nbsp;&nbsp;└── <span style="color:var(--amber);">コードで紐付け</span> ──→ <strong>ad_performance</strong>（video.code = ad_performance.code）<br>
+    <br>
+    <span style="font-size:12px;color:var(--gray-500);">※「1対1」＝1つの動画に1つの結果がある<br>
+    ※「1対多」＝1つの動画に複数の結果がある<br>
+    ※ 動画を削除すると、transcriptions と conversions は「カスケード削除」で自動的に一緒に消える</span>
+  </div>
+
+  <h3>主要テーブルの中身（videos テーブル）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>列名</th><th>データの種類</th><th>説明</th><th>具体例</th></tr></thead>
+    <tbody>
+      <tr><td>id</td><td>番号（自動採番）</td><td>動画ご��に自動で付く通し番号</td><td>1, 2, 3...</td></tr>
+      <tr><td>filename</td><td>テキスト</td><td>ファイル名</td><td>春CM_30秒版.mp4</td></tr>
+      <tr><td>duration_seconds</td><td>小数</td><td>再生時間（秒単位）</td><td>30.5</td></tr>
+      <tr><td>status</td><td>テキスト（選択肢）</td><td>現在の状態</td><td>uploaded / transcribing / transcribed / error / archived</td></tr>
+      <tr><td>ranking</td><td>整数</td><td>手動評価（1〜10）</td><td>8</td></tr>
+      <tr><td>code</td><td>テキスト</td><td>広告データ連携コード</td><td>CM-2026-A01</td></tr>
+      <tr><td>tags</td><td>JSONB（配列）</td><td>タグの一覧</td><td>["YouTube", "30秒", "春"]</td></tr>
+      <tr><td>storage_path</td><td>テキスト</td><td>Supabase Storageでのファイルの場所</td><td>videos/123-abc.mp4</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-info">
+    <h4>JSONB型 — なぜ「タグ」や「分析結果」に使うのか</h4>
+    <p>通常のExcelでは、1つのセルに1���の値���か入れられない。しかし「タグ」のように「1つの動画に複数の値」がある場合、通常の列では表現しにくい。<br><br>
+    <strong>JSONB</strong>は、1つのセルに「複数の値」や「入れ子構造のデータ」を丸ごと保存できる仕組み。例えば、tags列には <code>["YouTube", "30秒", "春"]</code> のように配列をそのまま格納できる。<br><br>
+    分析結果（analyses テーブルの result_json 列）にも使われており、分析の種類によって内容が全く異なるデータ���、同じ列に柔軟に保存できる。これはPostgreSQLの大きな強みであり、別アプリでも頻繁に使える技法。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第四部 ― 技術選定（なぜこの技術か）</span></div>
+<!-- ============================================================ -->
+
+<section id="s13">
+  <span class="section-number">13</span>
+  <h2>使われている全技術と選定理由</h2>
+
+  <p>このアプリで使われている技術を「なぜそれを選んだのか」の視点で整理する。別アプリを作る際の参考にしてほしい。</p>
+
+  <h3>フロントエンド（画面を作る技術）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>技術名</th><th>何をするか</th><th>なぜこれを選んだか</th><th>別の選択肢</th></tr></thead>
+    <tbody>
+      <tr><td><strong>React 19</strong></td><td>画面の骨組みを作る</td><td>世界で最も使われているUI構築ツール。求人も情報も最多。「部品（コンポーネント）」を組み合わせて画面を作れるため、チーム開発にも向いている</td><td>Vue.js（より簡単）、Svelte（より軽量）、Next.js（React+サーバー機能）</td></tr>
+      <tr><td><strong>TypeScript</strong></td><td>コードの���全装置</td><td>「この変数は必ず数字」「この関数は文字列を返す」��宣言しておくと、間違いをコード実行前に検出できる。大規模アプリでは必須の安全策</td><td>JavaScript（型チェックなし）</td></tr>
+      <tr><td><strong>Vite</strong></td><td>コードを高速��ブラウザ用に変換</td><td>開発中にコードを変更すると、0.1秒で画面に反映される。旧来のwebpackは数秒〜数十秒かかっていた</td><td>webpack（古い・遅い）、Turbopack（新しい・まだ発展途上）</td></tr>
+      <tr><td><strong>Tailwind CSS v4</strong></td><td>見た目のデザインを作る</td><td>HTMLに直接「この要素は青色・太字・余白16px」と書ける。CSSファイルを別途管理する必要がなく、開発速度が大幅に向上</td><td>CSS Modules、styled-components、Bootstrap</td></tr>
+      <tr><td><strong>Recharts</strong></td><td>グラフを描く</td><td>Reactの部品として棒グラフ・折れ線グラフ・円グラフを簡単に作れる。カスタマイズ性も高い</td><td>Chart.js、Nivo、Visx</td></tr>
+      <tr><td><strong>pptxgenjs</strong></td><td>PowerPointを生成</td><td>ブラウザ上でPowerPointファイルを組み立てる。サーバー不要で、生成したファイル��ユーザーのPCに直接ダウンロード</td><td>（代替が少ない）</td></tr>
+      <tr><td><strong>xlsx</strong></td><td>Excelを読み込む</td><td>ユーザーがアップロードしたExcelファイルをブラウザ上で解析し、データを取り込む</td><td>SheetJS、Papa Parse（CSVのみ）</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>バックエンド・インフラ（裏方の技術）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>技術名</th><th>何をするか</th><th>なぜこれを選んだか</th><th>別の選択肢</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Supabase</strong></td><td>データベース＋ファイ��保管庫＋リアルタイム通信</td><td>PostgreSQLベースでSQLが使える。無料枠が大きい（DB 500MB、Storage 1GB）。管理画面でテーブルを直接見ら��るのも便利</td><td>Firebase Firestore（NoSQL・SQLが使えない）、PlanetScale（MySQLベース）</td></tr>
+      <tr><td><strong>Firebase Hosting</strong></td><td>アプリ���イン��ーネットに公開</td><td>Google提供で安定。無料枠で十分（10GB/月の転送量）。HTTPS対応が自動。デプロイ（公開作業）がコマ���ド1つ</td><td>Vercel（React向き）、Netlify（同等）、Cloudflare Pages（最速）</td></tr>
+      <tr><td><strong>Google Gemini API</strong></td><td>AI処理全般</td><td>動画ファイルを直接入力して書き起こし＋分析ができる「マルチモーダル」対応。日本語の精度が高い。無料枠あり</td><td>OpenAI GPT-4（テキストのみ）、Whisper（音声のみ）、Claude（テキスト分析のみ）</td></tr>
+      <tr><td><strong>FastAPI（オプション）</strong></td><td>Pythonサーバー</td><td>ローカルでWhisper書き起こしを行うためのオプション。メインフローでは不要</td><td>Express.js（Node.js）、Django（Python）</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s14">
+  <span class="section-number">14</span>
+  <h2>別アプリへの応用パターン集</h2>
+
+  <p>このアプリの技術的な設計パターンは、様々な種類のアプリに転用できる。</p>
+
+  <h3>パターン①：サーバーレスアーキテクチャ</h3>
+  <div class="feature-card">
+    <p><strong>このアプリでの使い方：</strong>React（画面）→ Supabase（データ）→ Gemini API（AI）。自社サーバーなし。</p>
+    <p><strong>メリット：</strong>サーバー管理コストゼロ。デプロイが「firebase deploy」の1コマンド。</p>
+    <p><strong>応用例：</strong></p>
+    <ul>
+      <li>社内の顧客管理ツール（CRM）</li>
+      <li>在庫管理システム</li>
+      <li>タスク管理アプリ</li>
+      <li>社内のナレッジベース</li>
+    </ul>
+    <p><strong>向いているケース：</strong>チーム規模が小さい、サーバ���エンジニアがいない、プロトタイプを素早く作りたい</p>
+  </div>
+
+  <h3>パターン②：APIキープール（レート制限分散）</h3>
+  <div class="feature-card">
+    <p><strong>このアプリでの使い方：</strong>複数のGemini APIキーを登録し、使用量に応じて自動切り替え。</p>
+    <p><strong>応用例：</strong>大量のAPI呼び出しが必要なアプリ全般。AIチャットボ���ト、大量メール送信、SNSデータ収集など。</p>
+  </div>
+
+  <h3>パターン③：ブラウザ上でのファイル生成</h3>
+  <div class="feature-card">
+    <p><strong>このアプリでの使い方：</strong>pptxgenjs（PowerPoint）、xlsxラ��ブラリ（Excel読込）でサーバーを介さずファイルを処理。</p>
+    <p><strong>応用例：</strong>請求書PDF生成、契約書Word生成、データのExcelエクスポート。サーバーを経由しないため高速でセキュア。</p>
+  </div>
+
+  <h3>パターン④：「テキスト抽出→AI分析」パイプライン</h3>
+  <div class="feature-card">
+    <p><strong>このアプリでの使い方：</strong>動画 → 書き起こし → キーワード抽出 → 相関分析 → AI改善提案</p>
+    <p><strong>応用例：</strong></p>
+    <ul>
+      <li>コールセンターの通話分析 →「どの応対パターンが顧客満足度を上げるか」</li>
+      <li>面接録画の分析 →「どの質問で候補者の本音が出るか」</li>
+      <li>教育動画の分析 →「どの部分で受講者の理解度が下がるか」</li>
+      <li>競合サイトのレビュー分析 →「顧客が何に不満を持っているか」</li>
+    </ul>
+    <p>Gemini APIへの指示文（プロンプト）を変えるだけで、分析対象を自由に切り替えられる。</p>
+  </div>
+
+  <h3>組み合わせ早見表</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>作りたいアプリ</th><th>画面</th><th>データ保管</th><th>AI/処理</th><th>公開</th></tr></thead>
+    <tbody>
+      <tr><td><strong>社内管理ツール</strong></td><td>React + Tailwind</td><td>Supabase</td><td>不要</td><td>Firebase</td></tr>
+      <tr><td><strong>AI分析ツール</strong></td><td>React + Recharts</td><td>Supabase</td><td>Gemini API</td><td>Firebase</td></tr>
+      <tr><td><strong>ECサイト</strong></td><td>Next.js + Tailwind</td><td>Supabase + Stripe</td><td>Gemini（レコメンド）</td><td>Vercel</td></tr>
+      <tr><td><strong>チャットアプリ</strong></td><td>React</td><td>Supabase Realtime</td><td>Gemini（AI応答）</td><td>Firebase</td></tr>
+      <tr><td><strong>ブログ・CMS</strong></td><td>Next.js</td><td>Supabase</td><td>不要</td><td>Vercel</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s15">
+  <span class="section-number">15</span>
+  <h2>コスト構造 — なぜ月額0円で運用できるのか</h2>
+
+  <h3>各サービスのコスト</h3>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:16px 0;">
+    <div style="padding:16px 20px;background:var(--green-bg);border:1px solid #b8dcc8;border-radius:4px;text-align:center;">
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--green);font-weight:600;">Firebase Hosting</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:500;color:var(--green);margin:4px 0;">¥0</div>
+      <div style="font-size:11px;color:var(--gray-500);">無料枠：10GB/月の転送量<br>社内ツールなら余裕で収まる</div>
+    </div>
+    <div style="padding:16px 20px;background:var(--green-bg);border:1px solid #b8dcc8;border-radius:4px;text-align:center;">
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--green);font-weight:600;">Supabase</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:500;color:var(--green);margin:4px 0;">¥0</div>
+      <div style="font-size:11px;color:var(--gray-500);">無料枠：DB 500MB + Storage 1GB<br>CM動画200本分が保存可能</div>
+    </div>
+    <div style="padding:16px 20px;background:var(--amber-bg);border:1px solid #e2d5a8;border-radius:4px;text-align:center;">
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--amber);font-weight:600;">Gemini API</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:500;color:var(--amber);margin:4px 0;">従量制</div>
+      <div style="font-size:11px;color:var(--gray-500);">無料枠あり<br>1本あたり数円〜数十円程度</div>
+    </div>
+  </div>
+
+  <div class="callout callout-ok">
+    <h4>運営者のコスト負担はゼロ</h4>
+    <p>Gemini APIの利用料は<strong>ユ��ザー自身がAPIキーを登録して利用する設計</strong>のため、アプリ運営者側にはAI利用料が発生しない。インフラ（Firebase + Supabase）は無料枠で十分。つまり、<strong>月額の固定費用は0円</strong>で本格的なAI分析ツールが運用できる。</p>
+  </div>
+
+  <h3>もし無料枠を超えたら</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>サービス</th><th>超過の条件</th><th>有料プランの価格</th><th>超過しそうな状況</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Supabase Storage</strong></td><td>動画ファイルが合計1GBを超える</td><td>Proプラン $25/月（100GB）</td><td>5MB×200本＝1GB。200本以上保存する場合</td></tr>
+      <tr><td><strong>Supabase DB</strong></td><td>データが500MBを超える</td><td>Proプラン $25/月（8GB）</td><td>テキストデータ中心なら数千本まで大丈夫</td></tr>
+      <tr><td><strong>Firebase Hosting</strong></td><td>月間の転送量が10GBを超える</td><td>Blazeプラン $0.026/GB</td><td>100人が毎日アクセスしても超えにくい</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s16">
+  <span class="section-number">16</span>
+  <h2>開発環境のセットアップ手順</h2>
+
+  <h3>必要なもの</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ツール</th><th>何のために必要か</th><th>入手方法</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Node.js（v18以上）</strong></td><td>フロントエンドの開発に必要。JavaScriptをPC上で動かすための環境</td><td>nodejs.org からダウンロード</td></tr>
+      <tr><td><strong>Git</strong></td><td>ソースコードの管理。チームで同じコードを共有・変更するため��仕組み</td><td>git-scm.com からダウンロード</td></tr>
+      <tr><td><strong>Supabaseアカウント</strong></td><td>データベースとファイル保管庫</td><td>supabase.com で無料��録</td></tr>
+      <tr><td><strong>Firebaseアカウント</strong></td><td>アプリの公開（ホスティング）</td><td>firebase.google.com で無料登録</td></tr>
+      <tr><td><strong>Google AI Studioアカウント</strong></td><td>Gemini APIキーの発行</td><td>aistudio.google.com で無料登録</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>セットアップ手順</h3>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 1</span><span class="phase-title">Supabaseプロジェクトの作成</span></div>
+    <p>① supabase.comにログインし、「New Project」でプロジェクトを作成する</p>
+    <p>② SQL Editorを開き、<strong>supabase-schema.sql</strong>の内容を貼り付けて実行する → 全テーブルが自動で作成される</p>
+    <p>③ Settings → APIから「Project URL」と「anon key」をメモする</p>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 2</span><span class="phase-title">環境変数ファイルの設定</span></div>
+    <p>frontendフォルダ内に <strong>.env</strong> ファイルを作���、以下の3行を記入する。</p>
+    <div class="code-block"><span class="comment"># Supabaseの接続情報（STEP 1でメモした値）</span>
+VITE_SUPABASE_URL=https://xxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJxxx...
+
+<span class="comment"># ログインパスワードのSHA-256ハッシュ値</span>
+<span class="comment"># 「password123」のハッシュ値を生成するには、</span>
+<span class="comment"># ブラウザのコンソールで以下を実行：</span>
+<span class="comment"># crypto.subtle.digest('SHA-256', new TextEncoder().encode('password123'))</span>
+VITE_APP_PASSWORD_HASH=ef92b778...</div>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 3</span><span class="phase-title">アプリの起動</span></div>
+    <p>ターミナル（コマンドプロンプト）で以下を実行する。</p>
+    <div class="code-block"><span class="comment"># ①フロントエンドのフォルダに移動</span>
+cd frontend
+
+<span class="comment"># ②必要なパッケージをインストール（初回のみ）</span>
+npm install
+
+<span class="comment"># ③開発サーバーを起動</span>
+npm run dev</div>
+    <p>ブラウザで <strong>http://localhost:5173</strong> を開くとアプリが表示される。</p>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 4</span><span class="phase-title">本番環境への公開</span></div>
+    <div class="code-block"><span class="comment"># ①アプリをビルド（本番用に最適化）</span>
+npm run build
+
+<span class="comment"># ②Firebase Hostingにデプロイ（公開）</span>
+firebase deploy</div>
+    <p>完了すると、設定済みのURLで世界中���らアクセスできるようになる。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第五部 ― STT技術の深掘り</span></div>
+<!-- ============================================================ -->
+
+<section id="s17">
+  <span class="section-number">17</span>
+  <h2>書き起こしAPIの技術詳細</h2>
+
+  <p>このアプリが「どのAPIを」「どのように叩いて」書き起こしを実現しているか、エンジニアが再現できるレベルで詳細に記述する。</p>
+
+  <h3>使用API：Google Gemini API（generateContent）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>項目</th><th>詳細</th></tr></thead>
+    <tbody>
+      <tr><td><strong>使用ライブラリ</strong></td><td>@google/generative-ai v0.24.1（公式JavaScript SDK）</td></tr>
+      <tr><td><strong>APIエンドポイント</strong></td><td>https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent<br><span class="text-sm text-muted">※ SDKが内部で自動構築。開発者はSDKのメソッドを呼ぶだけ</span></td></tr>
+      <tr><td><strong>デフォルトモデル</strong></td><td>gemini-2.5-flash（高速・低コスト）<br><span class="text-sm text-muted">設定画面でgemini-2.5-proなど他モデルに切替可能</span></td></tr>
+      <tr><td><strong>認証方式</strong></td><td>APIキー認証（リクエストヘッダーにキーを付与）</td></tr>
+      <tr><td><strong>タイムアウト</strong></td><td>120秒（バックエンド側）</td></tr>
+      <tr><td><strong>呼び出し元</strong></td><td>ユーザーのブラウザから直接（サーバー経由ではない）</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>リクエストの中身（AIへの指示書）</h3>
+  <p>ブラウザからGemini APIに送信されるデータは、大きく2つのパーツで構成される。</p>
+
+  <div class="feature-card" style="border-left:3px solid var(--purple);">
+    <h4 style="color:var(--purple);">パーツ①：動画データ（Base64エンコード済み）</h4>
+    <p>動画ファイルを「文字列」に変換してAPIに送る。これを<strong>Base64エンコード</strong>と呼ぶ。</p>
+    <p style="font-size:12px;color:var(--gray-500);">例：5MBの動画 → 約6.7MBのBase64文字列に変換。メールの添付ファイルと同じ仕組み。</p>
+    <p><strong>送信データの構造：</strong></p>
+    <div class="code-block">{ inlineData: { mimeType: "video/mp4", data: "AAAAIGZ0eXBpc29..." } }</div>
+    <p>mimeType（ファイルの種類）を一緒に送ることで、Geminiが「これはMP4動画だ」と認識できる。</p>
+  </div>
+
+  <div class="feature-card" style="border-left:3px solid var(--blue);">
+    <h4 style="color:var(--blue);">パーツ②：プロンプト（指示文）</h4>
+    <p>AIに「何をしてほしいか」を伝える指示文。以下が実際に送信されているプロンプト全文。</p>
+    <div class="code-block">この動画・音声コンテンツを日本語で正確に書き起こしてください。
+
+以下のJSON形式で返してください:
+{
+  "full_text": "書き起こし全文テキスト",
+  "language": "ja",
+  "segments": [
+    {"start_time": 0.0, "end_time": 5.0, "text": "セグメントのテキスト"},
+    {"start_time": 5.0, "end_time": 10.0, "text": "次のセグメントのテキスト"}
+  ]
+}
+
+重要:
+- 各セグメントは5〜15秒程度にしてください
+- タイムスタンプは秒単位の小数で指定してください
+- 必ず有効なJSONのみを返してください（説明文やマークダウンは不要）
+- 日本語で書き起こしてください</div>
+    <p style="font-size:12px;color:var(--gray-500);">ポイント：JSON形式で返すよう明確に指定することで、AIの返答を構造化データとしてそのまま利用できる。</p>
+  </div>
+
+  <h3>レスポンス（AIからの返答）</h3>
+  <p>Geminiが返すJSON。これがそのままデータベースに保存される。</p>
+  <div class="code-block">{
+  "full_text": "こんにちは。○○でお悩みのあなたへ。当社の△△なら...",
+  "language": "ja",
+  "segments": [
+    { "start_time": 0.0, "end_time": 3.2, "text": "こんにちは。" },
+    { "start_time": 3.2, "end_time": 8.5, "text": "○○でお悩みのあなたへ。" },
+    { "start_time": 8.5, "end_time": 18.1, "text": "当社の△△なら、たった3日で解決できます。" }
+  ]
+}</div>
+
+  <h3>APIキーの切り替え（KeyPool）の仕組み</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>状態</th><th>意味</th><th>次に何が起きるか</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag tag-low">available</span></td><td>使用可能</td><td>次のリクエストに使われる</td></tr>
+      <tr><td><span class="tag tag-info">working</span></td><td>処理中</td><td>他のリクエストには使われない</td></tr>
+      <tr><td><span class="tag tag-mid">rate_limited</span></td><td>制限中（60秒クールダウン）</td><td>60秒後に自動でavailableに復帰</td></tr>
+      <tr><td><span class="tag tag-high">error</span></td><td>エラー</td><td>手動で再登録が必要</td></tr>
+    </tbody>
+  </table></div>
+  <p>エラーメッセージに「429」「quota」「rate」「resource_exhausted」が含まれていた場合、自動的にrate_limitedに移行し、次のキーに切り替わる。</p>
+
+  <h3>ファイルサイズ・動画時間の制限</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>制限項目</th><th>フロントエンド（Gemini）</th><th>バックエンド（Whisper）</th></tr></thead>
+    <tbody>
+      <tr><td><strong>最大ファイルサイズ</strong></td><td>50MB</td><td>2GB</td></tr>
+      <tr><td><strong>動画の最大時間</strong></td><td>約8〜10分（50MB制限による実質上限）<br><span class="text-sm text-muted">※ Gemini API自体は最大1時間の動画に対応</span></td><td>制限なし（PCのメモリに依存）</td></tr>
+      <tr><td><strong>対応形式</strong></td><td>MP4, MOV, WebM, AVI, MKV, FLV, WMV, M4V + MP3, WAV, AAC, OGG, FLAC等</td><td>FFmpegが変換可能な全形式</td></tr>
+      <tr><td><strong>使用モデル</strong></td><td>gemini-2.5-flash</td><td>Whisper large-v3</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-info">
+    <h4>動画時間の制限を超えたい場合</h4>
+    <p><strong>方法①：</strong>Gemini APIの「File API」を使う。50MB以上のファイルを事前アップロードし、URIで参照する方式に変更すれば、<strong>最大2GBまで</strong>（約1時間以上の動画）送信可能。現在の実装では未使用だが、コード変更で対応可能。<br>
+    <strong>方法②：</strong>バックエンドのWhisperを使う。ファイルサイズ制限は事実上なし。ただしローカルPCのGPUメモリに依存（large-v3モデルで約10GB VRAM必要）。<br>
+    <strong>方法③：</strong>動画を分割して送信。FFmpegで10分ごとに分割 → 各チャンクを個別に書き起こし → テキストを結合。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s18">
+  <span class="section-number">18</span>
+  <h2>Gemini以外の最新STTツール比較</h2>
+
+  <p>2026年現在、音声をテキストに変換する（STT: Speech-to-Text）サービスは多数存在する。それぞれの特徴・コスト・制限・得意分野を比較する。</p>
+
+  <h3>主要STTサービス比較表</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>サービス</th><th>提供元</th><th>日本語精度</th><th>コスト（1時間あたり）</th><th>最大動画時間</th><th>特徴</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Google Gemini API</strong><br><span class="tag tag-purple">現在使用中</span></td>
+        <td>Google</td>
+        <td><span class="tag tag-low">非常に高い</span></td>
+        <td>約$0.01〜0.10<br><span class="text-sm text-muted">動画入力はトークン換算</span></td>
+        <td>最大1時間（File API使用時）</td>
+        <td>書き起こしと内容分析を同時にできる唯一のサービス。マルチモーダル（動画＋音声＋テキストを同時理解）</td>
+      </tr>
+      <tr>
+        <td><strong>OpenAI Whisper API</strong></td>
+        <td>OpenAI</td>
+        <td><span class="tag tag-low">非常に高い</span></td>
+        <td>$0.36/時間<br><span class="text-sm text-muted">$0.006/分</span></td>
+        <td>25MB（約25分）</td>
+        <td>STT専用で高精度。APIが非常にシンプル。ファイルを送るだけで書き起こし完了。タイムスタンプ対応</td>
+      </tr>
+      <tr>
+        <td><strong>OpenAI Whisper（ローカル）</strong></td>
+        <td>OpenAI（OSS）</td>
+        <td><span class="tag tag-low">非常に高い</span></td>
+        <td><strong>無料</strong><br><span class="text-sm text-muted">PC電気代のみ</span></td>
+        <td>制限なし</td>
+        <td>自分のPCで動かす。データが外部に送信されない。GPU（VRAM 10GB〜）が必要。処理速度はPCスペックに依存</td>
+      </tr>
+      <tr>
+        <td><strong>AssemblyAI</strong></td>
+        <td>AssemblyAI</td>
+        <td><span class="tag tag-mid">高い</span></td>
+        <td>$0.37/時間（Best）<br>$0.12/時間（Nano）</td>
+        <td>5GB（数時間可能）</td>
+        <td>話者分離（誰が話しているか）が得意。要約・感情分析・トピック検出もAPIで一体提供。MTG議事録に最適</td>
+      </tr>
+      <tr>
+        <td><strong>Deepgram</strong></td>
+        <td>Deepgram</td>
+        <td><span class="tag tag-mid">高い</span></td>
+        <td>$0.25/時間（Nova-3）<br>$0.04/時間（Whisper-cloud）</td>
+        <td>2GB</td>
+        <td>超高速（リアルタイムの10倍速）。ストリーミング対応（リアルタイム書き起こし）。WebSocket対応</td>
+      </tr>
+      <tr>
+        <td><strong>Amazon Transcribe</strong></td>
+        <td>AWS</td>
+        <td><span class="tag tag-mid">高い</span></td>
+        <td>$0.72/時間（標準）<br>$1.44/時間（通話分析）</td>
+        <td>4時間 or 2GB</td>
+        <td>AWS連携が豊富。医療用語辞書、通話分析（センチメント検出）などエンタープライズ向け機能が充実</td>
+      </tr>
+      <tr>
+        <td><strong>Azure AI Speech</strong></td>
+        <td>Microsoft</td>
+        <td><span class="tag tag-low">非常に高い</span></td>
+        <td>$0.60/時間（標準）<br><span class="text-sm text-muted">無料枠：5時間/月</span></td>
+        <td>制限なし（バッチ処理）</td>
+        <td>Microsoft 365連携。Teamsの文字起こしに使われている技術と同じ。カスタム辞書で業界用語の認識精度UP</td>
+      </tr>
+      <tr>
+        <td><strong>Google Cloud Speech-to-Text V2</strong></td>
+        <td>Google Cloud</td>
+        <td><span class="tag tag-low">非常に高い</span></td>
+        <td>$0.96/時間（Chirp 2）<br><span class="text-sm text-muted">無料枠：60分/月</span></td>
+        <td>480分（8時間）</td>
+        <td>Geminiとは別のSTT専用サービス。高精度モデル「Chirp 2」を搭載。医療・法律向けカスタムモデル対応</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>コスト比較シミュレーション（月30本×30秒CM）</h3>
+  <p>月に30本の30秒CMを書き起こす場合（合計15分）の月額コスト。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>サービス</th><th>月額コスト（15分）</th><th>100本（50分）の場合</th><th>評価</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Gemini API（現行）</strong></td><td>約$0.01〜0.10</td><td>約$0.05〜0.50</td><td><span class="tag tag-low">最安</span></td></tr>
+      <tr><td><strong>Whisper（ローカル）</strong></td><td>$0（電気代のみ）</td><td>$0</td><td><span class="tag tag-low">無料</span></td></tr>
+      <tr><td><strong>Deepgram Whisper-cloud</strong></td><td>約$0.01</td><td>約$0.03</td><td><span class="tag tag-low">最安級</span></td></tr>
+      <tr><td><strong>OpenAI Whisper API</strong></td><td>約$0.09</td><td>約$0.30</td><td><span class="tag tag-low">安い</span></td></tr>
+      <tr><td><strong>AssemblyAI Nano</strong></td><td>約$0.03</td><td>約$0.10</td><td><span class="tag tag-low">安い</span></td></tr>
+      <tr><td><strong>Azure AI Speech</strong></td><td>無料枠内</td><td>約$0.50</td><td><span class="tag tag-mid">中程度</span></td></tr>
+      <tr><td><strong>Amazon Transcribe</strong></td><td>約$0.18</td><td>約$0.60</td><td><span class="tag tag-mid">中程度</span></td></tr>
+      <tr><td><strong>Google Cloud STT V2</strong></td><td>約$0.24</td><td>約$0.80</td><td><span class="tag tag-mid">中程度</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-ok">
+    <h4>結論：30秒CMの書き起こしにはGeminiが最もコスト効率が良い</h4>
+    <p>短い動画（数分以下）の場合、Gemini APIはトークン課金のため非常に安い。さらに「書き起こし＋内容分析」を1回のAPI呼び出しで同時にできるのは<strong>Geminiだけ</strong>。他のSTTサービスは書き起こしのみで、分析は別途GPT-4やClaude等を呼ぶ必要がありコストが倍増する。</p>
+  </div>
+
+  <h3>長時間の会議動画（1〜3時間）の場合はどうか</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>サービス</th><th>1時間MTGのコスト</th><th>3時間MTGのコスト</th><th>話者分離</th><th>推奨度</th></tr></thead>
+    <tbody>
+      <tr><td><strong>AssemblyAI Best</strong></td><td>$0.37</td><td>$1.11</td><td><span class="tag tag-low">対応</span></td><td><span class="tag tag-low">MTG最適</span></td></tr>
+      <tr><td><strong>Deepgram Nova-3</strong></td><td>$0.25</td><td>$0.75</td><td><span class="tag tag-low">対応</span></td><td><span class="tag tag-low">高速・安価</span></td></tr>
+      <tr><td><strong>Whisper（ローカル）</strong></td><td>$0</td><td>$0</td><td><span class="tag tag-high">非対応</span></td><td><span class="tag tag-mid">無料だが話者区別不可</span></td></tr>
+      <tr><td><strong>Azure AI Speech</strong></td><td>$0.60</td><td>$1.80</td><td><span class="tag tag-low">対応</span></td><td><span class="tag tag-mid">Teams連携なら最適</span></td></tr>
+      <tr><td><strong>Gemini API</strong></td><td>$0.30〜1.00</td><td>$0.90〜3.00</td><td><span class="tag tag-mid">プロンプト次第</span></td><td><span class="tag tag-mid">分析も同時にやるなら有効</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-info">
+    <h4>MTG議事録には「話者分離」が必須</h4>
+    <p>CM動画と違い、MTGでは複数人が会話する。「誰が何を言ったか」を区別する<strong>話者分離（Speaker Diarization）</strong>機能が不可欠。AssemblyAI・Deepgram・Azureはこれを標準装備。Gemini APIでも「話者を区別して書き起こして」とプロンプトで指示すれば概ね対応できるが、専用サービスには精度で劣る。</p>
+  </div>
+
+  <h3>各サービスで「何が実装できるか」一覧</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>実装したい機能</th><th>Gemini</th><th>Whisper API</th><th>AssemblyAI</th><th>Deepgram</th><th>Azure</th></tr></thead>
+    <tbody>
+      <tr><td>基本的な書き起こし</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr>
+      <tr><td>タイムスタンプ付き</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr>
+      <tr><td>話者分離（誰が話したか）</td><td>△</td><td>×</td><td>○</td><td>○</td><td>○</td></tr>
+      <tr><td>リアルタイム書き起こし</td><td>×</td><td>×</td><td>○</td><td>○</td><td>○</td></tr>
+      <tr><td>感情分析</td><td>○</td><td>×</td><td>○</td><td>×</td><td>○</td></tr>
+      <tr><td>要約の自動生成</td><td>○</td><td>×</td><td>○</td><td>×</td><td>×</td></tr>
+      <tr><td>内容のAI分析</td><td>○</td><td>×</td><td>△</td><td>×</td><td>×</td></tr>
+      <tr><td>カスタム辞書（専門用語対応）</td><td>×</td><td>×</td><td>×</td><td>○</td><td>○</td></tr>
+      <tr><td>動画のまま入力（音声抽出不要）</td><td>○</td><td>×</td><td>×</td><td>×</td><td>×</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s19">
+  <span class="section-number">19</span>
+  <h2>テキスト分析ツール連携ガイド</h2>
+
+  <p>書き起こしたテキストを「さらに深く分析する」ために、どのようなツールとどう連携できるかを整理する。</p>
+
+  <h3>分析パイプライン：STT→テキスト分析→可視化</h3>
+  <div class="flow-diagram" style="text-align:left;padding:24px;">
+    <strong>【第1段階】音声 → テキスト（STT）</strong><br>
+    &nbsp;&nbsp;Gemini / Whisper / AssemblyAI / Deepgram<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓ 書き起こしテキスト</span><br><br>
+
+    <strong>【第2段階】テキスト → 構造化データ（NLP分析）</strong><br>
+    &nbsp;&nbsp;キーワード抽出 / 感情分析 / トピック分類 / エンティティ抽出<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓ 分析結果JSON</span><br><br>
+
+    <strong>【第3段階】構造化データ → 意思決定支援（AI総合判断）</strong><br>
+    &nbsp;&nbsp;Gemini / GPT-4 / Claude で改善提案・戦略生成<br>
+    <span class="flow-arrow">&nbsp;&nbsp;↓ レポート・ダッシュボード</span><br><br>
+
+    <strong>【第4段階】ナレッジ蓄積</strong><br>
+    &nbsp;&nbsp;Notion / 自作DB / Supabase に知見をアーカイブ
+  </div>
+
+  <h3>第2段階で使えるテキスト分析ツール</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ツール</th><th>何ができるか</th><th>コスト</th><th>連携方法</th><th>向いているケース</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Google Gemini API</strong><br><span class="tag tag-purple">現在使用中</span></td>
+        <td>キーワード抽出、感情分析、要約、改善提案、台本生成――すべて1つのAPIで</td>
+        <td>従量制（安い）</td>
+        <td>プロンプトを変えるだけ</td>
+        <td>小〜中規模。1つのAPIで完結させたい場合</td>
+      </tr>
+      <tr>
+        <td><strong>OpenAI GPT-4o / GPT-4.1</strong></td>
+        <td>Geminiと同等。高度な推論、長文要約、多言語対応</td>
+        <td>$2.50〜10/100万トークン</td>
+        <td>REST API呼び出し</td>
+        <td>英語テキストに強い。Geminiの代替として</td>
+      </tr>
+      <tr>
+        <td><strong>Claude 4（Anthropic）</strong></td>
+        <td>超長文対応（100万トークン）。文脈を正確に把握。指示通りの出力に強い</td>
+        <td>$3〜15/100万トークン</td>
+        <td>REST API呼び出し</td>
+        <td>3時間のMTGテキスト全文を一度に分析したい場合</td>
+      </tr>
+      <tr>
+        <td><strong>形態素解析（Fugashi等）</strong><br><span class="tag tag-info">現アプリ使用中</span></td>
+        <td>日本語テキストを単語に分割（「お悩みありませんか」→「お悩み/あり/ませ/ん/か」）</td>
+        <td>無料（ライブラリ）</td>
+        <td>Python / JavaScript</td>
+        <td>キーワード頻度のカウント、ワードクラウド生成</td>
+      </tr>
+      <tr>
+        <td><strong>LangChain</strong></td>
+        <td>複数AIツールを「チェーン」でつなぐフレームワーク。「書き起こし→要約→提案」を自動パイプライン化</td>
+        <td>無料（フレームワーク自体は）</td>
+        <td>Python / TypeScript</td>
+        <td>複雑な分析パイプラインを構築したい場合</td>
+      </tr>
+      <tr>
+        <td><strong>Elasticsearch / OpenSearch</strong></td>
+        <td>大量のテキストを全文検索。「この単語を含む議事録を全部出して」が瞬時に可能</td>
+        <td>セルフホスト：無料<br>クラウド：月$95〜</td>
+        <td>REST API</td>
+        <td>数千件以上の議事録を横断検索したい場合</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>連携パターン例</h3>
+
+  <div class="feature-card">
+    <h4>パターンA：Gemini 1本で完結（現在のアプリの方式）</h4>
+    <p>STT（書き起こし）もテキスト分析もレポート生成も、すべてGemini APIのプロンプトを変えるだけで実現。</p>
+    <p><strong>コスト：</strong>最安。<strong>精度：</strong>十分。<strong>開発工数：</strong>最小。<strong>制約：</strong>50MB（File API未使用時）/1時間の動画制限</p>
+  </div>
+
+  <div class="feature-card">
+    <h4>パターンB：STT専門サービス ＋ Gemini分析（MTG向け推奨）</h4>
+    <p>AssemblyAIで話者分離付き書き起こし → Gemini/GPT-4で内容分析・要約・アクションアイテム抽出。</p>
+    <p><strong>コスト：</strong>1時間MTGあたり約$0.50〜1.50。<strong>精度：</strong>最高。<strong>開発工数：</strong>中。<strong>メリット：</strong>話者分離の精度が段違い</p>
+  </div>
+
+  <div class="feature-card">
+    <h4>パターンC：ローカルWhisper ＋ クラウドAI（セキュリティ重視）</h4>
+    <p>社外秘のMTG音声をローカルWhisperで書き起こし（データ送信なし）→ 匿名化した要約のみをGeminiに送信。</p>
+    <p><strong>コスト：</strong>GPU電気代のみ。<strong>精度：</strong>高い。<strong>開発工数：</strong>大。<strong>メリット：</strong>機密情報が社外に出ない</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第六部 ― 社内MTGナレッジ化</span></div>
+<!-- ============================================================ -->
+
+<section id="s20">
+  <span class="section-number">20</span>
+  <h2>MTG議事録→ナレッジ化の全体設計</h2>
+
+  <p>社内のミーティング内容をナレッジ（組織知）として蓄積・活用するために、「何が必要で」「どういう順番で整備するか」を設計する。</p>
+
+  <h3>ナレッジ化の5ステップ</h3>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 1</span><span class="phase-title">録音・録画する</span></div>
+    <p><strong>必要なもの：</strong>Zoom/Teams/Google Meetの録画機能、またはICレコーダー</p>
+    <p><strong>注意点：</strong>参加者に録音の了承を得る。音声品質が書き起こし精度に直結するため、外部マイクやノイズキャンセリング環境が望ましい</p>
+    <p><strong>出力：</strong>音声ファイル（MP3/M4A）または動画ファイル（MP4）</p>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 2</span><span class="phase-title">書き起こす（STT）</span></div>
+    <p><strong>必要なもの：</strong>STTサービス（Gemini / AssemblyAI / Deepgram等）</p>
+    <p><strong>MTGの場合の要件：</strong></p>
+    <ul style="margin:4px 0 0 18px;font-size:13px;line-height:1.8;">
+      <li><strong>話者分離：</strong>「山田さん：○○」「鈴木さん：△△」と誰の発言か区別する</li>
+      <li><strong>長時間対応：</strong>1〜3時間の録音に対応</li>
+      <li><strong>専門用語対応：</strong>社内独自の用語を正しく認識（カスタム辞書）</li>
+    </ul>
+    <p><strong>出力：</strong>話者付きタイムスタンプテキスト</p>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 3</span><span class="phase-title">構造化する（AIで要約・整理）</span></div>
+    <p><strong>必要なもの：</strong>LLM（Gemini / GPT-4 / Claude）</p>
+    <p><strong>AIに依頼する内容：</strong></p>
+    <ul style="margin:4px 0 0 18px;font-size:13px;line-height:1.8;">
+      <li><strong>議事要約：</strong>30秒で読める長さの要約文</li>
+      <li><strong>議題ごとのまとめ：</strong>「議題A：結論○○、理由△△」</li>
+      <li><strong>決定事項一覧：</strong>何が決まったか</li>
+      <li><strong>アクションアイテム：</strong>誰が、何を、いつまでにやるか</li>
+      <li><strong>未解決事項：</strong>次回持ち越しの議題</li>
+      <li><strong>キーワード・タグ：</strong>後から検索できるようにタグ付け</li>
+    </ul>
+    <p><strong>出力：</strong>構造化された議事録JSON/Markdown</p>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 4</span><span class="phase-title">蓄積する（ナレッジベースに保存）</span></div>
+    <p><strong>必要なもの：</strong>Notion / Supabase / 自作アプリのいずれか</p>
+    <p><strong>保存すべき情報：</strong>日時、参加者、議事要約、決定事項、アクションアイテム、タグ、元音声へのリンク</p>
+    <p><strong>重要：</strong>検索可能であること。「先月のあの件、どのMTGで話したっけ？」に即答できること</p>
+  </div>
+
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">STEP 5</span><span class="phase-title">活用する（検索・学習・意思決定）</span></div>
+    <p><strong>活用例：</strong></p>
+    <ul style="margin:4px 0 0 18px;font-size:13px;line-height:1.8;">
+      <li>新メンバーのオンボーディング：「過去3ヶ月の主要決定事項を読んで」</li>
+      <li>意思決定の根拠追跡：「あの仕様変更、なぜそうなったか」を検索</li>
+      <li>パターン発見：「毎月同じ議題が出ている → プロセスを改善すべき」</li>
+      <li>AIチャットボット：蓄積されたナレッジに対して自然言語で質問 →「先月のマーケ予算はいくらだった？」</li>
+    </ul>
+  </div>
+
+  <h3>MTGナレッジ化のコスト試算</h3>
+  <p>月に20回のMTG（各1時間）をナレッジ化する場合。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>構成</th><th>STTコスト</th><th>AI分析コスト</th><th>保管コスト</th><th>月額合計</th></tr></thead>
+    <tbody>
+      <tr><td><strong>最安構成</strong><br>Whisper（ローカル）+ Gemini</td><td>$0</td><td>約$1〜3</td><td>$0（Supabase無料枠）</td><td><strong>約$1〜3（150〜450円）</strong></td></tr>
+      <tr><td><strong>推奨構成</strong><br>AssemblyAI + Gemini</td><td>約$7.40</td><td>約$2〜5</td><td>$0</td><td><strong>約$10〜13（1,500〜2,000円）</strong></td></tr>
+      <tr><td><strong>高機能構成</strong><br>Deepgram + GPT-4 + Notion</td><td>約$5.00</td><td>約$5〜10</td><td>$10（Notion Plus）</td><td><strong>約$20〜25（3,000〜4,000円）</strong></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="s21">
+  <span class="section-number">21</span>
+  <h2>Notionでできること vs 自作アプリが必要なこと</h2>
+
+  <p>MTGナレッジ化において、<strong>「既存のNotionで十分なこと」</strong>と<strong>「別途アプリを作る必要があること」</strong>を明確に分ける。</p>
+
+  <h3>Notionだけで完結できること</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>機能</th><th>Notionでの実現方法</th><th>品質</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>議事録テンプレート</strong></td>
+        <td>Notion「テンプレート」機能で、日時・参加者・議題・決定事項・アクションアイテムのフォーマットを統一</td>
+        <td><span class="tag tag-low">十分</span></td>
+      </tr>
+      <tr>
+        <td><strong>タグ・フィルター検索</strong></td>
+        <td>Notionデータベースの「プロパティ」でタグ/日付/参加者を設定。フィルター・ソートで検索</td>
+        <td><span class="tag tag-low">十分</span></td>
+      </tr>
+      <tr>
+        <td><strong>アクションアイテム管理</strong></td>
+        <td>Notion「タスク」や「チェックボックス」で担当者・期限を管理。ボードビューでカンバン表示</td>
+        <td><span class="tag tag-low">十分</span></td>
+      </tr>
+      <tr>
+        <td><strong>チーム共有</strong></td>
+        <td>Notionワークスペースで全員がリアルタイム閲覧・編集可能</td>
+        <td><span class="tag tag-low">十分</span></td>
+      </tr>
+      <tr>
+        <td><strong>AI要約（Notion AI）</strong></td>
+        <td>書き起こし済みテキストを貼り付け → Notion AIで要約・整理。月額$10/ユーザー追加で利用可能</td>
+        <td><span class="tag tag-mid">概ね良い</span></td>
+      </tr>
+      <tr>
+        <td><strong>過去議事録のAI検索（Notion AI Q&A）</strong></td>
+        <td>「先月のマーケ予算の決定事項は？」とNotionに質問すると、蓄積された議事録から回答</td>
+        <td><span class="tag tag-mid">概ね良い</span></td>
+      </tr>
+      <tr>
+        <td><strong>音声ファイルの添付</strong></td>
+        <td>議事録ページに元の音声/動画ファイルを添付（Notionのストレージに保管）</td>
+        <td><span class="tag tag-low">十分</span></td>
+      </tr>
+      <tr>
+        <td><strong>リレーション（関連付け）</strong></td>
+        <td>「このMTGで決まったこと → このプロジェクトに関連」のようにデータベース間をリンク</td>
+        <td><span class="tag tag-low">十分</span></td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>自作アプリが必要なこと</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>機能</th><th>なぜNotionでは無理か</th><th>自作アプリでの実現方法</th><th>開発工数</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>音声の自動書き起こし</strong></td>
+        <td>NotionにはSTT機能がない。手動でテキストを貼り付ける必要がある</td>
+        <td>STT API（Gemini/AssemblyAI等）で自動変換 → Notion APIで自動投稿</td>
+        <td><span class="tag tag-mid">中</span></td>
+      </tr>
+      <tr>
+        <td><strong>話者分離付き書き起こし</strong></td>
+        <td>NotionにSTT自体がないため、話者分離もできない</td>
+        <td>AssemblyAI/Deepgramの話者分離機能を利用</td>
+        <td><span class="tag tag-mid">中</span></td>
+      </tr>
+      <tr>
+        <td><strong>自動要約・構造化</strong></td>
+        <td>Notion AIは手動で実行する必要がある（ファイルをアップ → AIボタンを押す）。完全自動化は不可</td>
+        <td>Gemini/GPT-4で自動要約 → 構造化JSON → Notion APIで自動投稿</td>
+        <td><span class="tag tag-mid">中</span></td>
+      </tr>
+      <tr>
+        <td><strong>リアルタイム書き起こし</strong></td>
+        <td>Notionは録音中のリアルタイム文字起こしに非対応</td>
+        <td>Deepgram WebSocket APIでリアルタイムSTT → 画面にライブ表示</td>
+        <td><span class="tag tag-high">大</span></td>
+      </tr>
+      <tr>
+        <td><strong>テキストの定量分析</strong></td>
+        <td>Notionには統計機能がない。「頻出キーワードTOP10」「感情分析グラフ」は作れない</td>
+        <td>NLPライブラリ＋Recharts等でグラフ化。本アプリのダッシュボードと同等</td>
+        <td><span class="tag tag-high">大</span></td>
+      </tr>
+      <tr>
+        <td><strong>広告/売上データとのクロス分析</strong></td>
+        <td>Notionのリレーションは手動。自動的に「この議題と売上変動の関連性」を計算することはできない</td>
+        <td>データベース上で自動JOIN＋相関分析。本アプリの広告連携と同等の仕組み</td>
+        <td><span class="tag tag-high">大</span></td>
+      </tr>
+      <tr>
+        <td><strong>カスタムレポート自動生成</strong></td>
+        <td>Notion AIは汎用的な要約のみ。「先月のMTG全体のトレンドレポート」のような横断分析は不可</td>
+        <td>全議事録を横断分析するAIパイプライン → PPTX/HTML自動生成</td>
+        <td><span class="tag tag-high">大</span></td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>推奨アプローチ：Notion ＋ 自動化スクリプトのハイブリッド</h3>
+
+  <div class="feature-card" style="border-left:3px solid var(--green);">
+    <h4 style="color:var(--green);">Phase 1：Notionで始める（今日から可能）</h4>
+    <p><strong>やること：</strong>Notion上に議事録データベースを作成し、テンプレートを整備する。手動でテキストを貼り付け、Notion AIで要約する。</p>
+    <p><strong>コスト：</strong>$0〜10/月（Notion AI利用の場合）</p>
+    <p><strong>成果：</strong>まず「ナレッジを蓄積する習慣」をチームに根付かせる。ツールよりも習慣が重要。</p>
+  </div>
+
+  <div class="feature-card" style="border-left:3px solid var(--blue);">
+    <h4 style="color:var(--blue);">Phase 2：自動書き起こし→Notion投稿を自動化（1〜2週間で構築可能）</h4>
+    <p><strong>やること：</strong>STT API（AssemblyAI等）で書き起こし → Gemini AIで構造化 → Notion APIで自動投稿するスクリプトを作成。</p>
+    <p><strong>技術：</strong>Python or Node.jsスクリプト。Notion API（公式SDK）でページ作成。</p>
+    <p><strong>コスト：</strong>月$10〜15（STT + AI + Notion）</p>
+    <p><strong>成果：</strong>「音声ファイルをフォルダに入れるだけで議事録が自動生成される」状態に。</p>
+  </div>
+
+  <div class="feature-card" style="border-left:3px solid var(--purple);">
+    <h4 style="color:var(--purple);">Phase 3：高度な分析が必要になったら自作アプリ（必要に応じて）</h4>
+    <p><strong>やること：</strong>本アプリ（動画CM分析ツール）のアーキテクチャを転用し、MTG分析専用ダッシュボードを構築。</p>
+    <p><strong>転用できるもの：</strong></p>
+    <ul>
+      <li>React + Tailwind + Rechartsのダッシュボード基盤</li>
+      <li>Supabaseのデータ保管・検索機能</li>
+      <li>Gemini APIの分析パイプライン</li>
+      <li>PPTX/HTMLレポート自動生成</li>
+    </ul>
+    <p><strong>コスト：</strong>開発工数 2〜4週間 + 月$10〜25の運用コスト</p>
+    <p><strong>成果：</strong>「過去のMTGの傾向分析」「チーム別の発言量グラフ」「決定事項の実行率ダッシュボード」など、Notionでは不可能な高度分析。</p>
+  </div>
+
+  <h3>判断フロー：Notion? 自動化? 自作アプリ?</h3>
+  <div class="flow-diagram" style="text-align:left;padding:24px;">
+    <strong>Q1: 月のMTG回数は？</strong><br>
+    &nbsp;&nbsp;→ <strong>5回以下</strong>：Notionに手動入力で十分 → <span style="color:var(--green);font-weight:600;">Phase 1</span><br>
+    &nbsp;&nbsp;→ <strong>6回以上</strong>：次の質問へ<br><br>
+
+    <strong>Q2: 「誰が何を言ったか」の区別は必要？</strong><br>
+    &nbsp;&nbsp;→ <strong>不要</strong>（内容だけ分かればOK）：Gemini APIで書き起こし＋Notion自動投稿 → <span style="color:var(--blue);font-weight:600;">Phase 2</span><br>
+    &nbsp;&nbsp;→ <strong>必要</strong>：AssemblyAI/Deepgram＋Notion自動投稿 → <span style="color:var(--blue);font-weight:600;">Phase 2</span><br><br>
+
+    <strong>Q3: 数字で分析したい？（キーワード頻度、感情グラフ等）</strong><br>
+    &nbsp;&nbsp;→ <strong>不要</strong>：Phase 2のまま運用<br>
+    &nbsp;&nbsp;→ <strong>必要</strong>：本アプリのアーキテクチャを転用してダッシュボードを構築 → <span style="color:var(--purple);font-weight:600;">Phase 3</span><br><br>
+
+    <strong>Q4: 売上/広告データとMTGの関連を分析したい？</strong><br>
+    &nbsp;&nbsp;→ <strong>はい</strong>：Phase 3が必須。クロス分析機能を実装<br>
+    &nbsp;&nbsp;→ <strong>いいえ</strong>：Phase 2で十分
+  </div>
+
+  <div class="callout callout-ok">
+    <h4>まとめ：「まずNotionで始めて、限界を感じたら自動化、それでも足りなければ自作」</h4>
+    <p>いきなりアプリを作るのではなく、まずNotionで「ナレッジを蓄積する文化」を作る。MTGが月5回以下なら手動で十分。それ以上になったら書き起こし＋Notion投稿を自動化する。定量分析やクロス分析が必要になったタイミングで、本アプリのアーキテクチャを転用して自作ダッシュボードを構築する。段階的に投資を増やし、各フェーズで十分なROIを確認してから次に進むのが最もリスクが低い。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- FOOTER -->
+<!-- ============================================================ -->
+<footer>
+  動画CM分析ツール アプリケーション設計書<br>
+  K.K.kurokawa&co. — 社内限定資料<br>
+  作成日 2026年4月4日（第五部・第六部追記）
+</footer>
+
+</div>
+</body>
+</html>

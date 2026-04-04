@@ -18,6 +18,16 @@ import type { Video, ConversionSummary, MarketingReportResult, ContentSuggestion
 
 const COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#f97316"];
 
+/** Parse **bold** markdown into React elements without dangerouslySetInnerHTML */
+function renderBoldText(text: string) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <strong key={i} className="text-gray-800 dark:text-gray-100">{part}</strong>
+      : <span key={i}>{part}</span>
+  );
+}
+
 type AnalysisStepStatus = "pending" | "running" | "done" | "error";
 interface AnalysisStep { label: string; status: AnalysisStepStatus; }
 const INITIAL_STEPS: AnalysisStep[] = [
@@ -29,12 +39,114 @@ const INITIAL_STEPS: AnalysisStep[] = [
 
 type Tab = "overview" | "strategy" | "knowledge" | "report";
 
+const HELP_SECTIONS = [
+  {
+    title: "ダッシュボードとは",
+    icon: "📊",
+    content: [
+      "動画CMの分析結果・広告実績・AIレコメンデーションを一元管理する画面です。",
+      "「分析を実行」ボタンで最新データを取得・更新できます。",
+    ],
+  },
+  {
+    title: "概要タブ",
+    icon: "🏠",
+    content: [
+      "**KPIサマリー**: 動画本数・合計再生時間・コンバージョン数を表示",
+      "**動画ランキング**: コンバージョン率の高い順に動画を一覧表示",
+      "**キーワード頻度グラフ**: 書き起こしテキストから抽出した重要キーワード",
+      "**コンバージョンメトリクス**: 動画別の成果指標を横棒グラフで比較",
+      "**上位・下位動画**: 成果の高い／低い動画を色分けで表示",
+      "**広告実績テーブル**: コード紐付けされた動画の広告パフォーマンスデータ",
+      "**AIレコメンデーション**: 改善提案と成功パターンの分析結果",
+    ],
+  },
+  {
+    title: "戦略提案タブ",
+    icon: "🎯",
+    content: [
+      "AIが分析した「次に作るべきCMの戦略」を表示します。",
+      "「戦略を再生成」ボタンで最新データに基づく提案を取得できます。",
+      "**コンテンツ提案**: 具体的な動画企画案とターゲット・フックポイント",
+      "**キーメッセージ**: 効果的なメッセージ要素の提案",
+    ],
+  },
+  {
+    title: "ナレッジタブ",
+    icon: "💡",
+    content: [
+      "過去の分析から蓄積された知見・パターンをアーカイブします。",
+      "成功・失敗パターンを整理し、次のクリエイティブ制作に活用できます。",
+      "「ナレッジを更新」ボタンで最新の分析結果を反映します。",
+    ],
+  },
+  {
+    title: "レポートタブ",
+    icon: "📄",
+    content: [
+      "ダッシュボードのデータをレポート形式でまとめます。",
+      "「PowerPointをダウンロード」ボタンでPPTX形式でエクスポート可能。",
+      "「レポートを再生成」でAIによる最新レポートを作成します。",
+    ],
+  },
+  {
+    title: "分析を実行",
+    icon: "⚡",
+    content: [
+      "右上の青いボタンをクリックすると4ステップの分析が自動実行されます：",
+      "① キーワード分析 → ② 相関分析 → ③ AIレコメンデーション → ④ データ更新",
+      "初回は必ずこのボタンを押してデータを生成してください。",
+      "新しい動画や広告データを追加したら再実行することをおすすめします。",
+    ],
+  },
+  {
+    title: "タグ絞込み",
+    icon: "🏷️",
+    content: [
+      "ヘッダーのタグフィルターで特定タグの動画だけを対象に分析できます。",
+      "タグは「動画一覧」→「動画詳細」→「タグ編集」から設定してください。",
+      "「全て」を選択すると全動画が対象になります。",
+    ],
+  },
+  {
+    title: "広告実績データの連携",
+    icon: "📈",
+    content: [
+      "「広告データ」ページからExcelファイルをインポートします。",
+      "動画に「コード」を設定することで広告実績と紐付けられます。",
+      "コードは動画一覧の「コード」列または動画詳細ページで設定できます。",
+    ],
+  },
+  {
+    title: "はじめての使い方",
+    icon: "🚀",
+    content: [
+      "① 「動画一覧」ページで動画をアップロード",
+      "② バックエンドサーバーを起動して書き起こしを実行",
+      "③ 設定ページでGemini APIキーを登録",
+      "④ このダッシュボードで「分析を実行」をクリック",
+      "⑤ 広告実績データがある場合は「広告データ」ページでインポート",
+    ],
+  },
+];
+
 export default function MarketingDashboardPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [convSummaries, setConvSummaries] = useState<ConversionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [showHelp, setShowHelp] = useState(false);
   const { toast, showToast, clearToast } = useToast();
+
+  // Close help modal on ESC key
+  useEffect(() => {
+    if (!showHelp) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowHelp(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showHelp]);
 
   // Trend tab state
   const [tagFilter, setTagFilter] = useState<string>("");
@@ -140,14 +252,14 @@ export default function MarketingDashboardPage() {
 
   // Top videos by 事業貢献スコア
   const topByScore = useMemo(() => {
-    const scored = videos
+    const scored = filteredVideos
       .filter((v) => v.code && adPerfMap.has(v.code))
       .map((v) => ({ video: v, ad: adPerfMap.get(v.code!)! }))
       .filter((x) => x.ad.score !== null)
       .sort((a, b) => (b.ad.score ?? 0) - (a.ad.score ?? 0))
       .slice(0, 5);
     return scored;
-  }, [videos, adPerfMap]);
+  }, [filteredVideos, adPerfMap]);
 
   // Collect all unique metric names and tags
   const allMetrics = useMemo(() => {
@@ -221,8 +333,10 @@ export default function MarketingDashboardPage() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `マーケティングレポート_${new Date().toISOString().slice(0, 10)}.html`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handleExportPptx = async () => {
@@ -289,6 +403,13 @@ export default function MarketingDashboardPage() {
               </select>
             </div>
           )}
+          <button
+            onClick={() => setShowHelp(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-400 px-3.5 py-2.5 text-sm font-bold text-amber-900 shadow-sm hover:bg-amber-300 transition-colors ring-2 ring-amber-300 ring-offset-1"
+          >
+            <span className="text-base leading-none">?</span>
+            使い方
+          </button>
           <button
             onClick={handleRunAnalysis}
             disabled={analysisRunning}
@@ -380,13 +501,13 @@ export default function MarketingDashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">動画総数</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{dashboard?.total_videos ?? filteredVideos.length}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{tagFilter ? filteredVideos.length : (dashboard?.total_videos ?? filteredVideos.length)}</p>
             </div>
             <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">書き起こし完了</p>
               <p className="text-2xl font-bold text-green-600 mt-1">
-                {dashboard?.transcribed_videos ?? "---"}
-                <span className="ml-1 text-sm font-normal text-gray-400">/ {dashboard?.total_videos ?? filteredVideos.length}</span>
+                {tagFilter ? filteredVideos.filter((v) => v.status === "transcribed").length : (dashboard?.transcribed_videos ?? "---")}
+                <span className="ml-1 text-sm font-normal text-gray-400">/ {tagFilter ? filteredVideos.length : (dashboard?.total_videos ?? filteredVideos.length)}</span>
               </p>
             </div>
             <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
@@ -394,8 +515,6 @@ export default function MarketingDashboardPage() {
               <p className="text-2xl font-bold text-blue-600 mt-1">{adPerfList.length}<span className="ml-1 text-sm font-normal text-gray-400">件</span></p>
             </div>
           </div>
-
-
 
           {/* 事業貢献スコア トップ動画 */}
           {topByScore.length > 0 && (
@@ -533,7 +652,7 @@ export default function MarketingDashboardPage() {
           {/* Video comparison table */}
           {dashboard && dashboard.video_summaries.length > 0 && (
             <div className="rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white">動画一覧</h3>
               </div>
               <div className="overflow-x-auto">
@@ -546,7 +665,7 @@ export default function MarketingDashboardPage() {
                       <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">コンバージョン指標</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {dashboard.video_summaries.map((vs) => (
                       <tr key={vs.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                         <td className="px-6 py-3 font-medium text-gray-900 dark:text-white max-w-[240px] truncate">{vs.filename}</td>
@@ -772,11 +891,11 @@ export default function MarketingDashboardPage() {
                   <div className="space-y-2">
                     {report.improvement_priorities.map((ip, i) => (
                       <div key={i} className="flex items-start gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${ip.priority === "high" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                          : ip.priority === "medium" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${ip.priority.toLowerCase() === "high" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                          : ip.priority.toLowerCase() === "medium" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                             : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                           }`}>
-                          {ip.priority === "high" ? "高" : ip.priority === "medium" ? "中" : "低"}
+                          {ip.priority.toLowerCase() === "high" ? "高" : ip.priority.toLowerCase() === "medium" ? "中" : "低"}
                         </span>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900 dark:text-white">{ip.area}</p>
@@ -881,56 +1000,120 @@ export default function MarketingDashboardPage() {
       )}
 
       <Toast toast={toast} onClose={clearToast} />
+
+      {/* ===== Help Modal ===== */}
+      {showHelp && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowHelp(false); }}
+        >
+          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📖</span>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">ダッシュボード 操作マニュアル</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">各機能の使い方ガイド</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="rounded-full p-2 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto p-6 space-y-4">
+              {HELP_SECTIONS.map((sec) => (
+                <div key={sec.title} className="rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">{sec.icon}</span>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm">{sec.title}</h3>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {sec.content.map((line, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                        <span className="mt-0.5 shrink-0 text-amber-500">▸</span>
+                        <span>{renderBoldText(line)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-end">
+              <button
+                onClick={() => setShowHelp(false)}
+                className="rounded-lg bg-amber-400 px-5 py-2 text-sm font-bold text-amber-900 hover:bg-amber-300 transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ===== HTML Report Export =====
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function generateReportHtml(report: MarketingReportResult): string {
   const date = new Date().toLocaleDateString("ja-JP");
+  const h = escapeHtml;
   const section = (title: string, content: string) =>
-    `<div style="margin-bottom:24px"><h2 style="color:#1e40af;border-bottom:2px solid #3b82f6;padding-bottom:8px;margin-bottom:12px">${title}</h2>${content}</div>`;
+    `<div style="margin-bottom:24px"><h2 style="color:#1e40af;border-bottom:2px solid #3b82f6;padding-bottom:8px;margin-bottom:12px">${h(title)}</h2>${content}</div>`;
 
   const targetHtml = (report.target_audience_analysis ?? []).map((t) =>
     `<div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:8px;padding:12px;margin-bottom:8px">
-      <strong>${t.segment}</strong><br><span style="color:#6b21a8">${t.description}</span>
-      ${t.key_messages?.length ? `<div style="margin-top:6px">${t.key_messages.map((m) => `<span style="background:#ede9fe;padding:2px 8px;border-radius:4px;font-size:12px;margin-right:4px">${m}</span>`).join("")}</div>` : ""}
+      <strong>${h(t.segment)}</strong><br><span style="color:#6b21a8">${h(t.description)}</span>
+      ${t.key_messages?.length ? `<div style="margin-top:6px">${t.key_messages.map((m) => `<span style="background:#ede9fe;padding:2px 8px;border-radius:4px;font-size:12px;margin-right:4px">${h(m)}</span>`).join("")}</div>` : ""}
     </div>`
   ).join("");
 
   const matrixHtml = (report.content_performance_matrix ?? []).map((c) =>
-    `<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>${c.video_name}</strong></td>
+    `<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>${h(c.video_name)}</strong></td>
      <td style="padding:8px;border-bottom:1px solid #e5e7eb;color:${c.overall_score >= 7 ? "#16a34a" : c.overall_score >= 5 ? "#ca8a04" : "#dc2626"};font-weight:bold">${c.overall_score}/10</td>
-     <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#16a34a">${c.strengths?.join(", ") ?? ""}</td>
-     <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#dc2626">${c.weaknesses?.join(", ") ?? ""}</td></tr>`
+     <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#16a34a">${h(c.strengths?.join(", ") ?? "")}</td>
+     <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#dc2626">${h(c.weaknesses?.join(", ") ?? "")}</td></tr>`
   ).join("");
 
   const improvementsHtml = (report.improvement_priorities ?? []).map((ip) =>
     `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:8px">
-      <span style="background:${ip.priority === "high" ? "#fee2e2;color:#b91c1c" : ip.priority === "medium" ? "#fef3c7;color:#a16207" : "#dcfce7;color:#15803d"};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:bold">${ip.priority === "high" ? "高" : ip.priority === "medium" ? "中" : "低"}</span>
-      <strong style="margin-left:8px">${ip.area}</strong>
-      <div style="font-size:13px;color:#4b5563;margin-top:4px">${ip.recommended_action}</div>
-      <div style="font-size:12px;color:#2563eb;margin-top:4px">期待効果: ${ip.expected_impact}</div>
+      <span style="background:${ip.priority.toLowerCase() === "high" ? "#fee2e2;color:#b91c1c" : ip.priority.toLowerCase() === "medium" ? "#fef3c7;color:#a16207" : "#dcfce7;color:#15803d"};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:bold">${ip.priority.toLowerCase() === "high" ? "高" : ip.priority.toLowerCase() === "medium" ? "中" : "低"}</span>
+      <strong style="margin-left:8px">${h(ip.area)}</strong>
+      <div style="font-size:13px;color:#4b5563;margin-top:4px">${h(ip.recommended_action)}</div>
+      <div style="font-size:12px;color:#2563eb;margin-top:4px">期待効果: ${h(ip.expected_impact)}</div>
     </div>`
   ).join("");
 
   const nd = report.next_video_direction;
   const nextHtml = nd ? `
     <div style="background:linear-gradient(135deg,#eff6ff,#f5f3ff);border:1px solid #93c5fd;border-radius:8px;padding:16px">
-      <p><strong>テーマ:</strong> ${nd.theme}</p>
-      <p><strong>推奨構成:</strong> ${nd.recommended_structure}</p>
-      <p><strong>感情曲線:</strong> ${nd.target_emotion_arc}</p>
-      ${nd.key_messages?.length ? `<p><strong>メッセージ:</strong> ${nd.key_messages.join(" / ")}</p>` : ""}
+      <p><strong>テーマ:</strong> ${h(nd.theme)}</p>
+      <p><strong>推奨構成:</strong> ${h(nd.recommended_structure)}</p>
+      <p><strong>感情曲線:</strong> ${h(nd.target_emotion_arc)}</p>
+      ${nd.key_messages?.length ? `<p><strong>メッセージ:</strong> ${nd.key_messages.map((m) => h(m)).join(" / ")}</p>` : ""}
     </div>` : "";
 
   return `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>マーケティングレポート ${date}</title>
 <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:800px;margin:0 auto;padding:32px;color:#1f2937;line-height:1.6}
 h1{color:#1e3a5f;text-align:center;margin-bottom:8px}table{width:100%;border-collapse:collapse}</style></head><body>
 <h1>マーケティング総合レポート</h1><p style="text-align:center;color:#6b7280;margin-bottom:32px">作成日: ${date}</p>
-${section("エグゼクティブサマリー", `<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:16px;font-size:15px">${report.executive_summary}</div>`)}
+${section("エグゼクティブサマリー", `<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:16px;font-size:15px">${h(report.executive_summary)}</div>`)}
 ${targetHtml ? section("ターゲット分析", targetHtml) : ""}
 ${matrixHtml ? section("コンテンツ評価マトリクス", `<table><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #d1d5db">動画</th><th style="padding:8px;border-bottom:2px solid #d1d5db">スコア</th><th style="text-align:left;padding:8px;border-bottom:2px solid #d1d5db">強み</th><th style="text-align:left;padding:8px;border-bottom:2px solid #d1d5db">弱み</th></tr>${matrixHtml}</table>`) : ""}
-${(report.competitive_advantages ?? []).length > 0 ? section("競合優位性", report.competitive_advantages.map((c) => `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:8px"><strong>${c.advantage}</strong><br><span style="font-size:13px">${c.evidence}</span><br><span style="font-size:12px;color:#15803d">活用: ${c.leverage_suggestion}</span></div>`).join("")) : ""}
+${(report.competitive_advantages ?? []).length > 0 ? section("競合優位性", report.competitive_advantages.map((c) => `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:8px"><strong>${h(c.advantage)}</strong><br><span style="font-size:13px">${h(c.evidence)}</span><br><span style="font-size:12px;color:#15803d">活用: ${h(c.leverage_suggestion)}</span></div>`).join("")) : ""}
 ${improvementsHtml ? section("改善優先度", improvementsHtml) : ""}
 ${nextHtml ? section("次回動画の方向性", nextHtml) : ""}
 <footer style="text-align:center;color:#9ca3af;font-size:12px;margin-top:48px;border-top:1px solid #e5e7eb;padding-top:16px">動画CM分析ツール マーケティングレポート</footer>

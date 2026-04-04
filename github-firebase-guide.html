@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub・Firebase 社内管理運用ガイド — K.K.kurokawa&co.</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700;900&family=Noto+Sans+JP:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--white:#fff;--off-white:#fafafa;--gray-50:#f7f7f7;--gray-100:#efefef;--gray-200:#e0e0e0;--gray-300:#c8c8c8;--gray-400:#a0a0a0;--gray-500:#787878;--gray-600:#555;--gray-700:#383838;--gray-800:#252525;--gray-900:#141414;--black:#0a0a0a;--red:#c0392b;--red-bg:#fdf2f0;--amber:#8a6d0b;--amber-bg:#fdf8ec;--green:#1a7349;--green-bg:#eef7f1;--blue:#2a5a85;--blue-bg:#edf3f9}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--white);color:var(--gray-800);line-height:1.95;font-size:14.5px;-webkit-font-smoothing:antialiased}
+@media print{body{font-size:9pt;line-height:1.6}.page{max-width:100%;padding:0 10mm}section{page-break-inside:avoid}}
+.page{max-width:880px;margin:0 auto;padding:0 clamp(20px,5vw,48px)}
+.cover{padding:72px 0 48px;border-bottom:3px solid var(--black)}
+.cover-label{font-size:10px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--gray-400);margin-bottom:20px;display:block}
+.cover h1{font-family:'Noto Serif JP',serif;font-size:clamp(24px,3.5vw,36px);font-weight:900;line-height:1.35;color:var(--black);margin-bottom:16px;letter-spacing:-.02em}
+.cover-sub{font-size:15px;color:var(--gray-600);line-height:2;max-width:720px;margin-bottom:32px;font-weight:300}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;padding-top:20px;border-top:1px solid var(--gray-200)}
+.meta-item dt{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-400);font-weight:600;margin-bottom:2px}
+.meta-item dd{font-size:13px;color:var(--gray-700);font-weight:500}
+.toc{padding:36px 0;border-bottom:1px solid var(--gray-200)}
+.toc-title{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gray-400);font-weight:600;margin-bottom:16px}
+.toc-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 32px}
+.toc-group-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gray-400);font-weight:600;margin:16px 0 6px;padding-top:10px;border-top:1px dashed var(--gray-200)}
+.toc-group-label:first-child{margin-top:0;padding-top:0;border-top:none}
+.toc ol{list-style:none;counter-reset:toc-counter}
+.toc li{counter-increment:toc-counter}
+.toc li a{display:flex;align-items:baseline;gap:10px;padding:4px 0;text-decoration:none;color:var(--gray-600);font-size:12.5px;border-bottom:1px solid var(--gray-100);transition:color .15s}
+.toc li a:hover{color:var(--black)}
+.toc li a::before{content:counter(toc-counter,decimal-leading-zero);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gray-400);min-width:20px;text-align:right}
+.part-divider{padding:28px 0;text-align:center;border-bottom:3px solid var(--black)}
+.part-divider span{font-family:'Noto Serif JP',serif;font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gray-500);font-weight:600}
+section{padding:40px 0;border-bottom:1px solid var(--gray-200)}
+.section-number{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gray-400);letter-spacing:1px;margin-bottom:6px;display:block}
+h2{font-family:'Noto Serif JP',serif;font-size:clamp(18px,2.5vw,24px);font-weight:700;line-height:1.4;color:var(--black);margin-bottom:18px;letter-spacing:-.01em}
+h3{font-size:14.5px;font-weight:700;color:var(--gray-800);margin:28px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--gray-100)}
+h4{font-size:13px;font-weight:600;color:var(--gray-700);margin:18px 0 6px}
+p{margin-bottom:12px;color:var(--gray-700);font-size:14px}
+strong{color:var(--gray-900);font-weight:600}
+.callout{border-radius:4px;padding:16px 20px;margin:16px 0;border:1px solid;font-size:13px;line-height:1.8}
+.callout h4{margin:0 0 4px;font-size:12.5px;font-weight:700;padding-bottom:0;border-bottom:none}
+.callout p{font-size:13px;margin-bottom:0}
+.callout-danger{background:var(--red-bg);border-color:#e6c5bd}.callout-danger h4{color:var(--red)}
+.callout-warn{background:var(--amber-bg);border-color:#e2d5a8}.callout-warn h4{color:var(--amber)}
+.callout-ok{background:var(--green-bg);border-color:#b8dcc8}.callout-ok h4{color:var(--green)}
+.callout-info{background:var(--blue-bg);border-color:#b5cde3}.callout-info h4{color:var(--blue)}
+.table-wrap{overflow-x:auto;margin:16px 0}
+table{width:100%;border-collapse:collapse;font-size:12px;background:var(--white);border:1px solid var(--gray-200)}
+th{background:var(--gray-50);padding:9px 12px;text-align:left;font-weight:600;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--gray-500);border-bottom:2px solid var(--gray-200)}
+td{padding:9px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;line-height:1.7}
+tr:last-child td{border-bottom:none}
+.tag{display:inline-block;padding:2px 10px;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:.3px}
+.tag-high{background:var(--red-bg);color:var(--red);border:1px solid #e6c5bd}
+.tag-mid{background:var(--amber-bg);color:var(--amber);border:1px solid #e2d5a8}
+.tag-low{background:var(--green-bg);color:var(--green);border:1px solid #b8dcc8}
+.tag-info{background:var(--blue-bg);color:var(--blue);border:1px solid #b5cde3}
+.phase{margin:20px 0;padding:20px 24px;background:var(--gray-50);border-left:3px solid var(--gray-300);border-radius:0 4px 4px 0}
+.phase-header{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.phase-num{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--white);background:var(--gray-800);padding:2px 8px;border-radius:3px;letter-spacing:1px}
+.phase-title{font-size:14px;font-weight:700;color:var(--gray-800)}
+.phase-period{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gray-500);margin-left:auto}
+.phase p{font-size:13px;margin-bottom:6px}
+.phase-active{border-left-color:var(--black)}.phase-active .phase-num{background:var(--black)}
+.roadmap{margin:24px 0}
+.roadmap-item{display:grid;grid-template-columns:80px 1fr;gap:20px;padding:16px 0;border-bottom:1px solid var(--gray-100)}
+.roadmap-month{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--gray-500);padding-top:2px}
+.roadmap-content h4{margin:0 0 4px;font-size:13.5px;padding-bottom:0;border-bottom:none}
+.roadmap-content p{font-size:12.5px;margin-bottom:4px}
+footer{padding:40px 0;text-align:center;font-size:11px;color:var(--gray-400);line-height:2;border-top:3px solid var(--black)}
+.text-sm{font-size:12.5px}.text-muted{color:var(--gray-500)}.mono{font-family:'IBM Plex Mono',monospace}
+@media(max-width:640px){.cover{padding:40px 0 32px}section{padding:28px 0}.roadmap-item{grid-template-columns:60px 1fr;gap:12px}.toc-columns{grid-template-columns:1fr}.vs-block{grid-template-columns:1fr;gap:8px}.vs-center{padding:4px 0}}
+.vs-block{display:grid;grid-template-columns:1fr 40px 1fr;gap:0;align-items:start;margin:16px 0}
+.vs-block>div:first-child,.vs-block>div:last-child{padding:16px 20px;border-radius:4px;font-size:13px;line-height:1.8}
+.vs-free{background:var(--red-bg);border:1px solid #e6c5bd}
+.vs-paid{background:var(--green-bg);border:1px solid #b8dcc8}
+.vs-center{display:flex;align-items:center;justify-content:center;font-family:'Noto Serif JP',serif;font-weight:700;color:var(--gray-400);font-size:16px}
+ul.checklist{list-style:none;margin:8px 0}
+ul.checklist li{padding:3px 0 3px 20px;position:relative;font-size:13px;color:var(--gray-700)}
+ul.checklist li::before{content:'';position:absolute;left:0;top:10px;width:8px;height:8px;border:2px solid var(--gray-300);border-radius:2px}
+.analogy{margin:14px 0;padding:14px 20px;background:var(--gray-50);border-left:3px solid var(--gray-300);border-radius:0 4px 4px 0;font-size:13px;line-height:1.8;color:var(--gray-600)}
+.analogy strong{color:var(--gray-800)}
+.decision-box{margin:16px 0;padding:20px 24px;border:2px solid var(--gray-200);border-radius:4px;background:var(--off-white)}
+.decision-box h4{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--gray-800);padding-bottom:0;border-bottom:none}
+.decision-step{display:grid;grid-template-columns:24px 1fr;gap:8px;padding:6px 0;font-size:13px;align-items:start}
+.decision-num{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:var(--white);background:var(--gray-700);width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.case-study{margin:16px 0;padding:16px 20px;background:var(--amber-bg);border:1px solid #e2d5a8;border-radius:4px}
+.case-study h4{margin:0 0 6px;font-size:12.5px;font-weight:700;color:var(--amber);padding-bottom:0;border-bottom:none}
+.case-study p{font-size:13px;margin-bottom:4px;color:var(--gray-700)}
+.code-block{margin:12px 0;padding:14px 18px;background:var(--gray-900);color:#e0e0e0;border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.7;overflow-x:auto;white-space:pre}
+.code-block .comment{color:var(--gray-500)}
+.flow-diagram{margin:16px 0;padding:20px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:4px;text-align:center;font-size:13px;line-height:2.2}
+.flow-arrow{color:var(--gray-400);font-size:16px;display:block}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ============================================================ -->
+<!-- COVER -->
+<!-- ============================================================ -->
+<header class="cover">
+  <span class="cover-label">Infrastructure Management Report / Internal Use</span>
+  <h1>GitHub・Firebase<br>社内管理運用ガイド</h1>
+  <p class="cover-sub">
+    本レポートは、GitHubおよびFirebaseを企業として管理・運用する際のプラン選定、セキュリティ設計、コード管理体制、環境管理、シークレット管理、外部委託先との協業ルール、段階的な導入フェーズ、そして到達すべき最終状態を網羅する。非エンジニアが読める粒度で、具体的な事故シナリオと身近な例えを交えながら解説する。
+  </p>
+  <div class="meta-grid">
+    <dl class="meta-item"><dt>対象企業</dt><dd>K.K.kurokawa&co.</dd></dl>
+    <dl class="meta-item"><dt>作成日</dt><dd>2026年4月2日</dd></dl>
+    <dl class="meta-item"><dt>対象サービス</dt><dd>GitHub / Firebase</dd></dl>
+    <dl class="meta-item"><dt>推奨構成</dt><dd>GitHub Team + Firebase Blaze</dd></dl>
+    <dl class="meta-item"><dt>導入工期</dt><dd>約3ヶ月（段階実装）</dd></dl>
+    <dl class="meta-item"><dt>前提条件</dt><dd>10名規模チーム想定</dd></dl>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<!-- EXECUTIVE SUMMARY -->
+<!-- ============================================================ -->
+<div style="padding:36px 0;border-bottom:3px solid var(--black);">
+  <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gray-400);font-weight:600;margin-bottom:16px;">Executive Summary</div>
+  <h2 style="font-family:'Noto Serif JP',serif;font-size:clamp(16px,2.2vw,20px);font-weight:700;color:var(--black);margin-bottom:16px;letter-spacing:-.01em;">この報告書が必要な理由</h2>
+
+  <p style="font-size:14.5px;line-height:2;color:var(--gray-700);margin-bottom:16px;">当社はDX施策の一環として、ソースコード管理にGitHub、アプリ基盤にFirebaseを採用している。しかし現時点では、<strong style="color:var(--gray-900);">「誰がどの権限でアクセスしているか」「退職者のアクセスは遮断されているか」「秘密情報がコードに混入していないか」「Firebase本番環境が誤削除されない保証はあるか」</strong>――これらの問いに即答できる状態にない。この状態は、ソースコードの流出、サービス停止、予想外の高額請求といった事業リスクに直結する。</p>
+
+  <p style="font-size:14.5px;line-height:2;color:var(--gray-700);margin-bottom:20px;">本報告書は、この状況を3ヶ月で解消するための<strong style="color:var(--gray-900);">具体的な行動計画</strong>である。技術的な専門知識がなくても読める粒度で、「何を」「なぜ」「いつまでに」「いくらで」実施すべきかを定義する。</p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px;">
+    <div style="padding:16px 20px;background:var(--red-bg);border:1px solid #e6c5bd;border-radius:4px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--red);font-weight:600;margin-bottom:4px;">問題</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--gray-700);margin:0;">管理体制が未整備のまま運用が拡大している。退職者のアクセス残存、コードレビューなしの本番反映、環境未分離、シークレット管理の不在が同時に起きている状態</p>
+    </div>
+    <div style="padding:16px 20px;background:var(--blue-bg);border:1px solid #b5cde3;border-radius:4px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--blue);font-weight:600;margin-bottom:4px;">解決策</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--gray-700);margin:0;">GitHub Teamプラン＋Firebase Blazeプランを基盤に、アカウント管理、コード管理（ブランチ保護＋CI/CD）、環境分離（dev/staging/prod）、シークレット管理、退職者・外部委託先管理を段階的に構築</p>
+    </div>
+    <div style="padding:16px 20px;background:var(--green-bg);border:1px solid #b8dcc8;border-radius:4px;">
+      <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--green);font-weight:600;margin-bottom:4px;">到達状態</div>
+      <p style="font-size:13px;line-height:1.7;color:var(--gray-700);margin:0;">3ヶ月後に「誰がどの権限でアクセスしているか一覧できる」「コード変更は必ずレビューを経由する」「秘密情報がコードに含まれていない」「本番環境が保護されている」状態を実現</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:16px 20px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:4px;">
+    <div>
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);font-weight:600;">推奨構成コスト</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;color:var(--gray-800);margin-top:2px;">$55〜$80<span style="font-size:11px;color:var(--gray-500);font-weight:400;">/月</span></div>
+      <div style="font-size:11px;color:var(--gray-500);">約8,000〜12,000円（10名・Copilotなし）</div>
+    </div>
+    <div>
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);font-weight:600;">導入期間</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;color:var(--gray-800);margin-top:2px;">3ヶ月</div>
+      <div style="font-size:11px;color:var(--gray-500);">Month 1で緊急対応、Month 3で自走体制確立</div>
+    </div>
+    <div>
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);font-weight:600;">対策しない場合のリスク</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;color:var(--red);margin-top:2px;">高</div>
+      <div style="font-size:11px;color:var(--gray-500);">コード流出・サービス停止・高額請求の可能性</div>
+    </div>
+  </div>
+
+  <h3 style="font-size:13px;font-weight:700;color:var(--gray-800);margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--gray-100);">本報告書の構成</h3>
+  <div style="overflow-x:auto;margin:12px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--white);border:1px solid var(--gray-200);">
+      <thead><tr>
+        <th style="background:var(--gray-50);padding:8px 12px;text-align:left;font-weight:600;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--gray-500);border-bottom:2px solid var(--gray-200);">パート</th>
+        <th style="background:var(--gray-50);padding:8px 12px;text-align:left;font-weight:600;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--gray-500);border-bottom:2px solid var(--gray-200);">内容</th>
+        <th style="background:var(--gray-50);padding:8px 12px;text-align:left;font-weight:600;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--gray-500);border-bottom:2px solid var(--gray-200);">読むべき人</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;"><strong style="color:var(--gray-900);">第一部</strong> 全体設計（第1〜2章）</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">なぜ管理が必要か、GitHubとFirebaseの基礎知識と用語集</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">全員（特に経営層・非エンジニア）</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;"><strong style="color:var(--gray-900);">第二部</strong> GitHub編（第3〜5章）</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">プラン比較、セキュリティ設計、退職者・外部委託先の管理ルール</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">管理者・エンジニアリーダー</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;"><strong style="color:var(--gray-900);">第二部補</strong> GitHub操作入門（第6〜8章）</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">Gitの基本概念図解、clone/add/commit/push/pull/branch/merge/PRの操作方法、トラブル対処法</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">Git未経験者・全員</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;"><strong style="color:var(--gray-900);">第三部</strong> Firebase編（第6〜7章）</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">プラン比較、セキュリティ3層構造、APIキーの性質、コスト管理</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">管理者・バックエンド担当</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;"><strong style="color:var(--gray-900);">第四部</strong> コード・環境管理（第8〜10章）</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">ブランチ戦略、CI/CD、シークレット管理、Firebase環境分離（dev/staging/prod）</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">エンジニア全員</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;"><strong style="color:var(--gray-900);">第五部</strong> 導入戦略（第11〜14章）</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">コンプライアンス、失敗パターン、3ヶ月ロードマップ、コスト試算、最終到達状態</td>
+          <td style="padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:top;">経営層・管理者</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:none;color:var(--gray-700);vertical-align:top;"><strong style="color:var(--gray-900);">第六部</strong> ツール選定（第15〜16章）</td>
+          <td style="padding:8px 12px;border-bottom:none;color:var(--gray-700);vertical-align:top;">SaaS選定の7つの基準、Supabase・Vercel・Cloudflare等の主要ツール比較マップ</td>
+          <td style="padding:8px 12px;border-bottom:none;color:var(--gray-700);vertical-align:top;">エンジニアリーダー・経営層</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="padding:14px 20px;background:var(--gray-50);border-left:3px solid var(--gray-300);border-radius:0 4px 4px 0;font-size:13px;line-height:1.8;color:var(--gray-600);margin-top:16px;">
+    <strong style="color:var(--gray-800);">まず読むべき箇所：</strong>時間がない場合は、本要約 → 第1章（なぜ必要か） → 第13章（3ヶ月ロードマップ）の3点を読めば、全体像と具体的なアクションが把握できる。技術的な詳細は、実装フェーズで該当章を参照する。
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TOC -->
+<!-- ============================================================ -->
+<nav class="toc">
+  <div class="toc-title">目次</div>
+  <div class="toc-columns">
+    <div>
+      <div class="toc-group-label">全体設計</div>
+      <ol>
+        <li><a href="#s01">なぜ「社内管理」が必要なのか</a></li>
+        <li><a href="#s02">GitHubとFirebaseの基礎知識</a></li>
+      </ol>
+      <div class="toc-group-label">GitHub編</div>
+      <ol start="3">
+        <li><a href="#s03">GitHubプラン比較と判断フロー</a></li>
+        <li><a href="#s04">GitHubセキュリティ設計</a></li>
+        <li><a href="#s05">退職者・外部委託先の管理</a></li>
+      </ol>
+      <div class="toc-group-label">GitHub操作入門</div>
+      <ol start="6">
+        <li><a href="#sg01">Gitの基本概念：図解で理解する</a></li>
+        <li><a href="#sg02">日常の操作フロー完全ガイド</a></li>
+        <li><a href="#sg03">よくあるトラブルと対処法</a></li>
+      </ol>
+      <div class="toc-group-label">Firebase編</div>
+      <ol start="9">
+        <li><a href="#s06">Firebaseプラン比較と判断フロー</a></li>
+        <li><a href="#s07">Firebaseセキュリティとコスト管理</a></li>
+      </ol>
+    </div>
+    <div>
+      <div class="toc-group-label">コード・環境管理</div>
+      <ol start="11">
+        <li><a href="#s08">社内コード管理の全体設計</a></li>
+        <li><a href="#s09">シークレット管理と環境変数</a></li>
+        <li><a href="#s10">Firebase環境管理（dev / staging / prod）</a></li>
+      </ol>
+      <div class="toc-group-label">導入戦略</div>
+      <ol start="14">
+        <li><a href="#s11">コンプライアンスとバックアップ</a></li>
+        <li><a href="#s12">よくある失敗パターンと防止策</a></li>
+        <li><a href="#s13">導入ロードマップとコスト試算</a></li>
+        <li><a href="#s14">最終到達状態とリスク対策</a></li>
+      </ol>
+      <div class="toc-group-label">ツール選定</div>
+      <ol start="18">
+        <li><a href="#s15">SaaS・クラウドツール選定の7つの基準</a></li>
+        <li><a href="#s16">主要ツール比較マップ（Supabase他）</a></li>
+      </ol>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第一部 ― 全体設計</span></div>
+<!-- ============================================================ -->
+
+<section id="s01">
+  <span class="section-number">01</span>
+  <h2>なぜ「社内管理」が必要なのか</h2>
+
+  <h3>放置した場合に起こること</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>事故シナリオ</th><th>影響</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td><strong>退職者がコードを持ち出す</strong></td><td>競合にソースコードが流出</td><td>退職後もGitHubのアクセス権が残っていた</td></tr>
+      <tr><td><strong>Firebase請求が突然10万円に</strong></td><td>予算超過、経営層からの信頼低下</td><td>予算上限が未設定、アクセス急増時に従量課金が膨張</td></tr>
+      <tr><td><strong>本番コードが直接書き換えられる</strong></td><td>サービス停止、顧客クレーム</td><td>コード変更の承認ルール（ブランチ保護）が未設定</td></tr>
+      <tr><td><strong>管理者が1人だけで連絡不能に</strong></td><td>設定変更もメンバー追加もできない</td><td>Owner権限が1名だけ</td></tr>
+      <tr><td><strong>外部委託先が契約終了後もアクセス可能</strong></td><td>機密コードが社外から閲覧され続ける</td><td>権限削除を忘れた</td></tr>
+      <tr><td><strong>APIキーをコードに直書きしてGitHubにアップ</strong></td><td>第三者が不正利用、高額請求や情報漏洩</td><td>シークレット管理のルールがない</td></tr>
+      <tr><td><strong>開発環境で本番データを使ってテスト</strong></td><td>個人情報漏洩、法的リスク</td><td>環境分離ができていない</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="analogy"><strong>オフィスに例えると：</strong>GitHubは「会社の設計図を保管している金庫室」、Firebaseは「お客様が出入りする店舗の鍵とレジ」に相当する。金庫室の鍵を退職者に返してもらわない、レジの暗証番号を変えない――こうした状態が、管理体制のないGitHub・Firebase運用で実際に起きていることである。</div>
+
+  <h3>本レポートのゴール：3ヶ月で到達する5つの状態</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>観点</th><th>現状（想定）</th><th>3ヶ月後</th></tr></thead>
+    <tbody>
+      <tr><td><strong>アカウント管理</strong></td><td>個人アカウントで運用。誰が何にアクセスできるか不明</td><td>組織アカウントで一元管理。権限が職種別に整理</td></tr>
+      <tr><td><strong>コード管理</strong></td><td>レビューなしで本番に直接反映。ブランチ戦略がない</td><td>ブランチ保護＋必須レビュー＋CI/CDパイプラインが稼働</td></tr>
+      <tr><td><strong>シークレット管理</strong></td><td>APIキーやパスワードがコード内に散在</td><td>環境変数またはSecret Managerで一元管理。コードに秘密情報ゼロ</td></tr>
+      <tr><td><strong>環境管理</strong></td><td>1つのFirebaseプロジェクトで開発と本番を兼用</td><td>開発/ステージング/本番が分離。本番は限定アクセス</td></tr>
+      <tr><td><strong>退職者・委託先</strong></td><td>退職しても何も変更されていない</td><td>退職日/契約終了日にアクセス権が遮断される仕組みが稼働</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s02">
+  <span class="section-number">02</span>
+  <h2>GitHubとFirebaseの基礎知識</h2>
+
+  <h3>GitHubとは何か</h3>
+  <div class="analogy"><strong>Wordに例えると：</strong>Wordの「変更履歴の記録」をはるかに高度にしたもの。誰が・いつ・どの行を・どう変更したかが全て記録され、過去の任意の時点に戻せる。複数人が同時に別々の箇所を編集し、後で1つに統合することも可能。社内での位置づけは<strong>「ソースコードの金庫」</strong>。</div>
+
+  <h3>Firebaseとは何か</h3>
+  <div class="analogy"><strong>飲食店に例えると：</strong>Firebaseは「厨房設備・レジ・予約システム・配達インフラが全部セットになったレンタルキッチン」。自分で建物を建てなくても、すぐに料理（アプリ）を提供できる。核心は<strong>FirebaseプロジェクトはGoogle Cloudプロジェクトと同一</strong>だということ。課金もGoogle Cloudの仕組みで処理される。</div>
+
+  <div class="callout callout-info">
+    <h4>非エンジニア向け：よく出てくる用語集</h4>
+    <p><strong>リポジトリ</strong>：1つのプロジェクトのコードを保管する「フォルダ」。<br>
+    <strong>Organization</strong>：会社単位の「組織アカウント」。オフィスビルの管理会社のように、メンバーの出入りや部屋の鍵を一括管理。<br>
+    <strong>ブランチ</strong>：コードの「並行世界」。本番用・開発用・機能追加用など、複数の作業を同時進行するために枝分かれさせたもの。<br>
+    <strong>ブランチ保護</strong>：本番コードに変更を反映する前に、別の人のチェックを必ず通すルール。銀行の送金で「上長の承認印が必要」という仕組みと同じ。<br>
+    <strong>プルリクエスト</strong>：コードの「変更申請書」。変更内容を一覧で見せて、レビュアーが承認するとマージ（統合）される。<br>
+    <strong>CI/CD</strong>：Continuous Integration / Continuous Delivery。コードが変更されるたびに自動でテスト・検査・デプロイ（本番反映）を実行する仕組み。<br>
+    <strong>SAML SSO</strong>：社員証1枚で全フロアに入れるのと同じ。社内ID基盤でGitHubにもログイン可能。<br>
+    <strong>SCIM</strong>：人事部が退職届を処理すると各システムの鍵が自動回収される状態。<br>
+    <strong>IAM</strong>：「誰が・何に・どこまでアクセスできるか」の権限管理。フロアごとに入室できる社員を設定するのと同じ。<br>
+    <strong>二要素認証（2FA）</strong>：マンションのオートロック＋部屋の鍵の二重ロック。<br>
+    <strong>環境変数</strong>：コードの外にある「メモ書き」。パスワードやAPIキー等の秘密情報を、コード自体には書かずに外部から渡す仕組み。<br>
+    <strong>.gitignore</strong>：「このファイルはGitHubにアップロードしないで」というルールを書いた設定ファイル。</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第二部 ― GitHub編</span></div>
+<!-- ============================================================ -->
+
+<section id="s03">
+  <span class="section-number">03</span>
+  <h2>GitHubプラン比較と判断フロー</h2>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>項目</th><th>Free</th><th>Team</th><th>Enterprise</th></tr></thead>
+    <tbody>
+      <tr><td><strong>月額</strong></td><td>$0</td><td>$4/ユーザー</td><td>$21/ユーザー</td></tr>
+      <tr><td>プライベートリポジトリ</td><td>無制限</td><td>無制限</td><td>無制限</td></tr>
+      <tr><td><strong>ブランチ保護</strong><br><span class="text-sm text-muted">コード変更の承認制御</span></td><td><span class="tag tag-high">公開リポジトリのみ</span></td><td><span class="tag tag-low">全リポジトリ</span></td><td><span class="tag tag-low">全リポジトリ</span></td></tr>
+      <tr><td><strong>CI/CD実行時間</strong></td><td>2,000分/月</td><td>3,000分/月</td><td>50,000分/月</td></tr>
+      <tr><td><strong>SAML SSO</strong></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-low">対応</span></td></tr>
+      <tr><td><strong>SCIM</strong></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-low">対応</span></td></tr>
+      <tr><td><strong>IP制限</strong></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-low">対応</span></td></tr>
+      <tr><td><strong>監査ログAPI</strong></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-low">対応（180日＋外部保存）</span></td></tr>
+      <tr><td><strong>内部リポジトリ</strong></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-high">不可</span></td><td><span class="tag tag-low">対応</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="decision-box">
+    <h4>プラン選定フロー：迷ったらこの順番で判断</h4>
+    <div class="decision-step"><span class="decision-num">1</span><span>開発者は3名以上か？ No → Free。Yes → 次へ。</span></div>
+    <div class="decision-step"><span class="decision-num">2</span><span>プライベートリポジトリでブランチ保護が必要？ Yes → <strong>Team</strong>。</span></div>
+    <div class="decision-step"><span class="decision-num">3</span><span>SSO連携またはIP制限が必要？ Yes → <strong>Enterprise</strong>。</span></div>
+    <div class="decision-step"><span class="decision-num">4</span><span>SOC 2 / ISO 27001の認証を予定？ Yes → <strong>Enterprise</strong>。</span></div>
+  </div>
+
+  <h3>ブランチ保護の有無による違い</h3>
+  <div class="vs-block">
+    <div class="vs-free"><h4 style="color:var(--red);margin:0 0 6px;font-size:12px;border:none;padding:0;">保護なし（Free）</h4><p style="margin:0;">開発者Aがコードを書き換えると即座に本番に反映。誰のチェックも入らない。深夜のミスも悪意ある改変も素通り。</p></div>
+    <div class="vs-center">vs</div>
+    <div class="vs-paid"><h4 style="color:var(--green);margin:0 0 6px;font-size:12px;border:none;padding:0;">保護あり（Team以上）</h4><p style="margin:0;">変更は「プルリクエスト」として申請。別の開発者がチェックし、承認して初めて本番に反映。二重チェックが保証される。</p></div>
+  </div>
+  <div class="analogy"><strong>契約書に例えると：</strong>保護なし＝「担当者が契約書を1人で作成し、上長の確認なしにそのまま送付」。保護あり＝「上長が必ず確認・押印してから送付」。前者でミスが起きた場合の損害は比較にならない。</div>
+
+  <h3>GitHub Copilot（AI補助）の費用</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>プラン</th><th>月額</th><th>要点</th></tr></thead>
+    <tbody>
+      <tr><td>Free</td><td>$0</td><td>月2,000回補完。個人利用・学習用</td></tr>
+      <tr><td>Pro</td><td>$10/人</td><td>無制限補完。コードがAI学習に使われる可能性あり</td></tr>
+      <tr><td><strong>Business</strong></td><td>$19/人</td><td>組織管理。<strong>コードがAI学習に使われない保証</strong></td></tr>
+      <tr><td>Enterprise</td><td>$39/人</td><td>社内ナレッジ連携。大規模向け</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout callout-warn"><h4>企業利用ではBusiness以上を推奨</h4><p>Free/Proではコードがモデル学習に使われる可能性がある。自社の機密コードを扱う場合、Business（学習に使われない保証）が重要。10名で月$190（約29,000円）の追加コスト。</p></div>
+</section>
+
+<section id="s04">
+  <span class="section-number">04</span>
+  <h2>GitHubセキュリティ設計</h2>
+
+  <h3>二要素認証（2FA）の強制</h3>
+  <p><strong>全プランで可能</strong>。最優先で設定。設定後、2FA未設定メンバーは自動除外されるため事前周知が必須。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>方式</th><th>安全性</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><strong>パスキー/セキュリティキー</strong></td><td><span class="tag tag-low">最高</span></td><td>生体認証や物理キー。フィッシングに最強</td></tr>
+      <tr><td><strong>認証アプリ（TOTP）</strong></td><td><span class="tag tag-low">高</span></td><td>30秒ごとに変わる6桁コード</td></tr>
+      <tr><td><strong>SMS</strong></td><td><span class="tag tag-high">非推奨</span></td><td>SIMスワップ攻撃のリスクあり</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>権限管理：5段階のロール</h3>
+  <div class="analogy"><strong>オフィスビルの鍵に例えると：</strong>「最小権限の原則」＝全フロアのマスターキーを全員に渡すのではなく、経理部には経理フロアの鍵だけ、営業部には営業フロアの鍵だけを渡す。</div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ロール</th><th>できること</th><th>付与対象</th><th>人数</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Owner</strong></td><td>組織全体の管理、課金、全リポジトリフルアクセス</td><td>経営者、CTO</td><td>2〜3名（必ず複数）</td></tr>
+      <tr><td><strong>Admin</strong></td><td>担当リポジトリの設定変更、ブランチ保護管理</td><td>テックリード</td><td>チームに1〜2名</td></tr>
+      <tr><td><strong>Write</strong></td><td>コード変更・プルリクエスト作成</td><td>一般開発者</td><td>全開発メンバー</td></tr>
+      <tr><td><strong>Read</strong></td><td>コード閲覧のみ</td><td>QA、デザイナー、経営層</td><td>必要に応じて</td></tr>
+      <tr><td><strong>Outside Collaborator</strong></td><td>特定リポジトリのみ</td><td>外部委託先</td><td>案件ごと</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>トークン管理</h3>
+  <div class="analogy"><strong>鍵に例えると：</strong>Classic PAT＝「全部屋を開けられるマスターキーの合鍵」。紛失で全室侵入。Fine-grained PAT＝「特定の部屋だけ・有効期限つき鍵」。GitHub Apps＝「入退室管理システムの電子キー」。組織が一元管理。</div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>種類</th><th>安全性</th><th>推奨</th></tr></thead>
+    <tbody>
+      <tr><td><strong>GitHub Apps</strong></td><td><span class="tag tag-low">最高</span></td><td><span class="tag tag-low">最推奨</span></td></tr>
+      <tr><td><strong>Fine-grained PAT</strong></td><td><span class="tag tag-low">高</span></td><td><span class="tag tag-low">推奨</span></td></tr>
+      <tr><td><strong>Classic PAT</strong></td><td><span class="tag tag-high">低</span></td><td><span class="tag tag-high">非推奨・移行対象</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Advanced Securityオプション</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>名称</th><th>月額</th><th>説明</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Secret Protection</strong></td><td>$19/開発者</td><td>コード内のパスワード・APIキー混入を自動検知し公開前にブロック。「封筒の中に個人情報が混ざっていないか投函前に自動検査」</td></tr>
+      <tr><td><strong>Code Security</strong></td><td>$30/開発者</td><td>コードの脆弱性と外部ライブラリの既知問題を自動検査。「建物の設計図の構造問題を自動検査」</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s05">
+  <span class="section-number">05</span>
+  <h2>退職者・外部委託先の管理</h2>
+
+  <h3>退職者対応フロー</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ステップ</th><th>対応</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. Organization削除</strong></td><td>Enterprise+SCIM：ID基盤から削除で自動除外。Free/Team：管理者が手動削除</td></tr>
+      <tr><td><strong>2. トークン失効</strong></td><td>退職者発行のPATの権限取消。放置するとトークン経由でアクセスが継続</td></tr>
+      <tr><td><strong>3. SSH鍵・デプロイキー</strong></td><td>退職者が登録したキーを全て削除</td></tr>
+      <tr><td><strong>4. 監査ログ確認</strong></td><td>退職日前後の操作を確認（Enterprise：API、Free/Team：Web画面90日分）</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>外部委託先・フリーランスとの協業ルール</h3>
+  <div class="analogy"><strong>来客対応に例えると：</strong>「来客に社員証ではなく来客用バッジを発行する」のと同じ。来客用バッジ（Outside Collaborator）では特定会議室（リポジトリ）にしか入れないし、訪問終了時に返却する。社員証（Organizationメンバー）を渡すと全フロア出入り自由。</div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ルール</th><th>正しいやり方</th><th>やってはいけないこと</th></tr></thead>
+    <tbody>
+      <tr><td><strong>招待方法</strong></td><td>Outside Collaboratorで特定リポジトリのみ</td><td>Organizationメンバーとして追加（全リポジトリが見える）</td></tr>
+      <tr><td><strong>権限レベル</strong></td><td>ReadまたはWriteに限定</td><td>Admin以上を渡す（ブランチ保護解除が可能に）</td></tr>
+      <tr><td><strong>契約終了時</strong></td><td>終了日をカレンダー登録、当日中に権限削除</td><td>「まだ使うかも」と権限を残す</td></tr>
+      <tr><td><strong>契約前</strong></td><td>NDA（秘密保持契約）を締結してからアクセス付与</td><td>口頭の約束だけでアクセス許可</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第二部補 ― GitHub操作入門</span></div>
+<!-- ============================================================ -->
+
+<section id="sg01">
+  <span class="section-number">06</span>
+  <h2>Gitの基本概念：図解で理解する</h2>
+
+  <h3>GitとGitHubは別物</h3>
+  <p>まず最も重要な区別から。<strong>Git</strong>はソースコードの変更履歴を管理する「仕組み」そのもの。<strong>GitHub</strong>はGitで管理されたコードをインターネット上に保管し、チームで共有するための「サービス」だ。</p>
+  <div class="analogy"><strong>Wordに例えると：</strong>Git＝「変更履歴の記録」という機能そのもの。GitHub＝「変更履歴つきのWordファイルをOneDriveに保管して、チームで共有する」こと。Gitはパソコン上で動く道具、GitHubはその道具で作ったものを置くクラウドの棚。</div>
+
+  <h3>覚えるべき10の用語（すべて身近な例えつき）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>用語</th><th>意味</th><th>身近な例え</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>リポジトリ（Repository）</strong></td><td>1つのプロジェクトのコードと変更履歴をまとめて保管する場所</td><td>1冊のノートブック。プロジェクトごとに1冊ずつ用意する</td></tr>
+      <tr><td>2</td><td><strong>クローン（Clone）</strong></td><td>GitHub上のリポジトリを、自分のパソコンに丸ごとコピーすること</td><td>図書館の本を借りてきて、手元で読み書きできるようにする行為</td></tr>
+      <tr><td>3</td><td><strong>ブランチ（Branch）</strong></td><td>コードの「並行世界」。本流から枝分かれさせて、別の作業場所を作る</td><td>ノートのコピーを作り、コピー上で下書きする。清書が終わったら本物のノートに反映する</td></tr>
+      <tr><td>4</td><td><strong>コミット（Commit）</strong></td><td>変更を「確定して記録する」操作。メモ（コミットメッセージ）を添える</td><td>Wordの「名前を付けて保存」＋「この保存で何を変えたか」のメモ書き</td></tr>
+      <tr><td>5</td><td><strong>ステージング（Staging / Add）</strong></td><td>変更したファイルの中から「次のコミットに含めるもの」を選ぶ操作</td><td>引っ越しの荷造り。全部の荷物の中から「今回のトラックに積むもの」を選別する</td></tr>
+      <tr><td>6</td><td><strong>プッシュ（Push）</strong></td><td>自分のパソコン上のコミットをGitHubにアップロードすること</td><td>手元で完成した書類を、共有フォルダ（GitHub）に提出する</td></tr>
+      <tr><td>7</td><td><strong>プル（Pull）</strong></td><td>GitHubの最新の変更を自分のパソコンにダウンロードすること</td><td>共有フォルダから、他の人が更新した最新版を手元にダウンロードする</td></tr>
+      <tr><td>8</td><td><strong>プルリクエスト（Pull Request / PR）</strong></td><td>「自分の変更を本流に取り込んでほしい」とチームに申請すること</td><td>「この修正内容を確認して、問題なければ本番に反映してください」という稟議書</td></tr>
+      <tr><td>9</td><td><strong>マージ（Merge）</strong></td><td>ブランチの変更を本流に統合する操作。PRが承認された後に行う</td><td>下書き（ブランチ）の内容を、正式な報告書（main）に転記・統合すること</td></tr>
+      <tr><td>10</td><td><strong>コンフリクト（Conflict）</strong></td><td>2人が同じ箇所を別々に変更した結果、Gitが自動で統合できない状態</td><td>2人が同じ報告書の同じ段落を別々に書き換えてしまい、「どちらを採用するか」人間が判断する必要がある状態</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>コードがGitHubに届くまでの流れ（全体像）</h3>
+  <div class="flow-diagram">
+    <strong style="color:var(--blue);">自分のパソコン（ローカル）</strong><br>
+    <span style="font-size:12px;color:var(--gray-500);">ここで実際にコードを書く</span><br><br>
+    ファイルを変更する<br>
+    <span class="flow-arrow">&#8595;</span>
+    <span class="mono" style="background:var(--gray-100);padding:2px 8px;border-radius:3px;">git add</span> ステージング（荷造り）<br>
+    <span class="flow-arrow">&#8595;</span>
+    <span class="mono" style="background:var(--gray-100);padding:2px 8px;border-radius:3px;">git commit</span> コミット（確定保存＋メモ）<br>
+    <span class="flow-arrow">&#8595;</span>
+    <span class="mono" style="background:var(--gray-100);padding:2px 8px;border-radius:3px;">git push</span> プッシュ（GitHubにアップロード）<br>
+    <span class="flow-arrow">&#8595;</span><br>
+    <strong style="color:var(--green);">GitHub（リモート）</strong><br>
+    <span style="font-size:12px;color:var(--gray-500);">チーム全員がアクセスできるクラウド上の保管場所</span>
+  </div>
+
+  <div class="analogy"><strong>郵便に例えると：</strong>コードの変更は「手紙」。<span class="mono">git add</span>は「手紙を封筒に入れる」。<span class="mono">git commit</span>は「封筒に宛名と内容メモを書いて封をする」。<span class="mono">git push</span>は「郵便ポストに投函する（GitHubに届く）」。逆に<span class="mono">git pull</span>は「自分宛ての郵便物を受け取る（GitHubから最新を取得する）」。</div>
+
+  <h3>ブランチの仕組み（図解）</h3>
+  <div class="flow-diagram" style="text-align:left;padding:24px;">
+    <div style="margin-bottom:16px;">
+      <strong>main</strong>（本番） <span style="color:var(--gray-400);">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> 常に安定<br>
+      <span style="color:var(--gray-400);padding-left:120px;">&#8599;</span><br>
+      <strong style="color:var(--blue);">feature/login</strong> <span style="color:var(--blue);">━━━━━━━━━━</span> ここで作業 → 完成したらPRでmainに統合<br>
+      <span style="color:var(--gray-400);padding-left:120px;">&#8599;</span><br>
+      <strong style="color:var(--green);">feature/design</strong> <span style="color:var(--green);">━━━━━━━━</span> 別の人が同時に別の作業<br>
+    </div>
+    <p style="font-size:12px;color:var(--gray-500);margin:0;">各ブランチは独立しているので、互いの作業が干渉しない。完成したブランチだけがmainに統合される。</p>
+  </div>
+</section>
+
+<section id="sg02">
+  <span class="section-number">07</span>
+  <h2>日常の操作フロー完全ガイド</h2>
+
+  <h3>前提：初回セットアップ（1回だけ）</h3>
+  <p>Gitを使い始める前に、自分の名前とメールアドレスを登録する。これは「変更の記録に自分の名前が表示される」ための設定であり、全コミットに自動で付与される。</p>
+  <div class="code-block"><span class="comment"># 自分の名前を登録（コミット履歴に表示される）</span>
+git config --global user.name "田中太郎"
+
+<span class="comment"># メールアドレスを登録（GitHubアカウントと同じものを推奨）</span>
+git config --global user.email "tanaka@kurokawa-co.jp"
+
+<span class="comment"># 設定を確認</span>
+git config --list</div>
+
+  <h3>操作1：リポジトリをクローンする（初回のみ）</h3>
+  <p>GitHubにあるプロジェクトを自分のパソコンにダウンロードする最初の操作。1つのプロジェクトにつき1回だけ行う。</p>
+  <div class="code-block"><span class="comment"># GitHub上のリポジトリを自分のPCにコピー</span>
+git clone https://github.com/kurokawa-co/my-project.git
+
+<span class="comment"># コピーされたフォルダに移動</span>
+cd my-project</div>
+  <div class="analogy"><strong>図書館に例えると：</strong>図書館（GitHub）から本（リポジトリ）を借りてきて、自分の机（パソコン）に置く。以降はこの本の上で作業する。</div>
+
+  <h3>操作2：ブランチを作成して切り替える</h3>
+  <p>作業を始める前に、必ず新しいブランチを作成する。mainブランチ（本番）で直接作業してはいけない。</p>
+  <div class="code-block"><span class="comment"># 今いるブランチを確認（* がついているのが現在のブランチ）</span>
+git branch
+<span class="comment"># 出力例:
+# * main
+#   develop</span>
+
+<span class="comment"># 新しいブランチを作成して、同時にそのブランチに切り替え</span>
+git checkout -b feature/add-login-page
+
+<span class="comment"># 確認すると、新しいブランチに切り替わっている</span>
+git branch
+<span class="comment"># 出力例:
+#   main
+#   develop
+# * feature/add-login-page</span></div>
+
+  <div class="callout callout-warn"><h4>ブランチ名のルール</h4><p>ブランチ名は<strong>「種類/内容」の形式</strong>で統一する。<br>
+  <span class="mono">feature/add-login-page</span>（新機能の追加）<br>
+  <span class="mono">fix/payment-error</span>（バグの修正）<br>
+  <span class="mono">hotfix/security-patch</span>（緊急のセキュリティ修正）<br>
+  日本語やスペースは使わず、英語の小文字とハイフンで書く。</p></div>
+
+  <h3>操作3：コードを変更し、ステージング → コミットする</h3>
+  <p>ファイルを編集した後、その変更を「記録」する操作。<strong>add → commit</strong> の2ステップで行う。</p>
+  <div class="code-block"><span class="comment"># どのファイルが変更されたか確認</span>
+git status
+<span class="comment"># 出力例:
+# modified:   src/pages/login.js    ← 変更されたファイル
+# new file:   src/pages/signup.js   ← 新しく追加したファイル</span>
+
+<span class="comment"># 方法A：変更されたファイルを1つずつステージング（荷造り）</span>
+git add src/pages/login.js
+git add src/pages/signup.js
+
+<span class="comment"># 方法B：変更された全ファイルをまとめてステージング</span>
+git add .
+
+<span class="comment"># コミット（確定保存）。-m の後に「何を変更したか」をメモとして書く</span>
+git commit -m "ログインページのUIを作成し、新規登録ページを追加"</div>
+
+  <div class="callout callout-info"><h4>良いコミットメッセージの書き方</h4><p>コミットメッセージは「3ヶ月後の自分が読んでも何をしたかわかる」レベルで書く。<br><br>
+  <strong>悪い例：</strong><span class="mono">"修正"</span> <span class="mono">"fix"</span> <span class="mono">"update"</span> ← 何を修正/更新したのか不明<br>
+  <strong>良い例：</strong><span class="mono">"ログインフォームのバリデーションエラーメッセージを日本語化"</span><br>
+  <strong>良い例：</strong><span class="mono">"決済APIのタイムアウトを30秒から60秒に変更（大量注文時の失敗を防止）"</span></p></div>
+
+  <h3>操作4：プッシュする（GitHubにアップロード）</h3>
+  <div class="code-block"><span class="comment"># 自分のブランチの変更をGitHubにアップロード</span>
+git push origin feature/add-login-page
+
+<span class="comment"># 初回プッシュ時は -u オプションを付けると、次回以降 git push だけで済む</span>
+git push -u origin feature/add-login-page</div>
+  <p>この操作により、自分のパソコン上の変更がGitHubに反映される。他のチームメンバーがGitHub上で変更内容を確認できるようになる。</p>
+
+  <h3>操作5：プルリクエスト（PR）を作成する</h3>
+  <p>プッシュ後、GitHub上で「プルリクエスト」を作成する。これは<strong>「自分の変更を本流に取り込んでください」というチームへの申請書</strong>だ。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>手順</th><th>操作</th><th>補足</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1</strong></td><td>GitHubのリポジトリページを開く</td><td>ブラウザでアクセス</td></tr>
+      <tr><td><strong>2</strong></td><td>黄色いバナー「Compare & pull request」ボタンをクリック</td><td>プッシュ直後に自動表示される</td></tr>
+      <tr><td><strong>3</strong></td><td>タイトルと説明を入力</td><td>何を変更したか、なぜ変更したか、テスト方法を書く</td></tr>
+      <tr><td><strong>4</strong></td><td>レビュアー（確認者）を指定</td><td>右側の「Reviewers」からチームメンバーを選択</td></tr>
+      <tr><td><strong>5</strong></td><td>「Create pull request」ボタンをクリック</td><td>これでレビュアーに通知が届く</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-ok"><h4>良いプルリクエストの書き方</h4><p><strong>タイトル：</strong>何をしたかが一目でわかるように。「ログインページのUIを作成」など。<br>
+  <strong>説明に含めるべき内容：</strong><br>
+  ・変更の背景（なぜこの変更が必要か）<br>
+  ・変更の内容（何をどう変えたか）<br>
+  ・テスト方法（この変更が正しく動くことをどう確認したか）<br>
+  ・スクリーンショット（UIの変更がある場合）<br>
+  ・関連するタスクやチケットのリンク</p></div>
+
+  <h3>操作6：レビューを受けてマージする</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>手順</th><th>誰が</th><th>操作</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1</strong></td><td>レビュアー</td><td>PRの「Files changed」タブでコードの変更内容を確認</td></tr>
+      <tr><td><strong>2</strong></td><td>レビュアー</td><td>問題がある箇所にコメントを残す（行番号の横の「+」ボタン）</td></tr>
+      <tr><td><strong>3</strong></td><td>作成者</td><td>コメントに基づいてコードを修正し、再度プッシュ（PRに自動反映される）</td></tr>
+      <tr><td><strong>4</strong></td><td>レビュアー</td><td>問題なければ「Approve」（承認）を選択して「Submit review」をクリック</td></tr>
+      <tr><td><strong>5</strong></td><td>作成者 or レビュアー</td><td>「Merge pull request」→「Confirm merge」で本流に統合</td></tr>
+      <tr><td><strong>6</strong></td><td>作成者</td><td>マージ後、不要になったブランチを「Delete branch」ボタンで削除</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>操作7：他の人の変更を取り込む（プル）</h3>
+  <p>他のチームメンバーがmainブランチに変更をマージした場合、自分のパソコンにはまだ反映されていない。プルで最新を取得する。</p>
+  <div class="code-block"><span class="comment"># mainブランチに切り替え</span>
+git checkout main
+
+<span class="comment"># GitHubの最新をダウンロード</span>
+git pull origin main
+
+<span class="comment"># 自分の作業ブランチに戻る</span>
+git checkout feature/my-task
+
+<span class="comment"># mainの最新をブランチに取り込む（推奨）</span>
+git merge main</div>
+
+  <div class="callout callout-danger"><h4>作業前に必ずプルする</h4><p>毎朝の作業開始前に<span class="mono">git pull origin main</span>を実行する習慣をつける。古い状態のmainから作業を始めると、後でコンフリクト（変更の衝突）が発生する確率が高くなる。「出社したらまずメールチェック」と同じ感覚で「作業前にまずgit pull」を習慣化する。</p></div>
+
+  <h3>日常の操作フローまとめ</h3>
+  <div class="flow-diagram">
+    <span class="mono" style="background:var(--blue-bg);padding:4px 10px;border-radius:3px;color:var(--blue);">git pull origin main</span> 最新を取得<br>
+    <span class="flow-arrow">&#8595;</span>
+    <span class="mono" style="background:var(--blue-bg);padding:4px 10px;border-radius:3px;color:var(--blue);">git checkout -b feature/xxx</span> ブランチ作成<br>
+    <span class="flow-arrow">&#8595;</span>
+    コードを編集する<br>
+    <span class="flow-arrow">&#8595;</span>
+    <span class="mono" style="background:var(--blue-bg);padding:4px 10px;border-radius:3px;color:var(--blue);">git add .</span> ステージング<br>
+    <span class="flow-arrow">&#8595;</span>
+    <span class="mono" style="background:var(--blue-bg);padding:4px 10px;border-radius:3px;color:var(--blue);">git commit -m "メッセージ"</span> コミット<br>
+    <span class="flow-arrow">&#8595;</span>
+    <span class="mono" style="background:var(--blue-bg);padding:4px 10px;border-radius:3px;color:var(--blue);">git push origin feature/xxx</span> GitHubにアップロード<br>
+    <span class="flow-arrow">&#8595;</span>
+    GitHub上でプルリクエストを作成<br>
+    <span class="flow-arrow">&#8595;</span>
+    レビューを受けて修正 → 承認 → マージ<br>
+    <span class="flow-arrow">&#8595;</span>
+    ブランチを削除して完了
+  </div>
+
+  <h3>GitHub Desktop（GUI版）という選択肢</h3>
+  <p>上記のコマンドラインに抵抗がある場合は、<strong>GitHub Desktop</strong>という公式のアプリケーションを使うことで、ボタン操作だけでGit操作を行える。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>コマンド</th><th>GitHub Desktopでの操作</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">git clone</span></td><td>「File」→「Clone Repository」→ URLを貼り付け</td></tr>
+      <tr><td><span class="mono">git checkout -b</span></td><td>上部の「Current Branch」→「New Branch」</td></tr>
+      <tr><td><span class="mono">git add</span></td><td>左パネルで変更ファイルにチェックを入れる</td></tr>
+      <tr><td><span class="mono">git commit</span></td><td>左下の「Summary」にメッセージを入力→「Commit」ボタン</td></tr>
+      <tr><td><span class="mono">git push</span></td><td>上部の「Push origin」ボタン</td></tr>
+      <tr><td><span class="mono">git pull</span></td><td>上部の「Fetch origin」→「Pull origin」ボタン</td></tr>
+      <tr><td>プルリクエスト作成</td><td>「Branch」→「Create Pull Request」→ ブラウザが開く</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout callout-info"><h4>どちらを使うべきか</h4><p>最初はGitHub Desktopから始めて、操作に慣れてきたらコマンドラインに移行するのが推奨。GitHub Desktopは視覚的にわかりやすいが、複雑な操作（コンフリクト解決、履歴の書き換え等）はコマンドラインの方が柔軟に対応できる。</p></div>
+</section>
+
+<section id="sg03">
+  <span class="section-number">08</span>
+  <h2>よくあるトラブルと対処法</h2>
+
+  <h3>トラブル1：「変更がコンフリクトしています」</h3>
+  <p>2人が同じファイルの同じ箇所を変更した場合、Gitは自動でマージできず「コンフリクト」を報告する。</p>
+  <div class="code-block"><span class="comment"># マージしようとするとコンフリクトが発生</span>
+git merge main
+<span class="comment"># CONFLICT (content): Merge conflict in src/pages/login.js
+# Automatic merge failed; fix conflicts and then commit the result.</span></div>
+  <p>コンフリクトが発生したファイルを開くと、以下のような表示になっている。</p>
+  <div class="code-block"><span class="comment"><<<<<<< HEAD (自分の変更)</span>
+const timeout = 60;
+<span class="comment">=======</span>
+const timeout = 30;
+<span class="comment">>>>>>>> main (他の人の変更)</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>手順</th><th>操作</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1</strong></td><td><span class="mono">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span> と <span class="mono">&gt;&gt;&gt;&gt;&gt;&gt;&gt;</span> の間から、正しい方を残す（または両方を統合して書き直す）</td></tr>
+      <tr><td><strong>2</strong></td><td><span class="mono">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span>、<span class="mono">=======</span>、<span class="mono">&gt;&gt;&gt;&gt;&gt;&gt;&gt;</span> の行を全て削除する</td></tr>
+      <tr><td><strong>3</strong></td><td><span class="mono">git add .</span> で解決済みファイルをステージング</td></tr>
+      <tr><td><strong>4</strong></td><td><span class="mono">git commit -m "コンフリクトを解決"</span> でコミット</td></tr>
+    </tbody>
+  </table></div>
+  <div class="analogy"><strong>報告書の修正に例えると：</strong>「Aさんは数値を60に修正し、Bさんは30に修正した。どちらが正しいか確認して、最終版を確定させる」作業。2人に確認を取り、正しい値を決めてファイルを保存する。</div>
+
+  <h3>トラブル2：「間違えてmainブランチで作業してしまった」</h3>
+  <p>mainブランチで直接作業してしまった場合、コミット前であれば簡単に復旧できる。</p>
+  <div class="code-block"><span class="comment"># まだコミットしていない場合：変更を一時退避（stash）する</span>
+git stash
+
+<span class="comment"># 新しいブランチを作成して切り替え</span>
+git checkout -b feature/my-task
+
+<span class="comment"># 退避した変更を復元</span>
+git stash pop
+
+<span class="comment"># あとは通常通り add → commit → push</span></div>
+
+  <h3>トラブル3：「コミットメッセージを間違えた」</h3>
+  <div class="code-block"><span class="comment"># 直前のコミットメッセージを修正（まだプッシュしていない場合）</span>
+git commit --amend -m "正しいコミットメッセージ"
+
+<span class="comment"># 注意：すでにプッシュ済みの場合は --amend を使うと履歴が食い違う。
+# プッシュ済みなら新しいコミットで修正内容を追加する方が安全。</span></div>
+
+  <h3>トラブル4：「プッシュが拒否された」</h3>
+  <p>他の人がGitHub上で変更をプッシュした後、自分がプッシュしようとすると拒否される場合がある。</p>
+  <div class="code-block"><span class="comment"># エラー例：</span>
+<span class="comment"># ! [rejected] feature/xxx -> feature/xxx (fetch first)</span>
+<span class="comment"># hint: Updates were rejected because the remote contains work that you do not have locally.</span>
+
+<span class="comment"># 対処法：まずリモートの変更を取り込んでから再度プッシュ</span>
+git pull origin feature/xxx
+<span class="comment"># （コンフリクトがあれば解決する）</span>
+git push origin feature/xxx</div>
+
+  <h3>トラブル5：「ファイルを間違えてaddしてしまった」</h3>
+  <div class="code-block"><span class="comment"># ステージングに追加したファイルを取り消す（ファイルの変更自体は残る）</span>
+git reset HEAD src/pages/secret-file.js
+
+<span class="comment"># 全てのステージングを取り消す</span>
+git reset HEAD</div>
+
+  <h3>トラブル6：「変更を全部取り消して元に戻したい」</h3>
+  <div class="code-block"><span class="comment"># 特定ファイルの変更を取り消す（最後のコミット時点に戻す）</span>
+git checkout -- src/pages/login.js
+
+<span class="comment"># 【危険】全ファイルの変更を取り消す（元に戻せない！）</span>
+git checkout -- .</div>
+  <div class="callout callout-danger"><h4>git checkout -- . は取り消せない</h4><p>この操作は未コミットの変更を全て破棄する。一度実行すると元に戻せないため、実行前に本当に不要か確認すること。不安な場合は先に<span class="mono">git stash</span>で一時退避しておくと安全。</p></div>
+
+  <h3>操作早見表（印刷してデスクに貼る用）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>やりたいこと</th><th>コマンド</th><th>一言メモ</th></tr></thead>
+    <tbody>
+      <tr><td>リポジトリを初めて取得</td><td><span class="mono">git clone [URL]</span></td><td>1回だけ。図書館から本を借りる</td></tr>
+      <tr><td>最新を取得</td><td><span class="mono">git pull origin main</span></td><td>毎朝これから始める</td></tr>
+      <tr><td>ブランチ作成＋切替</td><td><span class="mono">git checkout -b [名前]</span></td><td>作業前に必ず新しいブランチで</td></tr>
+      <tr><td>ブランチ切替（既存）</td><td><span class="mono">git checkout [名前]</span></td><td>ブランチ間を行き来する</td></tr>
+      <tr><td>ブランチ一覧表示</td><td><span class="mono">git branch</span></td><td>* が今いるブランチ</td></tr>
+      <tr><td>変更状況を確認</td><td><span class="mono">git status</span></td><td>迷ったらこれを実行</td></tr>
+      <tr><td>変更の差分を確認</td><td><span class="mono">git diff</span></td><td>何を変更したか詳細表示</td></tr>
+      <tr><td>ステージング（全部）</td><td><span class="mono">git add .</span></td><td>荷造り。次のコミットに含める</td></tr>
+      <tr><td>コミット</td><td><span class="mono">git commit -m "メッセージ"</span></td><td>確定保存。メッセージは具体的に</td></tr>
+      <tr><td>プッシュ</td><td><span class="mono">git push origin [ブランチ名]</span></td><td>GitHubにアップロード</td></tr>
+      <tr><td>変更を一時退避</td><td><span class="mono">git stash</span></td><td>別の作業に急いで切替える時に</td></tr>
+      <tr><td>退避した変更を復元</td><td><span class="mono">git stash pop</span></td><td>退避した内容を戻す</td></tr>
+      <tr><td>変更履歴を見る</td><td><span class="mono">git log --oneline</span></td><td>コミットの一覧を表示</td></tr>
+      <tr><td>ブランチを削除</td><td><span class="mono">git branch -d [名前]</span></td><td>マージ済みブランチの掃除</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-ok"><h4>困ったら <span class="mono">git status</span> を実行する</h4><p>何をしたらいいかわからなくなったら、まず<span class="mono">git status</span>を実行する。現在の状態と、次にやるべき操作のヒントが表示される。Gitの「今どうなっているか確認する」コマンドで、何度実行しても何も壊れない。困ったらまずこれ。</p></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第三部 ― Firebase編</span></div>
+<!-- ============================================================ -->
+
+<section id="s06">
+  <span class="section-number">06</span>
+  <h2>Firebaseプラン比較と判断フロー</h2>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>サービス</th><th>Spark（無料）</th><th>Blaze（従量課金）</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Cloud Firestore</strong></td><td>1GB / 読5万件・書2万件/日</td><td>同じ無料枠＋超過分課金</td></tr>
+      <tr><td><strong>Cloud Functions</strong></td><td><span class="tag tag-high">利用不可</span></td><td>200万回/月無料</td></tr>
+      <tr><td><strong>Cloud Storage</strong></td><td><span class="tag tag-high">新規利用不可（2026〜）</span></td><td>5GB無料</td></tr>
+      <tr><td><strong>Authentication</strong></td><td>5万MAU</td><td>5万MAU無料＋段階料金</td></tr>
+      <tr><td><strong>Realtime DB</strong></td><td>同時100件</td><td>200,000件</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="decision-box">
+    <h4>判断フロー</h4>
+    <div class="decision-step"><span class="decision-num">1</span><span>プロトタイプ・デモだけか？ Yes → Spark。No → 次へ。</span></div>
+    <div class="decision-step"><span class="decision-num">2</span><span>Cloud Functionsを使うか？ Yes → <strong>Blaze必須</strong>。</span></div>
+    <div class="decision-step"><span class="decision-num">3</span><span>実ユーザーが利用する本番か？ Yes → <strong>Blaze必須</strong>。</span></div>
+    <div class="decision-step"><span class="decision-num">4</span><span>結論：<strong>本番は例外なくBlaze</strong>。予算アラートを必ず設定。</span></div>
+  </div>
+
+  <div class="callout callout-danger"><h4>Spark：無料枠超過＝サービス即時停止</h4><p>「自動課金で継続」ではなく<strong>「突然止まる」</strong>。携帯電話で言えば、月5GBの格安SIMでデータ超過したら圏外になるのと同じ。</p></div>
+  <div class="callout callout-ok"><h4>「Blaze＝高額」は誤解</h4><p>BlazeにはSpark無料枠が全て含まれる。小規模なら<strong>実質$0</strong>。「必要に応じて課金される保険」と理解すべき。</p></div>
+</section>
+
+<section id="s07">
+  <span class="section-number">07</span>
+  <h2>Firebaseセキュリティとコスト管理</h2>
+
+  <h3>セキュリティの3層構造</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>層</th><th>名称</th><th>身近な例え</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>IAM</strong></td><td>「店長だけがレジの売上を見られる、バイトは注文入力だけ」という社内の権限制御</td></tr>
+      <tr><td>2</td><td><strong>Security Rules</strong></td><td>「お客様が自分の注文履歴だけ見られて、他の客の情報は見えない」というアプリのルール</td></tr>
+      <tr><td>3</td><td><strong>App Check</strong></td><td>「注文は正規レジ端末からのみ受付、外部からの不正注文は拒否」</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Firebase APIキーの重要な性質</h3>
+  <div class="callout callout-warn"><h4>Firebase APIキーは「公開前提」で設計されている</h4><p>「APIキーがコードに書かれている＝危険」と感じるが、FirebaseのAPIキーはプロジェクトの<strong>「住所」</strong>のようなもの。それ自体に読み書き権限はない。セキュリティはSecurity RulesとApp Checkで担保する設計。<br><br>ただし、<strong>アプリケーション制限</strong>（ドメイン/アプリ署名の制限）は必須。そして<strong>サービスアカウントキー</strong>（管理者権限の鍵）は全く別物で、絶対に公開禁止。</p></div>
+  <div class="analogy"><strong>郵便に例えると：</strong>APIキー＝「会社の住所」（公開OK）。Security Rules＝「入館管理システム」。サービスアカウントキー＝「金庫の暗証番号」（絶対秘密）。</div>
+
+  <h3>コスト管理：3つの防止策</h3>
+  <div class="callout callout-danger"><h4>予算アラートは「通知」であって「停止」ではない</h4><p>火災報知器は火事を知らせるが消火はしない。消火（課金停止）は別途自分で設定する必要がある。</p></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>対策</th><th>例え</th><th>設定方法</th></tr></thead>
+    <tbody>
+      <tr><td><strong>予算アラート</strong></td><td>火災報知器</td><td>Google Cloud → お支払い → 50%/80%/100%で通知。通知先は<strong>複数名のメーリングリスト</strong></td></tr>
+      <tr><td><strong>自動停止スクリプト</strong></td><td>スプリンクラー</td><td>Cloud Functionsで予算超過時に課金APIを自動無効化</td></tr>
+      <tr><td><strong>日次コスト確認</strong></td><td>見回り</td><td>課金レポートを毎日確認する運用ルール</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第四部 ― コード・環境管理</span></div>
+<!-- ============================================================ -->
+
+<section id="s08">
+  <span class="section-number">08</span>
+  <h2>社内コード管理の全体設計</h2>
+
+  <h3>なぜコード管理のルールが必要か</h3>
+  <div class="analogy"><strong>建設現場に例えると：</strong>設計図（コード）を誰でも自由に書き換えられる建設現場を想像してほしい。Aさんが壁を追加し、Bさんが知らずに同じ場所に窓を設計し、Cさんがその壁ごと削除する。完成した建物は当然ながら欠陥だらけになる。コード管理のルールとは、「設計変更は必ず全員に共有し、責任者の承認を経てから反映する」という、建設現場では当たり前のプロセスをソフトウェア開発に適用することである。</div>
+
+  <h3>ブランチ戦略：コードの「並行世界」を管理する</h3>
+  <p>ブランチとは、コードの「並行世界」のこと。本番用のコードから枝分かれさせて、別の世界で自由に作業し、完成したら本番に統合（マージ）する。以下が推奨されるブランチ構成だ。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>ブランチ名</th><th>役割</th><th>誰が触れるか</th><th>保護設定</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">main</span>（本番）</td><td>実際にユーザーが利用しているサービスのコード。常に動作する状態を維持</td><td>直接の変更は禁止。プルリクエスト経由のみ</td><td><span class="tag tag-high">最高レベルの保護</span> レビュー1名以上必須、CI通過必須</td></tr>
+      <tr><td><span class="mono">develop</span>（開発）</td><td>次のリリースに向けた開発中のコード。機能ブランチの統合先</td><td>開発者がプルリクエストで統合</td><td><span class="tag tag-mid">中レベルの保護</span> レビュー推奨</td></tr>
+      <tr><td><span class="mono">feature/xxx</span>（機能）</td><td>個別の機能追加やバグ修正の作業場所。1つの機能＝1つのブランチ</td><td>担当開発者が自由に作業</td><td>保護なし（自由に作業可能）</td></tr>
+      <tr><td><span class="mono">hotfix/xxx</span>（緊急修正）</td><td>本番で発生した緊急バグの修正専用</td><td>指名された開発者</td><td><span class="tag tag-mid">レビュー必須だが迅速対応</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="analogy"><strong>出版社に例えると：</strong><span class="mono">main</span>は「書店に並んでいる出版済みの本」。<span class="mono">develop</span>は「次の版の編集中原稿」。<span class="mono">feature</span>は「各ライターが書いている原稿の下書き」。<span class="mono">hotfix</span>は「出版済みの本で見つかった誤字を緊急で正誤表を出す作業」。書店の本を直接書き換える人はいない。必ず編集プロセスを経て、次の版として出版する。</div>
+
+  <h3>コードの変更が本番に届くまでの流れ</h3>
+  <div class="flow-diagram">
+    <strong>開発者がコードを変更</strong><br>
+    <span class="flow-arrow">&#8595;</span>
+    <strong>feature/xxx ブランチにコミット（保存）</strong><br>
+    <span class="flow-arrow">&#8595;</span>
+    <strong>プルリクエストを作成（変更申請）</strong><br>
+    <span class="flow-arrow">&#8595;</span>
+    <strong>CI/CD が自動でテスト・検査を実行</strong><br>
+    <span class="text-sm text-muted">テストが通らなければマージ不可</span><br>
+    <span class="flow-arrow">&#8595;</span>
+    <strong>レビュアー（別の開発者）がコードを確認・承認</strong><br>
+    <span class="text-sm text-muted">問題があれば差し戻し、修正後に再レビュー</span><br>
+    <span class="flow-arrow">&#8595;</span>
+    <strong>develop ブランチにマージ（統合）</strong><br>
+    <span class="flow-arrow">&#8595;</span>
+    <strong>ステージング環境で最終確認</strong><br>
+    <span class="flow-arrow">&#8595;</span>
+    <strong>main ブランチにマージ → 本番に自動デプロイ</strong>
+  </div>
+
+  <h3>プルリクエストのルール</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ルール</th><th>設定内容</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td><strong>最低1名のレビュー承認</strong></td><td>mainブランチへのマージには最低1名の承認を必須化</td><td>一人で全てを判断するミスを防止。「二人の目」の原則</td></tr>
+      <tr><td><strong>CI/CDの全テスト通過</strong></td><td>自動テストが全て合格しないとマージボタンが押せない</td><td>壊れたコードが本番に入ることを物理的に防止</td></tr>
+      <tr><td><strong>自分のプルリクエストは自分で承認できない</strong></td><td>作成者と承認者は別人であることを強制</td><td>チェック機能の形骸化を防止</td></tr>
+      <tr><td><strong>承認後に変更があったら再承認</strong></td><td>承認後にコードが変更されたら承認がリセットされる</td><td>承認後にこっそり変更を加える行為を防止</td></tr>
+      <tr><td><strong>管理者もルールに従う</strong></td><td>Adminロールでもブランチ保護を回避できない設定</td><td>権限者の「例外」がルールの穴になることを防止</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>CI/CD（自動テスト・デプロイ）で何をチェックするか</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>チェック項目</th><th>非エンジニア向け説明</th><th>ツール例</th></tr></thead>
+    <tbody>
+      <tr><td><strong>単体テスト</strong></td><td>コードの各部品が正しく動くかを自動で検査。1000個の部品を人間が手動で検査するのは不可能だが、プログラムなら数分で完了</td><td>Jest, pytest</td></tr>
+      <tr><td><strong>リンター（コード規約チェック）</strong></td><td>コードの「書き方のルール」に従っているかを検査。全員が同じスタイルで書くことで読みやすさと保守性が向上</td><td>ESLint, Prettier</td></tr>
+      <tr><td><strong>セキュリティスキャン</strong></td><td>使用している外部ライブラリに既知の脆弱性がないかを自動検査。「この材料にリコール品が混ざっていないか」のチェック</td><td>Dependabot, Snyk</td></tr>
+      <tr><td><strong>シークレット検出</strong></td><td>コード内にパスワードやAPIキーが混ざっていないかを検査。「封筒に個人情報が入っていないか」のチェック</td><td>Secret Protection, git-secrets</td></tr>
+      <tr><td><strong>ビルド確認</strong></td><td>コードが正しくコンパイル（完成品に変換）できるかの確認。「設計図通りに組み立てられるか」の検証</td><td>GitHub Actions</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s09">
+  <span class="section-number">09</span>
+  <h2>シークレット管理と環境変数</h2>
+
+  <h3>「秘密にすべき情報」の種類</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>種類</th><th>具体例</th><th>漏洩した場合の被害</th><th>保管場所</th></tr></thead>
+    <tbody>
+      <tr><td><strong>APIキー・アクセストークン</strong></td><td>外部サービス（Stripe, SendGrid等）のAPIキー</td><td>不正利用、高額請求、スパム送信</td><td>環境変数 or Secret Manager</td></tr>
+      <tr><td><strong>データベース接続情報</strong></td><td>DB のホスト名、ユーザー名、パスワード</td><td>全データの漏洩・改ざん・削除</td><td>環境変数 or Secret Manager</td></tr>
+      <tr><td><strong>サービスアカウントキー</strong></td><td>Firebase/GCPのJSON形式の管理者権限ファイル</td><td>Google Cloud全サービスへの不正アクセス</td><td>Secret Manager（コード内禁止）</td></tr>
+      <tr><td><strong>SSH秘密鍵</strong></td><td>サーバーへの接続用の秘密鍵ファイル</td><td>サーバーへの不正ログイン</td><td>個人のローカル環境のみ</td></tr>
+      <tr><td><strong>暗号化キー</strong></td><td>データの暗号化/復号化に使う鍵</td><td>暗号化されたデータが全て復号される</td><td>KMS（鍵管理サービス）</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="analogy"><strong>家庭に例えると：</strong>秘密情報のコード内直書きは、「銀行の暗証番号をポストイットに書いて玄関に貼っておく」のと同じ。環境変数は「暗証番号を頭の中にだけ覚えておく」。Secret Managerは「暗証番号を貸金庫に保管し、必要な時だけ取り出す」。</div>
+
+  <h3>秘密情報を守る3つのルール</h3>
+
+  <h4>ルール1：.gitignoreで秘密ファイルをGitHubから除外する</h4>
+  <p><span class="mono">.gitignore</span>とは「このファイルはGitHubにアップロードしないで」というルールを書いた設定ファイル。プロジェクトの最初に必ず設定する。</p>
+  <div class="code-block"><span class="comment"># .gitignore の設定例</span>
+
+<span class="comment"># 環境変数ファイル（パスワード等が入っている）</span>
+.env
+.env.local
+.env.production
+
+<span class="comment"># サービスアカウントキー</span>
+*-service-account.json
+firebase-adminsdk-*.json
+
+<span class="comment"># SSH秘密鍵</span>
+*.pem
+id_rsa</div>
+
+  <h4>ルール2：環境変数で秘密情報をコードの外に出す</h4>
+  <p>環境変数とは、コードの外にある「メモ書き」。コード自体にはパスワードを書かず、実行時に外部から渡す仕組み。</p>
+
+  <div class="vs-block">
+    <div class="vs-free"><h4 style="color:var(--red);margin:0 0 6px;font-size:12px;border:none;padding:0;">危険：コードに直書き</h4><p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:11px;">const API_KEY = "sk-abc123xyz";<br>const DB_PASS = "mypassword";</p></div>
+    <div class="vs-center">vs</div>
+    <div class="vs-paid"><h4 style="color:var(--green);margin:0 0 6px;font-size:12px;border:none;padding:0;">安全：環境変数から取得</h4><p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:11px;">const API_KEY = process.env.API_KEY;<br>const DB_PASS = process.env.DB_PASS;</p></div>
+  </div>
+
+  <h4>ルール3：GitHub Actionsのシークレット機能を使う</h4>
+  <p>CI/CD（自動テスト・デプロイ）で秘密情報が必要な場合、GitHubの「Repository Secrets」機能を使う。管理者が画面上で秘密情報を登録すると、CI/CDの実行時に自動で環境変数として渡される。コードやログには表示されない。</p>
+
+  <div class="callout callout-danger"><h4>絶対にやってはいけないこと</h4><p>コード内にパスワードやAPIキーを直接記述してGitHubにプッシュすること。一度GitHubにアップロードされた秘密情報は、後から削除してもGitの履歴に残り続ける。「ファイルを消した」だけでは不十分で、Git履歴の書き換え（<span class="mono">git filter-branch</span>等）が必要になり、極めて手間がかかる。<strong>最初から混入させないことが最重要</strong>。</p></div>
+
+  <h3>Google Cloud Secret Manager（本格運用向け）</h3>
+  <p>Firebase Blazeプランを使用しているなら、Google Cloud Secret Managerが利用可能。秘密情報を暗号化して保管し、必要なサービスだけがアクセスできるよう権限制御する。サービスアカウントキーのファイルを持ち回る運用をやめ、Secret Manager経由で動的に取得する形に移行することが推奨される。</p>
+</section>
+
+<section id="s10">
+  <span class="section-number">10</span>
+  <h2>Firebase環境管理（dev / staging / prod）</h2>
+
+  <h3>なぜ環境を分けるのか</h3>
+  <div class="analogy"><strong>飲食店に例えると：</strong>「試作キッチン（開発）」「味見テスト（ステージング）」「お客様に出す厨房（本番）」を物理的に分けること。1つのキッチンで試作と提供を兼用すると「試作品をうっかり客席に出す」事故が起きる。</div>
+  <p>Firebaseでは、<strong>環境ごとに別のプロジェクトを作成する</strong>ことが公式に推奨されている。1つのプロジェクト内で環境を分けることはできない。</p>
+
+  <h3>3環境の設計</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>環境</th><th>プロジェクト名</th><th>用途</th><th>アクセス権限</th><th>プラン</th><th>データ</th></tr></thead>
+    <tbody>
+      <tr><td><strong>開発（dev）</strong></td><td><span class="mono">myapp-dev</span></td><td>新機能の開発、自由な実験</td><td>開発者全員</td><td>Sparkでも可</td><td>テスト用のダミーデータ</td></tr>
+      <tr><td><strong>ステージング（staging）</strong></td><td><span class="mono">myapp-staging</span></td><td>本番リリース前の最終確認</td><td>開発者＋QA</td><td>Blaze推奨</td><td>本番に近いダミーデータ</td></tr>
+      <tr><td><strong>本番（prod）</strong></td><td><span class="mono">myapp-prod</span></td><td>ユーザーが利用するサービス</td><td>限定された管理者のみ</td><td>Blaze必須</td><td>本物のユーザーデータ</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-danger"><h4>本番データを開発環境にコピーしてはいけない</h4><p>「テストのために本番のユーザーデータを開発環境に入れる」は重大なセキュリティ違反。開発環境は本番よりアクセス制限が緩いため、個人情報漏洩のリスクが格段に上がる。テストには必ず<strong>匿名化されたダミーデータ</strong>を使用すること。</p></div>
+
+  <h3>各環境のセキュリティレベル</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>設定項目</th><th>開発</th><th>ステージング</th><th>本番</th></tr></thead>
+    <tbody>
+      <tr><td>IAMアクセス権限</td><td>開発者全員にEditor</td><td>開発者にViewer、リリース担当にEditor</td><td><strong>限定された管理者のみ</strong>にEditor</td></tr>
+      <tr><td>Security Rules</td><td>開発しやすい緩めの設定可</td><td>本番と同じルール</td><td><strong>最も厳格なルール</strong></td></tr>
+      <tr><td>予算アラート</td><td>任意</td><td>推奨</td><td><strong>必須（3段階）</strong></td></tr>
+      <tr><td>Project Liens（削除防止）</td><td>不要</td><td>推奨</td><td><strong>必須</strong></td></tr>
+      <tr><td>Cloud Audit Logs</td><td>デフォルト（Admin Activity）</td><td>デフォルト</td><td><strong>Data Accessログも有効化を検討</strong></td></tr>
+      <tr><td>App Check</td><td>無効でも可</td><td>有効推奨</td><td><strong>必須</strong></td></tr>
+      <tr><td>デプロイ方法</td><td>手動デプロイ可</td><td>CI/CDからの自動デプロイ</td><td><strong>CI/CDからの自動デプロイのみ</strong>（手動禁止）</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Firebase CLIでの環境切り替え</h3>
+  <p>開発者がローカルPC上で作業する際、どの環境（プロジェクト）に対して操作するかをコマンドで切り替える。切り替えを忘れると、開発のつもりで本番にデプロイしてしまう事故が起きる。</p>
+  <div class="code-block"><span class="comment"># 現在どの環境を使っているか確認</span>
+firebase use
+
+<span class="comment"># 開発環境に切り替え</span>
+firebase use dev
+
+<span class="comment"># 本番環境に切り替え（慎重に！）</span>
+firebase use prod
+
+<span class="comment"># プロジェクトの一覧を表示</span>
+firebase projects:list</div>
+
+  <div class="callout callout-warn"><h4>本番へのデプロイは手動でやらない</h4><p>本番環境へのデプロイ（コードの反映）は、開発者が手動でコマンドを叩くのではなく、<strong>CI/CD（GitHub Actions等）からの自動デプロイのみに限定する</strong>のがベストプラクティス。手動デプロイは「どのコードがいつ反映されたか」の追跡が困難であり、誤操作のリスクも高い。GitHub上でmainブランチにマージされたら自動的にFirebaseにデプロイされる仕組みを構築する。</p></div>
+
+  <h3>Google Cloud Organizationの活用</h3>
+  <p>3つのFirebaseプロジェクトを運用する場合、<strong>Google Cloud Organization</strong>配下で管理を推奨。全プロジェクトの課金を一元管理でき、IAMポリシーを組織全体に適用でき、特定メンバーが不能になってもOrganization管理者がOwner権限を再割り当てできる。個人Googleアカウントで作成したプロジェクトは、アカウント凍結でプロジェクト全体にアクセス不能になるリスクがある。</p>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第五部 ― 導入戦略</span></div>
+<!-- ============================================================ -->
+
+<section id="s11">
+  <span class="section-number">11</span>
+  <h2>コンプライアンスとバックアップ</h2>
+
+  <h3>セキュリティ認証と各プランの対応</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>認証</th><th>GitHub Free/Team</th><th>GitHub Enterprise</th><th>Firebase Blaze</th></tr></thead>
+    <tbody>
+      <tr><td><strong>SOC 2</strong></td><td><span class="tag tag-high">ログ90日で不足</span></td><td><span class="tag tag-low">対応可</span></td><td><span class="tag tag-low">Audit Logsで対応可</span></td></tr>
+      <tr><td><strong>ISO 27001</strong></td><td><span class="tag tag-high">監査ログAPI不可</span></td><td><span class="tag tag-low">対応可</span></td><td><span class="tag tag-low">Google Cloud認証済み</span></td></tr>
+      <tr><td><strong>HIPAA</strong></td><td><span class="tag tag-high">非対応</span></td><td><span class="tag tag-low">BAA締結可</span></td><td><span class="tag tag-low">Google Cloud経由で可</span></td></tr>
+      <tr><td><strong>GDPR</strong></td><td><span class="tag tag-mid">データ所在地指定不可</span></td><td><span class="tag tag-low">データレジデンシー対応</span></td><td><span class="tag tag-low">リージョン指定可</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>バックアップ</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>サービス</th><th>方法</th><th>移行容易さ</th></tr></thead>
+    <tbody>
+      <tr><td><strong>GitHub リポジトリ</strong></td><td>各開発者のローカルPCに完全な複製が存在</td><td><span class="tag tag-low">容易</span>（Git標準規格）</td></tr>
+      <tr><td><strong>Firestore</strong></td><td><span class="mono">gcloud firestore export</span>で定期エクスポート</td><td><span class="tag tag-mid">中程度</span>（Google独自形式）</td></tr>
+      <tr><td><strong>Firebase Auth</strong></td><td><span class="mono">auth:export</span>でCSV/JSONエクスポート</td><td><span class="tag tag-mid">中程度</span>（パスワードリセット必要の場合あり）</td></tr>
+      <tr><td><strong>Firebase Storage</strong></td><td><span class="mono">gsutil rsync</span>で外部同期</td><td><span class="tag tag-low">容易</span>（標準ファイル形式）</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout callout-warn"><h4>バックアップの3-2-1ルール</h4><p><strong>3つ</strong>のコピーを、<strong>2種類</strong>の異なるメディアに、<strong>1つ</strong>は物理的に別の場所に。例：本番データ＋Cloud Storageへの定期エクスポート＋別クラウドへの週次コピー。</p></div>
+</section>
+
+<section id="s12">
+  <span class="section-number">12</span>
+  <h2>よくある失敗パターンと防止策</h2>
+
+  <div class="case-study"><h4>失敗1：フリーランスにOwner権限を渡した</h4>
+  <p><strong>状況：</strong>「作業しやすいように」とOrganizationのOwner権限を外注先に渡した。</p>
+  <p><strong>結果：</strong>契約終了後もOwner権限が6ヶ月間放置。他案件の全コードにアクセス可能だった。</p>
+  <p><strong>防止策：</strong>Outside Collaborator（特定リポジトリ・Write上限）で招待。契約終了日に削除リマインダー設定。</p></div>
+
+  <div class="case-study"><h4>失敗2：Security Rulesが「全開」のまま本番運用</h4>
+  <p><strong>状況：</strong>開発初期の「全データ読み書き許可」をそのまま本番に移行。</p>
+  <p><strong>結果：</strong>第三者が全ユーザーの個人情報を取得可能な状態が3ヶ月放置。</p>
+  <p><strong>防止策：</strong>「認証済み＋自分のデータのみ」まで絞る。本番デプロイ前のRules監査必須化。コンソールの警告放置禁止。</p></div>
+
+  <div class="case-study"><h4>失敗3：サービスアカウントキーをGitHubにプッシュ</h4>
+  <p><strong>状況：</strong>管理者権限のキーファイルをそのままコードに含めてGitHubに送信。</p>
+  <p><strong>結果：</strong>リポジトリが一時的にPublic設定の期間にボットがキーを検出。不正利用で数万円の請求。</p>
+  <p><strong>防止策：</strong>キーはコードに含めず環境変数 or Secret Managerで管理。<span class="mono">.gitignore</span>に登録。Secret Protection導入。</p></div>
+
+  <div class="case-study"><h4>失敗4：予算アラートの通知先が退職者のまま</h4>
+  <p><strong>状況：</strong>アラート設定済みだが、通知先が退職者のメールアドレスのまま。</p>
+  <p><strong>結果：</strong>バズでアクセス100倍。月末に15万円の超過に気づいた。</p>
+  <p><strong>防止策：</strong>通知先を複数名のメーリングリストに設定。自動停止スクリプト構築。</p></div>
+
+  <div class="case-study"><h4>失敗5：手動で本番にデプロイして事故</h4>
+  <p><strong>状況：</strong>開発者が「急ぎだから」と手動で<span class="mono">firebase deploy --only hosting</span>を本番環境に実行。</p>
+  <p><strong>結果：</strong>テスト未実施のコードが本番に反映され、表示が壊れた状態で2時間公開された。</p>
+  <p><strong>防止策：</strong>本番デプロイはCI/CD経由のみに限定。手動デプロイ権限を持つ人を最小限にするか、本番プロジェクトの<span class="mono">firebase deploy</span>権限を制限する。</p></div>
+</section>
+
+<section id="s13">
+  <span class="section-number">13</span>
+  <h2>導入ロードマップとコスト試算</h2>
+
+  <h3>3ヶ月ロードマップ</h3>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">MONTH 1</span><span class="phase-title">緊急対応：最低限の安全確保</span></div>
+    <ul class="checklist">
+      <li>GitHub Organizationを作成、全リポジトリを移行</li>
+      <li>Ownerを2〜3名に設定（異なる部門の人員を含める）</li>
+      <li>2FAを組織レベルで強制</li>
+      <li>ブランチ保護をmainブランチに適用（Team以上）</li>
+      <li>.gitignoreに秘密ファイルを登録、既存コード内のキー直書きがないか確認</li>
+      <li>Firebase本番をBlazeに移行</li>
+      <li>Firebase 3環境（dev/staging/prod）に分離</li>
+      <li>予算アラート設定（50%/80%/100%、通知先はメーリングリスト）</li>
+      <li>本番にProject Liens（削除防止）設定</li>
+      <li>外部委託先の権限を棚卸し</li>
+    </ul>
+  </div>
+  <div class="phase">
+    <div class="phase-header"><span class="phase-num">MONTH 2</span><span class="phase-title">権限整理とコード管理体制の構築</span></div>
+    <ul class="checklist">
+      <li>全メンバーの権限を5段階ロールで再整理</li>
+      <li>Classic PATの棚卸し → Fine-grained PAT移行開始</li>
+      <li>ブランチ戦略（main/develop/feature/hotfix）を文書化</li>
+      <li>プルリクエストのルール（必須レビュー、CI通過必須等）を設定</li>
+      <li>CI/CDパイプライン（テスト自動実行・シークレット検出）を構築</li>
+      <li>Firebase IAMを固有ロールに移行</li>
+      <li>Security Rules監査・修正</li>
+      <li>APIキーにアプリケーション制限適用</li>
+      <li>サービスアカウントキーの棚卸し、Secret Managerへの移行検討</li>
+      <li>本番デプロイをCI/CD経由のみに制限</li>
+    </ul>
+  </div>
+  <div class="phase">
+    <div class="phase-header"><span class="phase-num">MONTH 3</span><span class="phase-title">定着・文書化・自走体制の確立</span></div>
+    <ul class="checklist">
+      <li>退職者対応チェックリストを文書化、人事と連携</li>
+      <li>外部委託契約終了時チェックリストを文書化</li>
+      <li>監査ログの月次確認ルール策定</li>
+      <li>Firebase月次コストレビュールール策定</li>
+      <li>Firestoreの定期バックアップ設定</li>
+      <li>GitHub/Firebase運用マニュアル整備</li>
+      <li>コード管理ガイドライン（ブランチ戦略、PRルール、シークレット管理）を1つの文書にまとめる</li>
+      <li>四半期セキュリティ棚卸しスケジュール策定</li>
+      <li>Copilot Business / Advanced Security導入判断</li>
+    </ul>
+  </div>
+
+  <h3>10名チームのコスト試算</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>構成</th><th>GitHub</th><th>Copilot</th><th>Firebase</th><th>合計月額</th><th>年額</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Free + Spark</strong></td><td>$0</td><td>$0</td><td>$0</td><td><strong>$0</strong></td><td><strong>$0</strong></td></tr>
+      <tr><td><strong>Team + Blaze</strong><br><span class="text-sm text-muted">推奨</span></td><td>$40</td><td>$0</td><td>$15〜$40</td><td><strong>$55〜$80</strong></td><td><strong>約10〜15万円</strong></td></tr>
+      <tr><td><strong>Team + Blaze + Copilot</strong></td><td>$40</td><td>$190</td><td>$15〜$40</td><td><strong>$245〜$270</strong></td><td><strong>約44〜49万円</strong></td></tr>
+      <tr><td><strong>Enterprise + Blaze</strong></td><td>$210</td><td>$190</td><td>$15〜$40</td><td><strong>$415〜$440</strong></td><td><strong>約75〜80万円</strong></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s14">
+  <span class="section-number">14</span>
+  <h2>最終到達状態とリスク対策</h2>
+
+  <h3>3ヶ月後に到達すべき状態</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>領域</th><th>到達状態</th><th>確認方法</th></tr></thead>
+    <tbody>
+      <tr><td><strong>アカウント</strong></td><td>Organization配下。権限が職種別。Owner 2名以上</td><td>メンバー一覧でロール確認</td></tr>
+      <tr><td><strong>認証</strong></td><td>全員2FA済み</td><td>2FA未設定者ゼロ</td></tr>
+      <tr><td><strong>コード管理</strong></td><td>ブランチ戦略が文書化。mainブランチにレビュー必須の保護。CI/CDが稼働</td><td>プルリクエスト一覧でレビュー履歴を確認</td></tr>
+      <tr><td><strong>シークレット</strong></td><td>コード内に秘密情報がゼロ。環境変数またはSecret Managerで管理</td><td>コード検索でキーファイル名を確認して該当ゼロ</td></tr>
+      <tr><td><strong>環境分離</strong></td><td>Firebase 3環境が分離。本番デプロイはCI/CDのみ</td><td>Cloud Consoleで3プロジェクト確認</td></tr>
+      <tr><td><strong>退職者・委託先</strong></td><td>チェックリストが文書化。人事/購買と連携済み</td><td>直近の退職者で運用実績あり</td></tr>
+      <tr><td><strong>コスト</strong></td><td>月次確認ルール稼働。予算アラート設定済み</td><td>月次レポート存在</td></tr>
+      <tr><td><strong>バックアップ</strong></td><td>Firestore定期バックアップ設定済み</td><td>Cloud Storageにファイル存在</td></tr>
+      <tr><td><strong>ドキュメント</strong></td><td>運用マニュアル＋コード管理ガイドラインが整備。管理者2名以上で運用可能</td><td>ナレッジベースに存在</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>リスクと対策</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>リスク</th><th>影響</th><th>対策</th></tr></thead>
+    <tbody>
+      <tr><td>Owner全員連絡不能</td><td><span class="tag tag-high">高</span></td><td>Owner 2名以上。異なる部門。リカバリーコード物理保管</td></tr>
+      <tr><td>退職者/委託先のアクセス放置</td><td><span class="tag tag-high">高</span></td><td>チェックリスト＋人事/購買連携。月次メンバー棚卸し</td></tr>
+      <tr><td>Firebase高額請求</td><td><span class="tag tag-mid">中</span></td><td>3段階アラート＋自動停止＋日次確認。通知先はメーリングリスト</td></tr>
+      <tr><td>シークレット漏洩</td><td><span class="tag tag-high">高</span></td><td>.gitignore設定。コード直書き禁止。Secret Manager。Secret Protection</td></tr>
+      <tr><td>Security Rules不備</td><td><span class="tag tag-high">高</span></td><td>本番デプロイ前のRules監査必須化。コンソール警告放置禁止</td></tr>
+      <tr><td>手動デプロイ事故</td><td><span class="tag tag-mid">中</span></td><td>本番デプロイをCI/CD経由のみに制限。手動権限を最小化</td></tr>
+      <tr><td>本番プロジェクト誤削除</td><td><span class="tag tag-high">高</span></td><td>Project Liens設定。Editor権限を最小限に制限</td></tr>
+      <tr><td>個人Googleアカウント依存</td><td><span class="tag tag-high">高</span></td><td>会社Workspaceアカウントで管理。Organization配下で運用</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-ok"><h4>四半期セキュリティ棚卸しチェックリスト</h4>
+  <p>本レポートは<strong>四半期ごとの棚卸し時に参照する運用ガイド</strong>として活用する。確認項目：メンバー一覧と権限の妥当性（外部委託先含む）。不要トークン/キーの削除。Security Rulesに危険設定がないか。コード内にシークレットが混入していないか。監査ログ異常確認。コスト推移と予算アラート閾値見直し。退職者/契約終了者の権限削除漏れ。バックアップ実行状況。CI/CDパイプラインの正常稼働確認。管理者2名以上で実施し記録を残す。</p></div>
+</section>
+
+<!-- ============================================================ -->
+<div class="part-divider"><span>第六部 ― ツール選定</span></div>
+<!-- ============================================================ -->
+
+<section id="s15">
+  <span class="section-number">15</span>
+  <h2>SaaS・クラウドツール選定の7つの基準</h2>
+
+  <p>GitHub・Firebaseに限らず、社内で新しいSaaSやクラウドツールを導入する際に必ず確認すべき7つの基準がある。ツールの「機能」だけを見て導入すると、後になってセキュリティ・コスト・移行の壁にぶつかる。導入前にこの7項目を確認することで、数ヶ月後の後悔を防げる。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>基準</th><th>確認すべきこと</th><th>身近な例え</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>1</strong></td>
+        <td><strong>セキュリティとアクセス制御</strong></td>
+        <td>SSO連携が可能か。ロールベースの権限管理があるか。二要素認証を強制できるか。監査ログが取得できるか。SOC 2等の認証を取得しているか</td>
+        <td>「このビルには入館管理システムがあるか。フロアごとの鍵が分かれているか。来客の入退記録は残るか」</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td><strong>無料プランの罠</strong></td>
+        <td>無料枠の上限を超えた時に何が起きるか（停止か自動課金か）。無料プロジェクトが非アクティブ時に一時停止されないか。商用利用が許可されているか</td>
+        <td>「無料お試し期間が終わったら、自動で有料に切り替わるのか、サービスが止まるのか」</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td><strong>従量課金の上限設定</strong></td>
+        <td>予算上限（ハードキャップ）を設定できるか。予算アラートだけか自動停止もできるか。過去にユーザーから「高額請求」の報告がないか</td>
+        <td>「携帯電話の料金に上限を設定できるか。通知だけか、本当に止まるか」</td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td><strong>データの所在と法的管轄</strong></td>
+        <td>データがどの国・地域のサーバーに保管されるか。日本リージョンが選べるか。GDPRやデータローカライゼーション法への対応状況</td>
+        <td>「大事な書類を預ける倉庫がどの国にあるか。その国の法律で書類が差し押さえられるリスクがないか」</td>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td><strong>データポータビリティ（脱出可能性）</strong></td>
+        <td>データをエクスポートできるか。標準的な形式（CSV、JSON、SQL等）で出力可能か。別のサービスへの移行が技術的に可能か。ベンダーロックインの度合い</td>
+        <td>「この賃貸マンションを出る時、家具を持ち出せるか。それとも据え付けで持ち出せないか」</td>
+      </tr>
+      <tr>
+        <td><strong>6</strong></td>
+        <td><strong>サポートとSLA</strong></td>
+        <td>有料サポートの有無と応答時間。SLA（サービス稼働保証）のパーセンテージ。日本語サポートの有無。障害時の情報公開の透明性</td>
+        <td>「何か問題が起きた時、電話すれば何時間以内に対応してくれるか。そもそも日本語で対応してもらえるか」</td>
+      </tr>
+      <tr>
+        <td><strong>7</strong></td>
+        <td><strong>オープンソースかプロプライエタリか</strong></td>
+        <td>ソースコードが公開されているか。セルフホスト（自社サーバーで運用）が可能か。ベンダーが倒産した場合にサービスを継続できるか</td>
+        <td>「お店が閉店しても、レシピが公開されていれば自分で料理を作り続けられるか。それとも、お店でしか食べられないメニューに依存しているか」</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-warn">
+    <h4>最も見落とされる基準：#5 データポータビリティ</h4>
+    <p>多くの企業が導入時に機能と価格だけを比較し、「このサービスから出ていく時のコスト」を考慮しない。しかし、数年後に「もっと安いサービスが出た」「このサービスの方針が変わった」「買収されて値上げされた」といった事態は珍しくない。その時にデータを持ち出せないと、<strong>高くなった料金を払い続けるか、データを捨てて移行するか</strong>の二択を迫られる。導入前に「このサービスを辞める時、どうするか」を必ず確認する。</p>
+  </div>
+
+  <h3>ツール導入時のセキュリティチェックリスト</h3>
+  <p>新しいツールを社内に導入する際、最低限確認すべき項目を以下に整理する。</p>
+  <div class="phase phase-active">
+    <div class="phase-header"><span class="phase-num">CHECK</span><span class="phase-title">導入前に確認する10項目</span></div>
+    <ul class="checklist">
+      <li>サービスのSOC 2 / ISO 27001認証の取得状況を確認</li>
+      <li>データの保管リージョン（国・地域）を確認</li>
+      <li>SSO連携（SAML / OIDC）に対応しているか確認。非対応なら別途パスワード管理が必要になる</li>
+      <li>ロールベースのアクセス制御（RBAC）があるか確認。「全員が管理者」しかないサービスは危険</li>
+      <li>監査ログ（誰がいつ何をしたか）が取得できるか確認</li>
+      <li>API経由でデータをエクスポートできるか確認</li>
+      <li>サービスの利用規約を確認。特に「入力データの学習利用」の有無。AIツールは特に注意</li>
+      <li>従量課金の場合、予算上限またはアラートを設定できるか確認</li>
+      <li>無料プランの制限事項（非アクティブ時の一時停止、商用利用制限）を確認</li>
+      <li>過去のセキュリティインシデントの有無と対応を確認（Google検索で「サービス名 security breach」等）</li>
+    </ul>
+  </div>
+
+  <div class="analogy"><strong>不動産の内見に例えると：</strong>マンションを借りる前に「間取りが広い」だけでなく、「管理組合がしっかりしているか」「防犯カメラがあるか」「退去時の原状回復費用はいくらか」「管理会社が倒産したらどうなるか」を確認する。SaaS選定も同じ。機能（間取り）だけでなく、セキュリティ（防犯）・撤退コスト（退去費用）・運営の信頼性（管理組合）を総合的に評価する。</div>
+</section>
+
+<section id="s16">
+  <span class="section-number">16</span>
+  <h2>主要ツール比較マップ（Supabase他）</h2>
+
+  <p>GitHub・Firebaseだけでなく、社内で利用される可能性がある主要なクラウドツールを、前章の7つの基準に沿って比較する。ここではカテゴリ別に整理し、選定時の判断材料を提供する。</p>
+
+  <!-- ── BaaS ── -->
+  <h3>バックエンド基盤（BaaS）：Firebase vs Supabase</h3>
+  <p>Firebaseの代替として最も注目されているのが<strong>Supabase</strong>だ。「オープンソースのFirebase代替」と称されるが、設計思想は大きく異なる。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>比較項目</th><th>Firebase</th><th>Supabase</th></tr></thead>
+    <tbody>
+      <tr><td><strong>データベース</strong></td><td>Firestore（NoSQL）。ドキュメント型で柔軟だが、複雑なクエリが苦手</td><td>PostgreSQL（SQL）。リレーショナルDBで複雑なクエリが得意。SQL知識があるチームに有利</td></tr>
+      <tr><td><strong>無料プラン</strong></td><td>Spark：Cloud Functions利用不可。無料枠超過でサービス停止</td><td>Free：500MB DB、5万MAU。<span class="tag tag-high">7日間非アクティブでプロジェクト一時停止</span>。2プロジェクトまで</td></tr>
+      <tr><td><strong>有料プラン開始</strong></td><td>Blaze（従量課金、$0〜）</td><td>Pro（$25/月〜 + 従量）</td></tr>
+      <tr><td><strong>予算上限</strong></td><td>ハードキャップなし。予算アラート＋自動停止スクリプトで対応</td><td><strong>Pro版にSpend Cap機能あり</strong>。ONにすれば$25/月で上限固定可能（超過分はサービス制限）</td></tr>
+      <tr><td><strong>認証</strong></td><td>Firebase Authentication（メール、Google、Apple等）</td><td>GoTrue（メール、OAuth、SSO）。RLS（行レベルセキュリティ）でDBレベルの認可が可能</td></tr>
+      <tr><td><strong>サーバーレス関数</strong></td><td>Cloud Functions（Node.js / Python）</td><td>Edge Functions（Deno / TypeScript）</td></tr>
+      <tr><td><strong>リアルタイム</strong></td><td>Firestore / Realtime Database で標準対応</td><td>PostgreSQLのChange Data Captureで対応。同時接続数に制限あり</td></tr>
+      <tr><td><strong>課金の透明性</strong></td><td>読み取り/書き込み/ストレージの従量制。読み取り課金が予測しにくい</td><td><strong>クエリ回数に課金なし</strong>（PostgreSQLの無制限クエリ）。ストレージ・帯域・MAUで課金</td></tr>
+      <tr><td><strong>オープンソース</strong></td><td>不可。Google独自のクローズドサービス</td><td><strong>オープンソース</strong>。セルフホスト可能。ベンダー倒産時も自社で継続可能</td></tr>
+      <tr><td><strong>セルフホスト</strong></td><td>不可</td><td>可能（Docker Compose）。データを完全に自社管理できる</td></tr>
+      <tr><td><strong>SSO / SOC 2</strong></td><td>Google Cloud IAMで管理。SOC 2対応</td><td>Teamプラン（$599/月）以上でSOC 2 Type II対応。SSOもTeam以上</td></tr>
+      <tr><td><strong>日本リージョン</strong></td><td>東京リージョンあり</td><td>東京リージョンあり（AWS ap-northeast-1）</td></tr>
+      <tr><td><strong>ベンダーロックイン</strong></td><td><span class="tag tag-high">高い</span>。Firestoreのデータ形式はGoogle独自</td><td><span class="tag tag-low">低い</span>。PostgreSQL標準。どこにでも移行可能</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-info">
+    <h4>Supabaseを選ぶべきケース / Firebaseを選ぶべきケース</h4>
+    <p><strong>Supabaseが有利：</strong>チームにSQL経験者がいる。複雑なデータのリレーション（関連付け）が必要。ベンダーロックインを避けたい。将来的にセルフホストに移行する可能性がある。読み取り回数が多く、Firebaseの従量課金が高くつく場合。<br><br>
+    <strong>Firebaseが有利：</strong>Google Cloudのエコシステム（BigQuery、Cloud Run等）を既に活用している。リアルタイム同期が中核機能（チャット、コラボレーションツール等）。NoSQLの柔軟なスキーマが適している。Google製品との統合が多い。</p>
+  </div>
+
+  <div class="callout callout-danger">
+    <h4>Supabase無料プランの最大の注意点</h4>
+    <p>Supabaseの無料プランでは、<strong>7日間アクティビティがないプロジェクトは自動的に一時停止される</strong>。社内ツールのように利用頻度にムラがあるサービスの場合、連休明けにアクセスしたらプロジェクトが停止していた、という事態が起こりうる。本番サービスには必ず有料プラン（Pro $25/月〜）を使用する。</p>
+  </div>
+
+  <!-- ── Hosting ── -->
+  <h3>ホスティング・デプロイ基盤</h3>
+  <p>Webアプリやサイトを公開する基盤の選択。コスト構造が大きく異なるため注意が必要。</p>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>比較項目</th><th>Vercel</th><th>Netlify</th><th>Cloudflare Pages</th></tr></thead>
+    <tbody>
+      <tr><td><strong>最適な用途</strong></td><td>Next.jsアプリに最適化</td><td>フレームワーク非依存。静的サイトに強い</td><td>高トラフィックサイト。コスト重視</td></tr>
+      <tr><td><strong>無料プラン</strong></td><td>Hobby（<span class="tag tag-high">商用利用禁止</span>）。帯域100GB/月</td><td>Starter（<strong>商用利用OK</strong>）。帯域100GB/月</td><td>Free（<strong>商用利用OK</strong>）。<strong>帯域無制限</strong></td></tr>
+      <tr><td><strong>有料プラン</strong></td><td>Pro $20/人/月</td><td>Pro $19/人/月</td><td>Pro $5/月（人数無制限）</td></tr>
+      <tr><td><strong>帯域超過時</strong></td><td>$0.15/GB（高額になりやすい）</td><td>$0.20/GB</td><td><strong>常に無料</strong></td></tr>
+      <tr><td><strong>エッジ拠点数</strong></td><td>約100拠点</td><td>CDN利用</td><td><strong>300拠点以上</strong>（最大）</td></tr>
+      <tr><td><strong>高額請求リスク</strong></td><td><span class="tag tag-high">報告あり</span>。帯域超過で予想外の請求事例</td><td><span class="tag tag-mid">中程度</span></td><td><span class="tag tag-low">極めて低い</span>。帯域無料</td></tr>
+      <tr><td><strong>SSO / 監査ログ</strong></td><td>Enterprise（要問合せ）</td><td>Enterprise</td><td>Enterprise</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-warn">
+    <h4>Vercel無料プランは商用利用禁止</h4>
+    <p>Vercelの無料Hobbyプランは利用規約で<strong>商用利用を明確に禁止</strong>している。収益を生むサービス（間接的なものを含む）を無料プランで運用するのは規約違反となる。商用利用する場合はPro（$20/人/月）以上が必須。一方、NetlifyとCloudflare Pagesの無料プランは商用利用が許可されている。</p>
+  </div>
+
+  <div class="decision-box">
+    <h4>ホスティング選定フロー</h4>
+    <div class="decision-step"><span class="decision-num">1</span><span>Next.jsを使っているか？ Yes → <strong>Vercel</strong>が最も統合度が高い。</span></div>
+    <div class="decision-step"><span class="decision-num">2</span><span>帯域（転送量）が多い、または予測が難しいか？ Yes → <strong>Cloudflare Pages</strong>（帯域無料）。</span></div>
+    <div class="decision-step"><span class="decision-num">3</span><span>フレームワークにこだわりがなく、バランス重視か？ → <strong>Netlify</strong>。</span></div>
+    <div class="decision-step"><span class="decision-num">4</span><span>コストを最小化したいか？ → <strong>Cloudflare Pages</strong>が圧倒的に安い。</span></div>
+  </div>
+
+  <!-- ── Auth ── -->
+  <h3>認証サービス</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>サービス</th><th>無料枠</th><th>有料開始</th><th>特徴</th><th>注意点</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Firebase Auth</strong></td><td>5万MAU</td><td>Blaze従量</td><td>Googleエコシステムと統合</td><td>Firebase全体に依存</td></tr>
+      <tr><td><strong>Supabase Auth</strong></td><td>5万MAU</td><td>Pro $25/月〜</td><td>PostgreSQL RLSと統合。オープンソース</td><td>7日非アクティブで停止（Free）</td></tr>
+      <tr><td><strong>Auth0</strong></td><td>2.5万MAU</td><td>$35/月〜</td><td>最も機能が豊富。エンタープライズ向け</td><td>高機能だが高価格。設定が複雑</td></tr>
+      <tr><td><strong>Clerk</strong></td><td>1万MAU</td><td>$25/月〜</td><td>UIコンポーネント付属。導入が最も簡単</td><td>比較的新しいサービス。大規模実績は少ない</td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- ── Monitoring ── -->
+  <h3>エラー監視・可観測性</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>サービス</th><th>用途</th><th>無料枠</th><th>有料開始</th><th>特徴</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Sentry</strong></td><td>エラー追跡</td><td>5K イベント/月</td><td>$26/月〜</td><td>エラー発生時の詳細なスタックトレース。再現手順の自動記録</td></tr>
+      <tr><td><strong>Datadog</strong></td><td>インフラ監視・APM</td><td>14日間トライアル</td><td>$15/ホスト/月〜</td><td>総合的な監視。高機能だが高コスト</td></tr>
+      <tr><td><strong>Better Stack</strong></td><td>稼働監視・ログ</td><td>10モニター</td><td>$24/月〜</td><td>ダウンタイム検知。インシデント管理統合</td></tr>
+      <tr><td><strong>Google Cloud Monitoring</strong></td><td>GCP/Firebase監視</td><td>無料枠あり</td><td>従量課金</td><td>Firebase利用時は追加設定なしで基本監視可能</td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- ── Other Tools ── -->
+  <h3>その他の主要ツール</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>カテゴリ</th><th>ツール</th><th>注意すべきセキュリティ・運用ポイント</th></tr></thead>
+    <tbody>
+      <tr><td><strong>決済</strong></td><td>Stripe</td><td>APIキーは<strong>絶対にフロントエンドのコードに含めない</strong>（サーバーサイドのみ）。テスト環境と本番環境のキーを厳密に分離する。PCI DSS準拠が必要な場合はStripeの責任分界を確認</td></tr>
+      <tr><td><strong>メール配信</strong></td><td>SendGrid / Resend</td><td>APIキーの権限を「メール送信のみ」に制限（読み取り権限を付与しない）。送信ドメインのSPF/DKIM/DMARC設定を必ず行い、なりすまし防止を徹底</td></tr>
+      <tr><td><strong>ファイルストレージ</strong></td><td>AWS S3 / Cloudflare R2</td><td>S3バケットの公開設定を厳密に管理（「全世界に公開」設定は事故の元）。R2はエグレス（データ転送）が無料でコスト面で有利</td></tr>
+      <tr><td><strong>ナレッジ管理</strong></td><td>Notion / Confluence</td><td>ゲストアクセスの権限範囲を確認。Notionの「Web公開」機能でうっかり社内文書を公開しないよう注意。退職者のアクセス削除を忘れない</td></tr>
+      <tr><td><strong>コミュニケーション</strong></td><td>Slack / Discord</td><td>Slackの外部コネクタ（Webhook等）のURLが漏洩すると、誰でもチャンネルにメッセージを投稿可能になる。Discord Botのトークン管理も同様に厳密に</td></tr>
+      <tr><td><strong>デザイン</strong></td><td>Figma</td><td>プロジェクトの共有設定を確認。「リンクを知っている全員」の設定で社外に漏洩するケースがある。社外共有時はパスワード保護を検討</td></tr>
+      <tr><td><strong>CI/CD</strong></td><td>GitHub Actions / CircleCI</td><td>CI/CDのシークレット管理を徹底。ビルドログにAPIキーが出力されないよう注意。サードパーティActionは信頼できる発行元のもののみ使用</td></tr>
+      <tr><td><strong>コンテナ</strong></td><td>Docker / Fly.io / Railway</td><td>Dockerイメージにシークレットを含めない（.dockerignoreを設定）。公開レジストリにプライベートイメージをプッシュしない</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>カテゴリ別コスト比較（10名チーム・月額概算）</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>カテゴリ</th><th>低コスト構成</th><th>月額</th><th>標準構成</th><th>月額</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ソースコード管理</strong></td><td>GitHub Free</td><td>$0</td><td>GitHub Team</td><td>$40</td></tr>
+      <tr><td><strong>AI補助</strong></td><td>Copilot Free</td><td>$0</td><td>Copilot Business</td><td>$190</td></tr>
+      <tr><td><strong>バックエンド</strong></td><td>Firebase Blaze（無料枠内）</td><td>$0〜$15</td><td>Supabase Pro</td><td>$25〜$75</td></tr>
+      <tr><td><strong>ホスティング</strong></td><td>Cloudflare Pages Free</td><td>$0</td><td>Vercel Pro（3名）</td><td>$60</td></tr>
+      <tr><td><strong>認証</strong></td><td>Firebase Auth / Supabase Auth</td><td>$0（BaaS内包）</td><td>Auth0</td><td>$35〜</td></tr>
+      <tr><td><strong>エラー監視</strong></td><td>Sentry Free</td><td>$0</td><td>Sentry Team</td><td>$26</td></tr>
+      <tr><td><strong>メール配信</strong></td><td>Resend Free（100通/日）</td><td>$0</td><td>SendGrid Essentials</td><td>$20〜</td></tr>
+      <tr>
+        <td colspan="2" style="border-top:2px solid var(--gray-200);"><strong>低コスト合計</strong></td>
+        <td style="border-top:2px solid var(--gray-200);"><strong>$0〜$15/月</strong></td>
+        <td style="border-top:2px solid var(--gray-200);"><strong>標準合計</strong></td>
+        <td style="border-top:2px solid var(--gray-200);"><strong>$396〜$471/月</strong><br><span class="text-sm text-muted">約6〜7万円</span></td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>ツール選定の全体フロー</h3>
+  <div class="decision-box">
+    <h4>新しいツールを導入する前に必ず通るフロー</h4>
+    <div class="decision-step"><span class="decision-num">1</span><span><strong>本当に必要か？</strong> 既存ツールで代替できないか確認。ツールの数が増えるほど管理コストが上がる。</span></div>
+    <div class="decision-step"><span class="decision-num">2</span><span><strong>7つの基準でスコアリング。</strong> セキュリティ、無料プランの罠、課金上限、データ所在、脱出可能性、サポート、OSS有無。</span></div>
+    <div class="decision-step"><span class="decision-num">3</span><span><strong>無料プランで検証。</strong> 2週間の評価期間を設け、実際の業務フローに組み込めるか確認。</span></div>
+    <div class="decision-step"><span class="decision-num">4</span><span><strong>有料プランの年間総コストを算出。</strong> 月額 × 12 + 予想される従量課金 + 管理工数の人件費。</span></div>
+    <div class="decision-step"><span class="decision-num">5</span><span><strong>撤退計画を文書化。</strong> 「このツールをやめる時、データの移行にどれくらいの工数がかかるか」を見積もる。</span></div>
+    <div class="decision-step"><span class="decision-num">6</span><span><strong>導入を決定し、セキュリティ設定を実施。</strong> SSO連携、権限設定、シークレット管理、退職者対応フローの整備。</span></div>
+  </div>
+
+  <div class="callout callout-ok">
+    <h4>当社（K.K.kurokawa&co.）の推奨スタック</h4>
+    <p>10名規模の当社においては、以下の構成を推奨する。ソースコード管理は<strong>GitHub Team</strong>（ブランチ保護必須）。バックエンドは現行の<strong>Firebase Blaze</strong>を継続（Google Cloudエコシステムとの統合、リアルタイム機能の活用）。新規プロジェクトでSQL中心の設計が適する場合は<strong>Supabase Pro</strong>を選択肢に加える。ホスティングはコスト面から<strong>Cloudflare Pages</strong>を第一候補とし、Next.jsプロジェクトに限り<strong>Vercel Pro</strong>を検討。エラー監視は<strong>Sentry Free</strong>から開始。この構成であれば月額$55〜$150（約8,000〜23,000円）で、企業として必要な管理体制を維持できる。</p>
+  </div>
+</section>
+
+<footer>
+  GitHub・Firebase 社内管理運用ガイド<br>
+  K.K.kurokawa&co. / 全19章<br>
+  2026年4月2日作成
+</footer>
+
+</div>
+</body>
+</html>
